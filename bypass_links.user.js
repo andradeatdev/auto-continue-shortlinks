@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.2
+// @version            0.0.3
 // @description        just another bypass links for pahe
 // @author             hdyzen
 // 
@@ -50,7 +50,7 @@ const RULE_TEMPLATE = {
                 {
                     action: "click",
                     selector: "a.get-link:not(.disabled)",
-                    timeout: 20000,
+                    timeout: 20_000,
                 },
             ],
         },
@@ -81,12 +81,25 @@ const RULE_TEMPLATE = {
                     selector: "#btn-main:not(.disabled)",
                     attribute: "class",
                     attributeValue: "*",
-                    timeout: 20000,
+                    timeout: 20_000,
                 }
             ],
         },
-    ]
+    ],
 }
+
+const globalRules = {
+    setup: [
+        {
+            action: "setAttributes",
+            selector: "body > div",
+            text: "AntiAdBlock",
+            attributes: {
+                "style": "display: none !important;",
+            },
+        },
+    ],
+};
 
 const bypassRules = {
     "tpi.li": RULE_TEMPLATE.CLOUDFLARE_AND_GET_LINK,
@@ -99,16 +112,6 @@ const bypassRules = {
         {
             path: "*",
             description: "bypass links",
-            setup: [
-                {
-                    action: "setAttributes",
-                    selector: "body > div",
-                    text: "AntiAdBlock",
-                    attributes: {
-                        "style": "display: none !important;",
-                    },
-                },
-            ],
             steps: [
                 {
                     action: "click",
@@ -127,8 +130,8 @@ const bypassRules = {
                 {
                     action: "click",
                     selector: "a.get-link:not(.disabled)",
-                    timeout: 20000,
-                }
+                    timeout: 20_000,
+                },
             ],
             steps: [
                 {
@@ -155,6 +158,10 @@ async function executeBypass() {
     const host = location.hostname;
     const getPath = () => location.pathname;
 
+    if (globalRules.setup) {
+        for (const step of globalRules.setup) executeBackgroundAction(step, { host, getPath });
+    }
+
     const domainRules = bypassRules[host];
     if (!domainRules) return;
 
@@ -176,7 +183,7 @@ async function executeBypass() {
 
         if (matchedRule.setup) {
             console.log("[Bypass] Executing setup steps...");
-            for (const step of matchedRule.setup) executeBackgroundAction(step, ctx);
+            for (const step of matchedRule.setup) executeBackgroundAction(step, { host, getPath });
         }
 
         await executeRule(matchedRule, ctx);
@@ -195,7 +202,7 @@ async function executeBypass() {
 
                 if (matchedRule.setup) {
                     console.log("[Bypass] Executing setup steps...");
-                    for (const step of matchedRule.setup) executeBackgroundAction(step, ctx);
+                    for (const step of matchedRule.setup) executeBackgroundAction(step, { host, getPath });
                 }
 
                 executeRule(matchedRule, ctx).finally(resolve);
@@ -207,7 +214,7 @@ async function executeBypass() {
             subtree: true,
         });
 
-        setTimeout(() => {
+        safeSetTimeout(() => {
             observer.disconnect();
             console.log(`[Bypass] Timeout: No conditions were met in 15s.`);
             resolve();
@@ -325,7 +332,7 @@ function waitElement(selector, options = {}) {
 
         observer.observe(document.body || document.documentElement, observerConfig);
 
-        setTimeout(() => {
+        safeSetTimeout(() => {
             observer.disconnect();
             const errorMsg = attribute
                 ? `Timeout after ${timeout}ms: ${selector} does not have ${attribute}="${attributeValue}"`
@@ -362,8 +369,6 @@ function withAutoWait(handler) {
     return async (step, ctx) => {
         let targetNode = ctx.lastElement;
 
-        // console.log("Selector", step.selector, document.querySelector(step.selector));
-
         if (step.selector) {
             targetNode = await waitElement(step.selector, getWaitOptions(step));
             ctx.lastElement = targetNode;
@@ -375,6 +380,22 @@ function withAutoWait(handler) {
 
         return handler(step, ctx, targetNode);
     };
+}
+
+function safeSetTimeout(callback, delay) {
+    const startTime = Date.now();
+
+    const check = () => {
+        const elapsed = Date.now() - startTime;
+
+        if (elapsed >= delay) {
+            callback();
+        } else {
+            setTimeout(check, delay - elapsed);
+        }
+    }
+
+    return setTimeout(check, delay);
 }
 
 // Actions
@@ -400,7 +421,7 @@ registerAction("click", withAutoWait(async (step, ctx, node) => {
         click(currentNode);
         ctx.lastElement = currentNode;
 
-        if (i < times) await new Promise(r => setTimeout(r, delay));
+        if (i < times) await new Promise(r => safeSetTimeout(r, delay));
     }
 
     click(node);
@@ -415,10 +436,10 @@ registerAction("sleep", async (step, ctx) => {
         for (let i = ms; i > 0; i -= 1000) {
             if (ctx.aborted) break;
             console.log(`[Bypass] Looping... ${i}ms left`);
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => safeSetTimeout(r, 1000));
         }
     } else {
-        await new Promise(r => setTimeout(r, ms));
+        await new Promise(r => safeSetTimeout(r, ms));
     }
 
     console.log(`[Bypass] Sleep done.`);
