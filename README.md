@@ -9,9 +9,17 @@ The goal is to make the script rule-based, so anyone with some knowledge of Java
 The following hosts are currently supported:
 
 - tpi.li
+- oii.la
 - ssdhostting.com
+- selfhostt.com
 - intercelestial.com
 - pahe.plus
+- ouo.io
+- ouo.press
+
+#### Important
+
+This script **does not** solve CAPTCHAs. It only automates clicks, removes unnecessary elements, and performs other simple actions when possible. You still need to solve the CAPTCHA manually.
 
 #### Contributing
 
