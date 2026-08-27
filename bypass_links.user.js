@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.3
+// @version            0.0.4
 // @description        just another bypass links for pahe
 // @author             hdyzen
 // 
@@ -17,11 +17,18 @@
 // @match              https://ouo.io/*
 // @match              https://ouo.press/*
 // 
+// @match              https://adfoc.us/*
+// 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // @grant              none
 // @license            GPL-3.0
 // ==/UserScript==
+
+const hooks = {
+    setTimeout: window.setTimeout.bind(window),
+    setInterval: window.setInterval.bind(window),
+}
 
 const RULE_TEMPLATE = {
     CLOUDFLARE_AND_GET_LINK: [
@@ -148,6 +155,30 @@ const bypassRules = {
             ],
         },
     ],
+    "adfoc.us": [
+        {
+            path: "*",
+            description: "bypass links",
+            setup: [
+                {
+                    action: "setConstant",
+                    chain: "window.count",
+                    value: 0,
+                },
+            ],
+        },
+        {
+            path: "*",
+            description: "bypass links",
+            if: { type: "elementExists", selector: "#showSkip:not([style*='display: none'])" },
+            steps: [
+                {
+                    action: "click",
+                    selector: "a.skip",
+                },
+            ],
+        },
+    ],
 };
 
 const actionHandlers = {};
@@ -212,6 +243,7 @@ async function executeBypass() {
         observer.observe(document.documentElement, {
             childList: true,
             subtree: true,
+            attributes: true,
         });
 
         safeSetTimeout(() => {
@@ -224,7 +256,7 @@ async function executeBypass() {
 
 async function executeRule(rule, ctx) {
     try {
-        for (const step of rule.steps) {
+        for (const step of rule.steps || []) {
             if (ctx.aborted) break;
 
             const handler = actionHandlers[step.action];
@@ -391,11 +423,33 @@ function safeSetTimeout(callback, delay) {
         if (elapsed >= delay) {
             callback();
         } else {
-            setTimeout(check, delay - elapsed);
+            hooks.setTimeout(check, delay - elapsed);
         }
     }
 
-    return setTimeout(check, delay);
+    return hooks.setTimeout(check, delay);
+}
+
+function setConstant(owner, chain, value) {
+    const parts = chain.split(".");
+    let current = owner;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+        const prop = parts[i];
+        if (!current[prop] || typeof current[prop] !== "object") current[prop] = {};
+        current = current[prop];
+    }
+
+    const lastProp = parts[parts.length - 1];
+
+    Object.defineProperty(current, lastProp, {
+        configurable: true,
+        enumerable: true,
+        get() {
+            return value;
+        },
+        set() { }
+    });
 }
 
 // Actions
@@ -467,5 +521,10 @@ registerAction("scrollIntoView", withAutoWait(async (step, ctx, node) => {
     node.scrollIntoView({ behavior: "smooth" });
     return node;
 }));
+
+registerAction("setConstant", async (step, ctx) => {
+    setConstant(window, step.chain, step.value);
+    return node;
+});
 
 executeBypass();
