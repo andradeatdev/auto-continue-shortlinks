@@ -1,14 +1,21 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.1
+// @version            0.0.2
 // @description        just another bypass links for pahe
 // @author             hdyzen
 // 
 // @match              https://tpi.li/*
+// @match              https://oii.la/*
+// 
 // @match              https://ssdhostting.com/*
+// @match              https://selfhostt.com/*
+// 
 // @match              https://intercelestial.com/*
 // @match              https://pahe.plus/*
+// 
+// @match              https://ouo.io/*
+// @match              https://ouo.press/*
 // 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
@@ -16,8 +23,8 @@
 // @license            GPL-3.0
 // ==/UserScript==
 
-const bypassRules = {
-    "tpi.li": [
+const RULE_TEMPLATE = {
+    CLOUDFLARE_AND_GET_LINK: [
         {
             path: "*",
             if: { type: "elementExists", selector: "[name='cf-turnstile-response']" },
@@ -48,7 +55,7 @@ const bypassRules = {
             ],
         },
     ],
-    "ssdhostting.com": [
+    SOME_HOST_AND_GET_LINK: [
         {
             path: "*",
             description: "bypass links",
@@ -64,6 +71,30 @@ const bypassRules = {
             ],
         },
     ],
+    OUO_AND_GET_LINK: [
+        {
+            path: "*",
+            description: "bypass links",
+            steps: [
+                {
+                    action: "click",
+                    selector: "#btn-main:not(.disabled)",
+                    attribute: "class",
+                    attributeValue: "*",
+                    timeout: 20000,
+                }
+            ],
+        },
+    ]
+}
+
+const bypassRules = {
+    "tpi.li": RULE_TEMPLATE.CLOUDFLARE_AND_GET_LINK,
+    "oii.la": RULE_TEMPLATE.CLOUDFLARE_AND_GET_LINK,
+    "ssdhostting.com": RULE_TEMPLATE.SOME_HOST_AND_GET_LINK,
+    "selfhostt.com": RULE_TEMPLATE.SOME_HOST_AND_GET_LINK,
+    "ouo.io": RULE_TEMPLATE.OUO_AND_GET_LINK,
+    "ouo.press": RULE_TEMPLATE.OUO_AND_GET_LINK,
     "intercelestial.com": [
         {
             path: "*",
@@ -105,7 +136,7 @@ const bypassRules = {
                     selector: "#captchaShortlink iframe",
                     attribute: "data-hcaptcha-response",
                     attributeValue: /.+/,
-                    timeout: 60000,
+                    timeout: 120_000,
                 },
                 {
                     action: "click",
@@ -331,6 +362,8 @@ function withAutoWait(handler) {
     return async (step, ctx) => {
         let targetNode = ctx.lastElement;
 
+        // console.log("Selector", step.selector, document.querySelector(step.selector));
+
         if (step.selector) {
             targetNode = await waitElement(step.selector, getWaitOptions(step));
             ctx.lastElement = targetNode;
@@ -356,6 +389,7 @@ registerAction("click", withAutoWait(async (step, ctx, node) => {
     const delay = step.delay || 500;
 
     if (times === 1) {
+        console.log("click", node);
         click(node);
         return node;
     }
