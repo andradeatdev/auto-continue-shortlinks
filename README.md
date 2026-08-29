@@ -17,9 +17,21 @@ The following hosts are currently supported:
 - ouo.io
 - ouo.press
 
+#### Timer Acceleration
+
+Some hosts perform server-side timer validation. For these sites, the timer **cannot be accelerated** by the script:
+
+- tpi.li
+- oii.la
+- pahe.plus
+
+The script can still automate other parts of the process on these sites, but the timer must run for its required duration.
+
 #### Important
 
 This script **does not** solve CAPTCHAs. It only automates clicks, removes unnecessary elements, and performs other simple actions when possible. You still need to solve the CAPTCHA manually.
+
+**I recommend using an ad blocker, such as uBlock Origin or Adguard.**
 
 #### Contributing
 
