@@ -89,6 +89,49 @@ const restraints = {
     any: (actual, options) => options.some(r => matchRestraint(actual, r)),
 };
 
+const clauseHandlers = {
+    "ready-state": (match) => {
+        if (typeof match.value !== "string") {
+            logger.error("ready-state clause requires a string value, got:", match.value);
+            return false;
+        }
+        const ok = document.readyState === match.value;
+        if (!ok) logger.debug(`ready-state not satisfied (current=${document.readyState}, want=${match.value})`);
+        return ok;
+    },
+
+    "path": (match) => {
+        if (match.value === undefined) {
+            return true;
+        }
+        if (typeof match.value === "string") {
+            return location.pathname === match.value;
+        }
+        if (match.value instanceof RegExp) {
+            return match.value.test(location.pathname);
+        }
+        logger.error("path clause 'value' must be a string or RegExp, got:", match.value);
+        return false;
+    },
+
+    "element": (match) => {
+        if (typeof match.selector !== "string" || match.selector === "") {
+            logger.warn("element clause without valid selector:", match);
+            return false;
+        }
+        const node = document.querySelector(match.selector);
+        if (!node) {
+            logger.debug(`element not found: ${match.selector}`);
+            return false;
+        }
+        if (match.check && !matchCheck(node, match.check)) {
+            logger.debug(`element check failed for selector: ${match.selector}`, match.check);
+            return false;
+        }
+        return true;
+    },
+};
+
 const handlers = {
     patches: {},
     actions: {},
@@ -537,51 +580,11 @@ function createLogger(hostname) {
 }
 
 function matchWhen(match) {
-    switch (match.when) {
-        case "ready-state": {
-            if (typeof match.value !== "string") {
-                logger.error("ready-state clause requires a string value, got:", match.value);
-                return false;
-            }
-            const ok = document.readyState === match.value;
-            if (!ok) logger.debug(`ready-state not satisfied (current=${document.readyState}, want=${match.value})`);
-            return ok;
-        }
-
-        case "path": {
-            if (match.value === undefined) {
-                return true;
-            }
-            if (typeof match.value === "string") {
-                return location.pathname === match.value;
-            }
-            if (match.value instanceof RegExp) {
-                return match.value.test(location.pathname);
-            }
-            logger.error("path clause 'value' must be a string or RegExp, got:", match.value);
-            return false;
-        }
-
-        case "element": {
-            if (typeof match.selector !== "string" || match.selector === "") {
-                logger.warn("element clause without valid selector:", match);
-                return false;
-            }
-            const node = document.querySelector(match.selector);
-            if (!node) {
-                logger.debug(`element not found: ${match.selector}`);
-                return false;
-            }
-            if (match.check && !matchCheck(node, match.check)) {
-                logger.debug(`element check failed for selector: ${match.selector}`, match.check);
-                return false;
-            }
-            return true;
-        }
-        default:
-            logger.warn("Unknown 'when' type:", match?.when, "| match:", match);
-            return false;
+    if (!Object.hasOwn(clauseHandlers, match.when)) {
+        logger.warn("Unknown 'when' type:", match?.when, "| match:", match);
+        return false;
     }
+    return clauseHandlers[match.when](match);
 }
 
 function resolveReader(entry) {
