@@ -1,0 +1,25 @@
+{
+  "name": "auto-continue-shortlinks",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "dev": "bunx serve src"
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@eslint/js": "^10.0.1",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@types/bun": "latest",
+    "@violentmonkey/types": "^0.3.4",
+    "concurrently": "^10.0.5",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@types/node": "^26.4.0"
+  }
+}
