@@ -20,3 +20,13 @@ This script **does not** solve CAPTCHAs. It only automates clicks, removes unnec
 
 **I recommend using an ad blocker, such as uBlock Origin or Adguard.**
 
+#### Not related issues
+
+Some sites have issues not related to this script.
+
+- General:
+  1. Somes sites can't be timer accelerated, the timer validation is done on the server side, to see what sites have `tuner-timer`, see [HOSTS.md](HOSTS.md).
+  2. Pahe.ink add news domains sometimes, so the script may not work on some new sites, you can try to add them manually or wait for the next update.
+
+- Interestial.com: The site return invalid session if you open multiple tabs of this site.
+
