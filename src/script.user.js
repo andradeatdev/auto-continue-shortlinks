@@ -11,6 +11,9 @@
 //
 // @match              https://ssdhostting.com/*
 // @match              https://selfhostt.com/*
+// @match              https://financeehelp.com/*
+// @match              https://cloudhostt.com/*
+// @match              https://linegee.net/*
 //
 // @match              https://intercelestial.com/*
 // @match              https://pahe.plus/*
@@ -42,6 +45,9 @@ const CONFIG = {
     DEFAULT_STEP_TIMEOUT: 10_000,
     RULE_MATCH_TIMEOUT: 120_000,
     POLL_INTERVAL: 250,
+
+    DEFAULT_CLICK_DELAY: 500,
+    DEFAULT_SLEEP_MS: 1_000,
 };
 
 const logger = createLogger(location.hostname);
@@ -68,6 +74,8 @@ const readers = {
     classList: (node, name) => node.classList.contains(name),
 };
 
+const READER_KEYS = Object.keys(readers);
+
 const restraints = {
     "nonEmpty": (actual) => {
         if (actual == null) return false;
@@ -77,6 +85,7 @@ const restraints = {
         if (Array.isArray(actual)) return actual.length > 0;
         return true;
     },
+    // Intentional loose equality: catches both null and undefined
     "absent": (actual) => actual == null,
     "present": (actual) => actual != null,
 
@@ -87,6 +96,38 @@ const restraints = {
     prefix: (actual, str) => String(actual).startsWith(str),
     suffix: (actual, str) => String(actual).endsWith(str),
     any: (actual, options) => options.some(r => matchRestraint(actual, r)),
+};
+
+const transforms = {
+    trim: (value) => String(value).trim(),
+
+    extract: (value, { pattern, group = 0 }) => {
+        if (typeof pattern === "string") {
+            const s = String(value);
+            const i = s.indexOf(pattern);
+            return i === -1 ? "" : s.slice(i, i + pattern.length);
+        }
+        if (pattern instanceof RegExp) {
+            const m = String(value).match(pattern);
+            return m ? m[group] ?? m[0] : "";
+        }
+        logger.error("extract op requires 'pattern' as a string or RegExp:", pattern);
+        return value;
+    },
+
+    replace: (value, { from, to }) => {
+        if (from instanceof RegExp) return String(value).replace(from, to);
+        return String(value).split(from).join(to);
+    },
+
+    "base64-decode": (value) => {
+        try { return atob(value); } catch { return value; }
+    },
+
+    prefix: (value, { with: p }) => p + value,
+    suffix: (value, { with: s }) => value + s,
+
+    multiplier: (value, { by = 1 }) => typeof value === "number" ? value * by : value,
 };
 
 const clauseHandlers = {
@@ -130,6 +171,43 @@ const clauseHandlers = {
         }
         return true;
     },
+
+    "query": (match) => {
+        if (typeof match.name !== "string" || match.name === "") {
+            logger.error("query clause requires a non-empty 'name':", match);
+            return false;
+        }
+        const value = new URLSearchParams(location.search).get(match.name);
+        if (match.value === undefined) {
+            return value !== null;
+        }
+        return matchRestraint(value, match.value);
+    },
+
+    "not": (match) => {
+        const inner = match.clause;
+        if (!inner || typeof inner.when !== "string" || !Object.hasOwn(clauseHandlers, inner.when)) {
+            logger.error("not clause requires a nested 'clause' with a known 'when':", match);
+            return false;
+        }
+        return !matchWhen(inner);
+    },
+
+    "all": (match) => {
+        if (!Array.isArray(match.clauses) || match.clauses.length === 0) {
+            logger.error("all clause requires a non-empty 'clauses' array:", match);
+            return false;
+        }
+        return match.clauses.every((c) => matchWhen(c));
+    },
+
+    "any": (match) => {
+        if (!Array.isArray(match.clauses) || match.clauses.length === 0) {
+            logger.error("any clause requires a non-empty 'clauses' array:", match);
+            return false;
+        }
+        return match.clauses.some((c) => matchWhen(c));
+    },
 };
 
 const handlers = {
@@ -137,8 +215,8 @@ const handlers = {
     actions: {},
 };
 
-const domainRules = {
-    "tpi.li": {
+const RULES = {
+    TPI_OII: {
         rules: [
             {
                 matches: [
@@ -160,31 +238,7 @@ const domainRules = {
             },
         ],
     },
-
-    "oii.la": {
-        rules: [
-            {
-                matches: [
-                    { when: "element", selector: "[name='cf-turnstile-response']", check: { attribute: "value", value: "nonEmpty" } },
-                ],
-
-                steps: [
-                    { do: "click", selector: "button#continue" },
-                ],
-            },
-            {
-                matches: [
-                    { when: "element", selector: "a.get-link" },
-                ],
-
-                steps: [
-                    { do: "click", selector: "a.get-link:not(.disabled)", timeout: 20_000 },
-                ],
-            },
-        ],
-    },
-
-    "ssdhostting.com": {
+    HOSTING: {
         rules: [
             {
                 steps: [
@@ -194,19 +248,7 @@ const domainRules = {
             },
         ],
     },
-
-    "selfhostt.com": {
-        rules: [
-            {
-                steps: [
-                    { do: "click", selector: "a#startButton" },
-                    { do: "click", selector: "button#getnewlink" },
-                ],
-            },
-        ],
-    },
-
-    "ouo.io": {
+    OUO: {
         rules: [
             {
                 steps: [
@@ -215,27 +257,36 @@ const domainRules = {
             },
         ],
     },
-
-    "ouo.press": {
+    LINEGEE: {
         rules: [
             {
                 steps: [
-                    { do: "click", selector: "#btn-main:not(.disabled)", check: { attribute: "class", value: "nonEmpty" }, timeout: 20_000 },
+                    {
+                        do: "sleep",
+                        ms: 6000,
+                    },
+                    {
+                        do: "redirect",
+                        selector: "script",
+                        check: { property: "textContent", value: { contains: "atob(" } },
+                        property: "textContent",
+                        transform: [
+                            { op: "extract", pattern: /atob\('([^']+)'\)/, group: 1 },
+                            { op: "base64-decode" },
+                        ],
+                    },
                 ],
             },
         ],
     },
-
-    "intercelestial.com": {
+    INTERCELESTIAL: {
         patches: [
             {
                 do: "tune-timer",
                 match: {
                     delay: 1000,
                 },
-                transform: {
-                    factor: 20,
-                },
+                transform: [{ op: "multiplier", by: 0.05 }],
             },
         ],
 
@@ -252,8 +303,7 @@ const domainRules = {
             },
         ],
     },
-
-    "pahe.plus": {
+    PAHE_PLUS: {
         rules: [
             {
                 matches: [
@@ -280,8 +330,7 @@ const domainRules = {
             },
         ],
     },
-
-    "adfoc.us": {
+    ADFOC: {
         patches: [
             {
                 do: "set-property",
@@ -302,8 +351,7 @@ const domainRules = {
             },
         ],
     },
-
-    "vexfile.com": {
+    VEXFILE: {
         rules: [
             {
                 steps: [
@@ -317,17 +365,14 @@ const domainRules = {
             },
         ],
     },
-
-    "filespayouts.com": {
+    FILES_PAYOUTS: {
         patches: [
             {
                 do: "tune-timer",
                 match: {
                     delay: 1000,
                 },
-                transform: {
-                    factor: 20,
-                },
+                transform: [{ op: "multiplier", by: 0.05 }],
             },
         ],
 
@@ -357,8 +402,7 @@ const domainRules = {
             },
         ],
     },
-
-    "modsfire.com": {
+    MODSFIRE: {
         rules: [
             {
                 steps: [
@@ -372,8 +416,7 @@ const domainRules = {
             },
         ],
     },
-
-    "www.file-upload.org": {
+    FILE_UPLOAD: {
         rules: [
             {
                 matches: [
@@ -400,8 +443,7 @@ const domainRules = {
             },
         ],
     },
-
-    "djxmaza.in": {
+    DJXMAZA: {
         rules: [
             {
                 matches: [
@@ -427,8 +469,7 @@ const domainRules = {
             },
         ],
     },
-
-    "upfilesgo.com": {
+    UPFILESGO: {
         rules: [
             {
                 matches: [
@@ -459,8 +500,7 @@ const domainRules = {
             },
         ],
     },
-
-    "safefileku.com": {
+    SAFEFILEKU: {
         patches: [
             {
                 do: "tune-timer",
@@ -468,10 +508,8 @@ const domainRules = {
                     delay: 500,
                     callback: "new Date().getTime()",
                 },
-                transform: {
-                    factor: 20,
-                    patchDate: true,
-                },
+                transform: [{ op: "multiplier", by: 0.05 }],
+                patchDate: true,
             },
         ],
 
@@ -503,6 +541,28 @@ const domainRules = {
     },
 };
 
+const domainRules = {
+    "tpi.li": RULES.TPI_OII,
+    "oii.la": RULES.TPI_OII,
+    "ssdhostting.com": RULES.HOSTING,
+    "selfhostt.com": RULES.HOSTING,
+    "financeehelp.com": RULES.HOSTING,
+    "cloudhostt.com": RULES.HOSTING,
+    "linegee.net": RULES.LINEGEE,
+    "ouo.io": RULES.OUO,
+    "ouo.press": RULES.OUO,
+    "intercelestial.com": RULES.INTERCELESTIAL,
+    "pahe.plus": RULES.PAHE_PLUS,
+    "adfoc.us": RULES.ADFOC,
+    "vexfile.com": RULES.VEXFILE,
+    "filespayouts.com": RULES.FILES_PAYOUTS,
+    "modsfire.com": RULES.MODSFIRE,
+    "www.file-upload.org": RULES.FILE_UPLOAD,
+    "djxmaza.in": RULES.DJXMAZA,
+    "upfilesgo.com": RULES.UPFILESGO,
+    "safefileku.com": RULES.SAFEFILEKU,
+};
+
 function main() {
     const host = location.hostname;
     const matched = domainRules[host];
@@ -532,7 +592,7 @@ function main() {
 
     const tryMatch = () => {
         for (const rule of matched.rules || []) {
-            if (matchesRule(rule)) {
+            if (matchRule(rule)) {
                 logger.debug("Rule matched:", JSON.stringify(rule.matches), "| steps:", rule.steps?.length ?? 0);
                 return rule;
             }
@@ -581,14 +641,14 @@ function createLogger(hostname) {
 
 function matchWhen(match) {
     if (!Object.hasOwn(clauseHandlers, match.when)) {
-        logger.warn("Unknown 'when' type:", match?.when, "| match:", match);
+        logger.warn("Unknown 'when' type:", match.when, "| match:", match);
         return false;
     }
     return clauseHandlers[match.when](match);
 }
 
 function resolveReader(entry) {
-    const readerKeys = Object.keys(readers).filter(r => entry[r] !== undefined);
+    const readerKeys = READER_KEYS.filter(r => entry[r] !== undefined);
 
     if (readerKeys.length === 0) {
         logger.error("Check entry has no reader:", entry);
@@ -662,13 +722,6 @@ function matchRestraint(actual, restraint) {
     }
 
     if (typeof restraint === "object") {
-        if (restraint.not !== undefined) {
-            return !matchRestraint(actual, restraint.not);
-        }
-        if (restraint.any !== undefined) {
-            return Array.isArray(restraint.any) && restraint.any.some(r => matchRestraint(actual, r));
-        }
-
         let ok = true;
         for (const key of Object.keys(restraint)) {
             if (key in restraints && typeof restraints[key] === "function") {
@@ -685,8 +738,27 @@ function matchRestraint(actual, restraint) {
     return false;
 }
 
-function matchesRule(rule) {
-    if (rule.matches === undefined || rule.matches.length === 0) return true;
+function matchTransform(value, transform) {
+    if (transform === undefined || transform === null) return value;
+
+    const ops = Array.isArray(transform) ? transform : [transform];
+    for (const op of ops) {
+        if (!op || typeof op !== "object" || typeof op.op !== "string") {
+            logger.error("Invalid transform op:", op);
+            continue;
+        }
+        const fn = transforms[op.op];
+        if (!fn) {
+            logger.error("Unknown transform op:", op.op);
+            continue;
+        }
+        value = fn(value, op);
+    }
+    return value;
+}
+
+function matchRule(rule) {
+    if (rule.matches == null || rule.matches.length === 0) return true;
 
     for (const match of rule.matches) {
         if (!matchWhen(match)) {
@@ -730,6 +802,7 @@ async function executeRule(rule, ctx) {
             await handler(step, ctx);
         } catch (err) {
             logger.error(`Step [${index + 1}/${rule.steps.length}] '${step.do}' failed:`, err);
+            ctx.aborted = true;
         }
 
         const elapsed = HOOKS.Date.now() - startTime;
@@ -755,24 +828,27 @@ function waitFor(condition, options = {}) {
         const done = (callback, value) => {
             if (settled) return;
             settled = true;
-            HOOKS.clearInterval(pollID);
             cancelTimeout();
             callback(value);
         };
 
-        const pollID = HOOKS.setInterval(() => {
+        const check = () => {
             try {
                 const result = condition();
                 pollCount++;
-                if (result) {
-                    logger.debug(`waitFor${tag} resolved after ${pollCount} polls`);
-                    done(resolve, result);
+                if (!result) {
+                    safeSetTimeout(check, interval);
+                    return;
                 }
+                logger.debug(`waitFor${tag} resolved after ${pollCount} polls`);
+                done(resolve, result);
             } catch (err) {
                 logger.error(`waitFor${tag} condition threw:`, err);
                 done(reject, err);
             }
-        }, interval);
+        };
+
+        safeSetTimeout(check, interval);
 
         const cancelTimeout = safeSetTimeout(() => {
             logger.debug(`waitFor${tag} timed out after ${timeout}ms (${pollCount} polls)`);
@@ -781,29 +857,26 @@ function waitFor(condition, options = {}) {
     });
 }
 
-async function resolveTarget(step, ctx, { required = false } = {}) {
+async function resolveTarget(step, ctx) {
     const timeout = step.timeout ?? CONFIG.DEFAULT_STEP_TIMEOUT;
 
     if (typeof step.selector === "string") {
         return waitFor(() => {
-            const node = document.querySelector(step.selector);
-            if (!node) return false;
-            if (step.check && !matchCheck(node, step.check)) return false;
-            logger.debug(`resolveTarget found: ${step.selector}`);
-            return node;
+            const nodes = document.querySelectorAll(step.selector);
+            for (const node of nodes) {
+                if (step.check && !matchCheck(node, step.check)) continue;
+                logger.debug(`resolveTarget found: ${step.selector}`);
+                return node;
+            }
         }, {
             timeout,
-            label: "resolveTarget",
+            label: "resolve-target",
         });
     }
 
     if (ctx.lastElement) {
         logger.debug("resolveTarget found: lastElement");
         return ctx.lastElement;
-    }
-
-    if (required) {
-        throw new Error(`Action requires an 'selector' or 'ctx.lastElement', but none was provided. ${step.do}`);
     }
 }
 
@@ -813,7 +886,6 @@ function safeSetTimeout(callback, delay) {
 
     const check = () => {
         const elapsed = HOOKS.Date.now() - startTime;
-
         if (elapsed >= delay) {
             callback();
         } else {
@@ -837,8 +909,8 @@ function addAction(name, handler) {
 }
 
 addAction("click", async (step, ctx) => {
-    const { selector, times = 1, delay = 500, once = false } = step;
-    let node = await resolveTarget(step, ctx, { required: true });
+    const { selector, times = 1, delay = CONFIG.DEFAULT_CLICK_DELAY, once = false } = step;
+    let node = await resolveTarget(step, ctx);
 
     if (!node) {
         logger.debug("Click target not found:", selector ?? "(lastElement)");
@@ -863,7 +935,7 @@ addAction("click", async (step, ctx) => {
     });
 
     for (let i = 1; i <= times; i++) {
-        node = times === 1 ? node : await resolveTarget(step, ctx, { required: true });
+        node = times === 1 ? node : await resolveTarget(step, ctx);
 
         logger.debug(`Click ${i}/${times}:`, selector ?? "(lastElement)");
         node.dispatchEvent(event);
@@ -871,14 +943,13 @@ addAction("click", async (step, ctx) => {
 
         if (i < times) await new Promise(r => safeSetTimeout(r, delay));
     }
-
     if (onceKey) sessionStorage.setItem(onceKey, "1");
 
     logger.debug("Click(s) dispatched on:", node);
 });
 
 addAction("sleep", async (step) => {
-    const ms = step.ms || 1000;
+    const ms = step.ms ?? CONFIG.DEFAULT_SLEEP_MS;
     logger.info("Sleeping for", ms, "ms");
 
     await new Promise(r => safeSetTimeout(r, ms));
@@ -887,7 +958,7 @@ addAction("sleep", async (step) => {
 });
 
 addAction("scroll-into-view", async (step, ctx) => {
-    const node = await resolveTarget(step, ctx, { required: true });
+    const node = await resolveTarget(step, ctx);
     if (!node) {
         logger.warn("scroll-into-view target not found:", step.selector);
         return;
@@ -898,7 +969,7 @@ addAction("scroll-into-view", async (step, ctx) => {
 });
 
 addAction("set-element-property", async (step, ctx) => {
-    const node = await resolveTarget(step, ctx, { required: true });
+    const node = await resolveTarget(step, ctx);
     if (!node) {
         logger.warn("set-element-property target not found:", step.selector);
         return;
@@ -907,17 +978,21 @@ addAction("set-element-property", async (step, ctx) => {
         logger.warn("set-element-property requires a 'name' property:", step);
         return;
     }
-    if (step.value === undefined) {
-        logger.warn("set-element-property requires a 'value' property:", step);
-        return;
+    let { value } = step;
+    if (value === undefined) {
+        if (step.transform === undefined) {
+            logger.warn("set-element-property requires 'value' or 'transform':", step);
+            return;
+        }
+        value = matchTransform(node[step.name], step.transform);
     }
-    logger.debug("set-element-property:", step.selector, "property:", step.name, "=", step.value);
-    node[step.name] = step.value;
+    logger.debug("set-element-property:", step.selector, "property:", step.name, "=", value);
+    node[step.name] = value;
     ctx.lastElement = node;
 });
 
 addAction("remove-element-property", async (step, ctx) => {
-    const node = await resolveTarget(step, ctx, { required: true });
+    const node = await resolveTarget(step, ctx);
     if (!node) {
         logger.warn("remove-element-property target not found:", step.selector);
         return;
@@ -932,36 +1007,36 @@ addAction("remove-element-property", async (step, ctx) => {
 });
 
 addAction("set-attribute", async (step, ctx) => {
-    const node = await resolveTarget(step, ctx, { required: true });
+    const node = await resolveTarget(step, ctx);
     if (!node) {
         logger.warn("set-attribute target not found:", step.selector);
         return;
     }
-    const attrs = step.attributes;
-    if (!attrs || typeof attrs !== "object" || Object.keys(attrs).length === 0) {
-        logger.warn("set-attribute requires an 'attributes' object:", step);
+    if (typeof step.name !== "string" || step.name === "") {
+        logger.warn("set-attribute requires a 'name' property:", step);
         return;
     }
-    logger.debug("set-attribute:", step.selector, "attrs:", attrs);
-    for (const [name, value] of Object.entries(attrs)) {
-        node.setAttribute(name, String(value));
+    if (typeof step.value !== "string") {
+        logger.warn("set-attribute requires a 'value' property:", step);
+        return;
     }
+    logger.debug("set-attribute:", step.selector, "attribute:", step.name, "=", step.value);
+    node.setAttribute(step.name, step.value);
     ctx.lastElement = node;
 });
 
 addAction("remove-element", async (step, ctx) => {
-    const node = await resolveTarget(step, ctx, { required: true });
+    const node = await resolveTarget(step, ctx);
     if (!node) {
         logger.warn("remove-element target not found:", step.selector);
         return;
     }
     logger.debug("remove-element:", step.selector);
     node.remove();
-    ctx.lastElement = node;
 });
 
 addAction("redirect", async (step, ctx) => {
-    const node = await resolveTarget(step, ctx, { required: true });
+    const node = await resolveTarget(step, ctx);
     if (!node) {
         logger.warn("Redirect target not found:", step.selector);
         return;
@@ -984,25 +1059,27 @@ addAction("redirect", async (step, ctx) => {
     }
 
     const url = resolved.fn(node, resolved.name);
+    const finalUrl = matchTransform(url, step.transform);
 
-    if (typeof url !== "string" || url.trim() === "") {
+    if (typeof finalUrl !== "string" || finalUrl.trim() === "") {
         logger.warn("Redirect URL is empty:", step);
         ctx.aborted = true;
         return;
     }
 
-    logger.info("Redirecting via", resolved.key, `"${resolved.name}"`, "→", url);
-    window.location.href = url;
+    logger.info("Redirecting via", resolved.key, `"${resolved.name}"`, "→", finalUrl);
+    window.location.href = finalUrl;
 
     ctx.aborted = true;
 });
 
 addPatch("set-property", async (step) => {
-    const chain = step.chain.startsWith("window.") ? step.chain.slice(7) : step.chain;
-    if (typeof chain !== "string" || chain === "") {
+    if (typeof step.chain !== "string" || step.chain === "") {
         logger.warn("set-property requires a non-empty 'chain':", step);
         return;
     }
+
+    const chain = step.chain.startsWith("window.") ? step.chain.slice(7) : step.chain;
 
     const { value } = step;
     const parts = chain.split(".");
@@ -1022,14 +1099,24 @@ addPatch("set-property", async (step) => {
         get() {
             return value;
         },
-        set() { },
+        set() { logger.debug(`set-property: ignored set on ${chain}`); },
     });
     logger.debug(`set-property done: defined "${lastKey}" on ${chain}`);
 });
 
 addPatch("tune-timer", async (step) => {
     const { delay, callback } = step.match || {};
-    const { factor = 20, patchDate = false } = step.transform || {};
+    const { patchDate = false, transform } = step;
+
+    const dateFactor = (() => {
+        const ops = Array.isArray(transform) ? transform : transform ? [transform] : [];
+        const mult = ops.find((o) => o && o.op === "multiplier");
+        if (mult && typeof mult.by === "number" && isFinite(mult.by) && mult.by > 0) {
+            return 1 / mult.by;
+        }
+        if (mult) logger.warn("tune-timer: multiplier 'by' must be a positive finite number, got:", mult.by, "— using factor 1");
+        return 1;
+    })();
 
     let isVirtualContext = false;
     const startTime = HOOKS.Date.now();
@@ -1053,9 +1140,8 @@ addPatch("tune-timer", async (step) => {
 
     const virtualNow = () => {
         const realElapsed = HOOKS.Date.now() - startTime;
-        return startTime + realElapsed * factor;
+        return startTime + realElapsed * dateFactor;
     };
-
 
     const hookTimer = (target, thisArg, args) => {
         const [fn, timeout = 0] = args;
@@ -1075,10 +1161,10 @@ addPatch("tune-timer", async (step) => {
             }
         };
 
-        logger.debug(`tune-timer: timeout=${timeout}, factor=${factor}`);
+        logger.debug("tune-timer: timeout=", timeout, "transform=", transform);
 
         args[0] = wrappedFn;
-        args[1] = timeout / factor;
+        args[1] = matchTransform(timeout, transform);
 
         return Reflect.apply(target, thisArg, args);
     };
