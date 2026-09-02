@@ -488,6 +488,7 @@ Each op is `{ op: "<name>", ...config }` — the `op` name is the key into the `
 | `trim`       | —                                     | `String(value).trim()`                                  | `{ op: "trim" }` |
 | `extract`    | `pattern` (string or RegExp), `group` (default `0`) | string → literal substring (1st occurrence); RegExp → match[group] (0 = whole match); `""` when no match | `{ op: "extract", pattern: /https?:\/\/\S+/ }` |
 | `replace`    | `from` (string or RegExp), `to`       | string → replaces all occurrences; RegExp → first match unless the regex has the `g` flag | `{ op: "replace", from: "http", to: "https" }` |
+| `base64-decode` | —                                     | `atob(String(value))` — decodes base64; returns the original on failure | `{ op: "base64-decode" }` |
 | `prefix`     | `with` (string)                       | prepend a string                                        | `{ op: "prefix", with: "magnet:?xt=urn:btih:" }` |
 | `suffix`     | `with` (string)                       | append a string                                         | `{ op: "suffix", with: "?dl=1" }` |
 | `multiplier` | `by` (number)                         | `value * by` (numeric values only)                      | `{ op: "multiplier", by: 0.05 }` |
@@ -500,6 +501,7 @@ Each op is `{ op: "<name>", ...config }` — the `op` name is the key into the `
 - **`redirect`** — transforms the URL read from the target element before navigating (see the example under [`redirect`](#verbs-do)).
 - **`set-element-property`** — when `value` is omitted, reads the current `node[name]`, transforms it, and writes it back (see [`set-element-property`](#verbs-do)).
 - **`tune-timer`** — transforms the matched timer's delay (see [`tune-timer`](#tune-timer)).
+- **`LINEGEE` rule** — the `redirect` extracts the argument of `atob(...)` from `script.textContent` and decodes it with `base64-decode` to get the final URL.
 
 ---
 
