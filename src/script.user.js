@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.7
+// @version            0.0.8
 // @description        just another bypass links for pahe
 // @author             hdyzen
 //
