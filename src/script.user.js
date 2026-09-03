@@ -284,24 +284,42 @@ const RULES = {
         ],
     },
     INTERCELESTIAL: {
-        patches: [
-            {
-                do: "tune-timer",
-                match: {
-                    delay: 1000,
-                },
-                transform: [{ op: "multiplier", by: 0.05 }],
-            },
-        ],
-
         rules: [
             {
+                matches: [{ when: "not", clause: { when: "path", value: "/" } }],
+                steps: [{ do: "click", selector: "button.myButton", times: 3 }],
+            },
+            {
+                matches: [
+                    { when: "path", value: "/" },
+                ],
+
                 steps: [
                     {
                         do: "click",
-                        selector: "button.myButton",
-                        times: 3,
-                        delay: 1000,
+                        selector: ":not(form) button.myButton",
+                    },
+                    {
+                        do: "submit-via-gm",
+                        selector: "form#xxc",
+                        headers: {
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                            "Accept-Language": "en-US,en;q=0.9",
+                            "Origin": "https://intercelestial.com",
+                            "Referer": "https://intercelestial.com/",
+                            "Upgrade-Insecure-Requests": "1",
+                            "Sec-Fetch-Dest": "document",
+                            "Sec-Fetch-Mode": "navigate",
+                            "Sec-Fetch-Site": "same-origin",
+                            "Sec-Fetch-User": "?1",
+                        },
+                        writeRedirect: true,
+                    },
+                    {
+                        do: "click",
+                        selector: "form button.myButton",
+                        times: 2,
+                        delay: 500,
                     },
                 ],
             },
