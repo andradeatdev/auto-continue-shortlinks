@@ -287,7 +287,26 @@ const RULES = {
         rules: [
             {
                 matches: [{ when: "not", clause: { when: "path", value: "/" } }],
-                steps: [{ do: "click", selector: "button.myButton", times: 3 }],
+                steps: [
+                    { do: "click", selector: ":not(form) button.myButton", times: 2 },
+                    {
+                        do: "submit-via-gm",
+                        selector: "form#xxc",
+                        headers: {
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                            "Accept-Language": "en-US,en;q=0.9",
+                            "Origin": "https://intercelestial.com",
+                            "Referer": "https://intercelestial.com/",
+                            "Upgrade-Insecure-Requests": "1",
+                            "Sec-Fetch-Dest": "document",
+                            "Sec-Fetch-Mode": "navigate",
+                            "Sec-Fetch-Site": "same-origin",
+                            "Sec-Fetch-User": "?1",
+                        },
+                        writeRedirect: true,
+                    },
+                    { do: "click", selector: "form button.myButton" },
+                ],
             },
             {
                 matches: [
@@ -315,12 +334,7 @@ const RULES = {
                         },
                         writeRedirect: true,
                     },
-                    {
-                        do: "click",
-                        selector: "form button.myButton",
-                        times: 2,
-                        delay: 500,
-                    },
+                    { do: "click", selector: "form button.myButton" },
                 ],
             },
         ],
