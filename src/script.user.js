@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.8
+// @version            0.0.9
 // @description        just another bypass links for pahe
 // @author             hdyzen
 //
@@ -22,7 +22,7 @@
 // @match              https://ouo.press/*
 //
 // @match              https://adfoc.us/*
-// 
+//
 // From: PlatinMods
 // @match              https://vexfile.com/*
 // @match              https://filespayouts.com/*
@@ -35,9 +35,9 @@
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // @grant              GM_xmlhttpRequest
-// 
+//
 // @connect            intercelestial.com
-// 
+//
 // @license            GPL-3.0
 // ==/UserScript==
 
@@ -1152,9 +1152,9 @@ addAction("submit-via-gm", async (step, ctx) => {
 
                 if (writeRedirect) {
                     logger.info("submit-via-gm: writing redirect response to document");
-                    document.open();
+                    // document.open();
                     document.write(body);
-                    document.close();
+                    // document.close();
                 }
             },
             ontimeout: () => {
