@@ -34,7 +34,9 @@
 //
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
-// @grant              none
+// @grant              GM_xmlhttpRequest
+// 
+// @connect            intercelestial.com
 // 
 // @license            GPL-3.0
 // ==/UserScript==
@@ -44,6 +46,7 @@ const CONFIG = {
 
     DEFAULT_STEP_TIMEOUT: 10_000,
     RULE_MATCH_TIMEOUT: 120_000,
+    DEFAULT_REQUEST_TIMEOUT: 60_000,
     POLL_INTERVAL: 250,
 
     DEFAULT_CLICK_DELAY: 500,
@@ -51,20 +54,21 @@ const CONFIG = {
 };
 
 const logger = createLogger(location.hostname);
+const self = unsafeWindow;
 
 const HOOKS = {
-    setTimeout: window.setTimeout.bind(window),
-    setInterval: window.setInterval.bind(window),
-    clearTimeout: window.clearTimeout.bind(window),
-    clearInterval: window.clearInterval.bind(window),
+    setTimeout: self.setTimeout.bind(self),
+    setInterval: self.setInterval.bind(self),
+    clearTimeout: self.clearTimeout.bind(self),
+    clearInterval: self.clearInterval.bind(self),
 
-    Date: window.Date,
+    Date: self.Date,
 
-    log: window.console.log.bind(window.console),
-    warn: window.console.warn.bind(window),
-    error: window.console.error.bind(window),
-    info: window.console.info.bind(window),
-    debug: window.console.debug.bind(window),
+    log: self.console.log.bind(self.console),
+    warn: self.console.warn.bind(self.console),
+    error: self.console.error.bind(self.console),
+    info: self.console.info.bind(self.console),
+    debug: self.console.debug.bind(self.console),
 };
 
 const readers = {
@@ -931,7 +935,7 @@ addAction("click", async (step, ctx) => {
     const event = new MouseEvent("click", {
         bubbles: true,
         cancelable: true,
-        view: window,
+        view: self,
     });
 
     for (let i = 1; i <= times; i++) {
@@ -1068,9 +1072,67 @@ addAction("redirect", async (step, ctx) => {
     }
 
     logger.info("Redirecting via", resolved.key, `"${resolved.name}"`, "→", finalUrl);
-    window.location.href = finalUrl;
+    self.location.href = finalUrl;
 
     ctx.aborted = true;
+});
+
+addAction("submit-via-gm", async (step, ctx) => {
+    const { selector, headers = {}, writeRedirect = false, timeout = CONFIG.DEFAULT_REQUEST_TIMEOUT } = step;
+
+    const form = await resolveTarget({ selector }, ctx);
+    if (!form || form.tagName !== "FORM") {
+        logger.warn("submit-via-gm target must be a form:", selector);
+        return;
+    }
+
+    logger.info("submit-via-gm: arming intercept on form", selector);
+
+    form.submit = () => {
+        let formData = new FormData(form);
+        const snapshot = {};
+        for (const [k, v] of formData.entries()) snapshot[k] = typeof v === "string" ? v : "[file]";
+        logger.info("submit-via-gm: intercepted submit, form data:", JSON.stringify(snapshot));
+
+        formData = new URLSearchParams(formData);
+        const headersWith = Object.assign({ "Content-Type": "application/x-www-form-urlencoded" }, headers);
+
+        GM_xmlhttpRequest({
+            url: form.action || self.location.href,
+            method: form.method || "POST",
+            headers: headersWith,
+            data: formData,
+            timeout,
+            onload: (response) => {
+                const body = response.responseText || "";
+                ctx.lastResponse = {
+                    status: response.status,
+                    url: form.action || self.location.href,
+                    html: body,
+                };
+
+                if (response.status !== 200) {
+                    logger.error("submit-via-gm failed, status:", response.status, body.slice(0, 600));
+                    return;
+                }
+
+                logger.info("submit-via-gm status:", response.status, "| body(" + body.length + "):", body.slice(0, 600));
+
+                if (writeRedirect) {
+                    logger.info("submit-via-gm: writing redirect response to document");
+                    document.open();
+                    document.write(body);
+                    document.close();
+                }
+            },
+            ontimeout: () => {
+                logger.error("submit-via-gm timed out");
+            },
+            onerror: (e) => {
+                logger.error("submit-via-gm network error:", e);
+            },
+        });
+    };
 });
 
 addPatch("set-property", async (step) => {
@@ -1079,11 +1141,11 @@ addPatch("set-property", async (step) => {
         return;
     }
 
-    const chain = step.chain.startsWith("window.") ? step.chain.slice(7) : step.chain;
+    const chain = step.chain.startsWith("self.") ? step.chain.slice(7) : step.chain;
 
     const { value } = step;
     const parts = chain.split(".");
-    let current = window;
+    let current = self;
     for (let i = 0; i < parts.length - 1; i++) {
         const prop = parts[i];
         if (!current[prop] || typeof current[prop] !== "object") current[prop] = {};
@@ -1169,12 +1231,12 @@ addPatch("tune-timer", async (step) => {
         return Reflect.apply(target, thisArg, args);
     };
 
-    window.setInterval = new Proxy(HOOKS.setInterval, { apply: hookTimer });
-    window.setTimeout = new Proxy(HOOKS.setTimeout, { apply: hookTimer });
+    self.setInterval = new Proxy(HOOKS.setInterval, { apply: hookTimer });
+    self.setTimeout = new Proxy(HOOKS.setTimeout, { apply: hookTimer });
 
     if (!patchDate) return;
 
-    window.Date = new Proxy(HOOKS.Date, {
+    self.Date = new Proxy(HOOKS.Date, {
         construct(target, args) {
             if (args.length === 0) {
                 return new target(isVirtualContext ? virtualNow() : HOOKS.Date.now());
