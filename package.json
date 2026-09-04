@@ -4,7 +4,9 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "bunx serve src"
+    "dev": "bunx serve src",
+    "build": "rollup -c",
+    "build:watch": "rollup -c --watch"
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
@@ -14,7 +16,8 @@
     "@violentmonkey/types": "^0.3.4",
     "concurrently": "^10.0.5",
     "eslint": "^10.9.1",
-    "globals": "^17.11.0"
+    "globals": "^17.11.0",
+    "rollup": "^4.28.0"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"

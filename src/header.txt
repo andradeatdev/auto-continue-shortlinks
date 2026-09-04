@@ -1,0 +1,42 @@
+// ==UserScript==
+// @name               Pahe - Auto continue links
+// @namespace          https://greasyfork.org/users/821661
+// @version            0.0.9
+// @description        just another bypass links for pahe
+// @author             hdyzen
+//
+// From: Pahe
+// @match              https://tpi.li/*
+// @match              https://oii.la/*
+//
+// @match              https://ssdhostting.com/*
+// @match              https://selfhostt.com/*
+// @match              https://financeehelp.com/*
+// @match              https://cloudhostt.com/*
+// @match              https://linegee.net/*
+//
+// @match              https://intercelestial.com/*
+// @match              https://pahe.plus/*
+//
+// @match              https://ouo.io/*
+// @match              https://ouo.press/*
+//
+// @match              https://adfoc.us/*
+//
+// From: PlatinMods
+// @match              https://vexfile.com/*
+// @match              https://filespayouts.com/*
+// @match              https://modsfire.com/*
+// @match              https://www.file-upload.org/*
+// @match              https://djxmaza.in/*
+// @match              https://upfilesgo.com/*
+// @match              https://safefileku.com/*
+//
+// @run-at             document-start
+// @icon               https://www.google.com/s2/favicons?domain=pahe.ink
+// @grant              GM_xmlhttpRequest
+//
+// @connect            intercelestial.com
+//
+// @license            GPL-3.0
+// ==/UserScript==
