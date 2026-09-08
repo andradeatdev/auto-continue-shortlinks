@@ -12,7 +12,6 @@ export default defineConfig([
   },
   {
     files: ["**/*.js"],
-    // Adicionado o plugin de estilo aqui
     plugins: {
       "@stylistic": stylistic
     },
@@ -20,7 +19,7 @@ export default defineConfig([
     rules: {
       "@stylistic/semi": ["warn", "always"],
       "@stylistic/comma-dangle": ["warn", "always-multiline"],
-      "@stylistic/quotes": ["warn", "double", { allowTemplateLiterals: true }],
+      "@stylistic/quotes": ["warn", "double", { allowTemplateLiterals: "always" }],
       "@stylistic/no-extra-parens": ["warn", "all"],
       "@stylistic/spaced-comment": ["warn", "always"],
       "@stylistic/arrow-spacing": ["warn", { "before": true, "after": true }],
