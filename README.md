@@ -16,9 +16,14 @@ The script can still automate other parts of the process on these sites, but the
 
 #### Notes
 
+> Intercelestial.com actively updates its detection code. It currently validates `Sec-Fetch-*`
+> headers — which the browser only sets on requests triggered by **real user activation** — so
+> the script alone is **not enough** to make it work there: a header-injection extension is
+> required. See [INTERCELESTIAL_ISSUES.md](INTERCELESTIAL_ISSUES.md) for the full breakdown and
+> setup instructions.
+
 - **I recommend using an ad blocker, such as uBlock Origin or Adguard.**
 - This script **does not** solve **CAPTCHAs**. It only automates clicks, removes unnecessary elements, and performs other simple actions when possible. **You still need to solve the CAPTCHA manually**.
-- Intercelestial.com updated to check if user is using a autoclicker, for now exists a workaround to bypass the detection, but it's can change in the future, be aware.
 - Somes sites **can't be timer accelerated**, the timer validation is done on the server side, to see what sites have `tuner-timer`, see [HOSTS.md](HOSTS.md).
 - Pahe.ink add news domains sometimes, so the script may not work on some new sites, you can try to **add them manually or wait for the next update**.
 - Interestial.com return invalid session if you open multiple tabs, **this issue is not related to this script**.
