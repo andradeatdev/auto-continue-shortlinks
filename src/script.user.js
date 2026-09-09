@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.10
-// @description        just another bypass links for pahe
+// @version            0.0.11
+// @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
 // From: Pahe
@@ -41,8 +41,10 @@
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // @grant              GM_xmlhttpRequest
 // @grant              unsafeWindow
+// @connect            shortlinks.fdyzen.workers.dev
 //
 // @license            GPL-3.0
+// @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
 // ==/UserScript==
 
 const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
@@ -50,6 +52,15 @@ const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
 const CONFIG = {
     TIMEOUT_INTERVAL: 250,
     PATCH_TIMER_FACTOR: 0.05,
+    WORKER_URL: "https://shortlinks.fdyzen.workers.dev",
+    FINAL_DOMAINS: [
+        "send.now",
+        "1fichier.com",
+        "1024tera.com",
+        "gdflix.io",
+        "mega.nz",
+        "vik1ngfile.site",
+    ],
 };
 
 const TEMPLATES = {
@@ -192,14 +203,31 @@ const HOOKS = {
     Date: w.Date,
 };
 
-function main() {
+async function main() {
     const { hostname } = location;
     const handler = DOMAINS[hostname];
     if (!handler) return;
 
+    if (CONFIG.WORKER_URL && isOriginHost(hostname)) {
+        try {
+            const check = await requestAPI("GET", `/api/check?url=${encodeURIComponent(location.href)}`);
+            console.log("Check", check);
+
+            if (check && check.status === "ok" && check.destination) {
+                console.log("Bypass found", check.destination);
+                navigateTo(check.destination);
+                return;
+            }
+        } catch (e) {
+            console.error("Error on check", e);
+        }
+
+        console.log("Bypass not found");
+    }
+
+    listenerNavigation();
     handler();
 }
-main();
 
 function click(node) {
     const event = new MouseEvent("click", {
@@ -372,3 +400,63 @@ function patchInterval(options = {}) {
         },
     });
 }
+
+function isFinalHost(hostname) {
+    return CONFIG.FINAL_DOMAINS.some((domain) => hostname === domain || hostname.endsWith("." + domain));
+}
+
+function isOriginHost(host) {
+    return host === "tpi.li" || host === "oii.la";
+}
+
+function requestAPI(method, endpoint, data = null) {
+    return new Promise((resolve, reject) => {
+        GM_xmlhttpRequest({
+            method,
+            url: `${CONFIG.WORKER_URL}${endpoint}`,
+            headers: { "Content-Type": "application/json" },
+            responseType: "json",
+            data: data ? JSON.stringify(data) : undefined,
+            onload: (res) => resolve(res.response),
+            onerror: (err) => reject(err),
+        });
+    });
+}
+
+function navigateTo(url, info = "bypass_link") {
+    w.navigation.navigate(url, { info });
+}
+
+function listenerNavigation() {
+    if (!w.navigation || !CONFIG.WORKER_URL) return;
+
+    w.navigation.addEventListener("navigate", async (ev) => {
+        if (ev.info === "bypass_link") return;
+        if (!isOriginHost(location.hostname)) return;
+
+        try {
+            const destURL = new URL(ev.destination.url);
+
+            if (!isFinalHost(destURL.hostname)) return;
+
+            if (ev.cancelable) {
+                ev.preventDefault();
+
+                console.log("Destination intercepted", ev.destination.url);
+
+                await requestAPI("POST", "/api/save", {
+                    shortlink: location.href,
+                    destination: ev.destination.url,
+                });
+
+                console.log("Saved!");
+
+                navigateTo(ev.destination.url);
+            }
+        } catch (e) {
+            console.error("Error on save", e);
+        }
+    });
+}
+
+main();
