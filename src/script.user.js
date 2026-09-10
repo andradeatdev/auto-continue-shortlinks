@@ -58,6 +58,7 @@ const CONFIG = {
         "1fichier.com",
         "1024tera.com",
         "gdflix.io",
+        "gdflix.dev",
         "mega.nz",
         "vik1ngfile.site",
     ],
