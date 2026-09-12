@@ -41,7 +41,6 @@
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // @grant              GM_xmlhttpRequest
-// @grant              GM_openInTab
 // @grant              unsafeWindow
 // @connect            shortlinks.fdyzen.workers.dev
 //
@@ -55,7 +54,6 @@ const CONFIG = {
     TIMEOUT_INTERVAL: 250,
     PATCH_TIMER_FACTOR: 0.05,
     WORKER_URL: "https://shortlinks.fdyzen.workers.dev",
-    TOKEN_UUID: crypto.randomUUID(),
     FINAL_DOMAINS: [
         "send.now",
         "1fichier.com",
