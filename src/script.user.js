@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.11
+// @version            0.0.13
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -14,6 +14,7 @@
 // @match              https://financeehelp.com/*
 // @match              https://cloudhostt.com/*
 // @match              https://linegee.net/*
+// @match              https://financeguidz.com/*
 //
 // @match              https://intercelestial.com/*
 // @match              https://pahe.plus/*
@@ -40,6 +41,7 @@
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // @grant              GM_xmlhttpRequest
+// @grant              GM_openInTab
 // @grant              unsafeWindow
 // @connect            shortlinks.fdyzen.workers.dev
 //
@@ -47,12 +49,13 @@
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
 // ==/UserScript==
 
-const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
+const w = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 
 const CONFIG = {
     TIMEOUT_INTERVAL: 250,
     PATCH_TIMER_FACTOR: 0.05,
     WORKER_URL: "https://shortlinks.fdyzen.workers.dev",
+    TOKEN_UUID: crypto.randomUUID(),
     FINAL_DOMAINS: [
         "send.now",
         "1fichier.com",
@@ -61,7 +64,20 @@ const CONFIG = {
         "gdflix.dev",
         "mega.nz",
         "vik1ngfile.site",
+        "pahe.plus",
     ],
+    ORIGIN_DOMAINS: [
+        "tpi.li",
+        "oii.la",
+        "intercelestial.com",
+        "pahe.plus",
+    ],
+    SHORTLINK_PATTERNS: {
+        "tpi.li": /^https:\/\/tpi\.li\/[A-Za-z0-9_-]{3,}$/,
+        "oii.la": /^https:\/\/oii\.la\/[A-Za-z0-9_-]{3,}$/,
+        "pahe.plus": /^https:\/\/pahe\.plus\/[A-Za-z0-9_-]{3,}$/,
+    },
+    TOKEN_URL_KEY: "pahe-acl-9d2f1c3e-4b7a-4e98-8c21-5f6d0a9b7c34",
 };
 
 const TEMPLATES = {
@@ -96,8 +112,24 @@ const DOMAINS = {
     "oii.la": TEMPLATES.TPI_OII,
     "financeehelp.com": TEMPLATES.HOSTING,
     "cloudhostt.com": TEMPLATES.HOSTING,
+    "financeguidz.com": TEMPLATES.HOSTING,
     "linegee.net": async () => {
-        justClick(".btn-primary[href]", { wait: 2000 });
+        const script = await whenElement("script:not([src])", { text: "atob(" });
+        const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
+
+        let xxc;
+        while (!xxc) {
+            const request = await fetch(location.href + q);
+            const response = await request.text();
+            console.log("LineGee: response", response);
+            const doc = new DOMParser().parseFromString(response, "text/html");
+            xxc = doc.querySelector("#xxc");
+            if (xxc) {
+                location.assign(xxc.href);
+            } else {
+                await wait(500);
+            }
+        }
     },
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
@@ -109,42 +141,40 @@ const DOMAINS = {
 
         justDefine(w.Element.prototype, "innerHTML", {
             set(v) {
-                if (v.includes("antiadblock")) return;
+                if (typeof v === "string" && v.includes("antiadblock")) return;
                 return v;
             },
         });
 
-        justPatch(w.JSON, "stringify", (obj, ...rest) => {
-            if (obj && typeof obj === "object" && obj.siteId && obj.eid && "detected" in obj) {
-                obj.detected = false;
-                obj.triggered = [];
+        justPatch(w.JSON, "stringify", (object, ...rest) => {
+            if (object && typeof object === "object" && object.siteId && object.eid && "detected" in object) {
+                object.detected = false;
+                object.triggered = [];
             }
-            return [obj, ...rest];
+            return [object, ...rest];
         });
 
-        justPatch(w.EventTarget.prototype, "addEventListener", (type, listener, opts) => {
+        justPatch(w.EventTarget.prototype, "addEventListener", (type, listener, options) => {
             if (typeof listener !== "function") return;
 
-            const wrapped = function (ev) {
-                if (!ev || ev.isTrusted === true || typeof ev !== "object") {
-                    return listener.call(this, ev);
+            const wrapped = function (event_) {
+                if (typeof event_ !== "object" || event_ === null || event_.isTrusted === true) {
+                    return listener.call(event_.currentTarget, event_);
                 }
-                return listener.call(this, new Proxy(ev, {
-                    get(target, prop) {
-                        if (prop === "isTrusted") return true;
-                        const v = Reflect.get(target, prop);
+                return listener.call(event_.currentTarget, new Proxy(event_, {
+                    get(target, property) {
+                        if (property === "isTrusted") return true;
+                        const v = Reflect.get(target, property);
                         return typeof v === "function" ? v.bind(target) : v;
                     },
                 }));
             };
 
-            return [type, wrapped, opts];
+            return [type, wrapped, options];
         });
 
         justDefine(w, "open", {
-            get() {
-                return () => ({ closed: false, close() { }, focus() { }, postMessage() { } });
-            },
+            get() { return dummyWindow; },
             set(_v) { },
         });
 
@@ -204,23 +234,30 @@ const HOOKS = {
     Date: w.Date,
 };
 
+const dummyWindow = () => ({ closed: false, close() { }, focus() { }, postMessage() { } });
+
 async function main() {
-    const { hostname } = location;
+    const { hostname, href, pathname, search } = location;
     const handler = DOMAINS[hostname];
     if (!handler) return;
 
-    if (CONFIG.WORKER_URL && isOriginHost(hostname)) {
-        try {
-            const check = await requestAPI("GET", `/api/check?url=${encodeURIComponent(location.href)}`);
-            console.log("Check", check);
+    const pattern = CONFIG.SHORTLINK_PATTERNS[hostname];
+    console.log("Pattern", pattern, "→", pattern?.test(href));
+    if (pattern?.test(href)) w.sessionStorage.setItem(CONFIG.TOKEN_URL_KEY, href);
 
-            if (check && check.status === "ok" && check.destination) {
+    if (CONFIG.WORKER_URL && isOriginHost(hostname) && (pathname !== "/" || search !== "")) {
+        try {
+            const result = await requestAPI("GET", `/api/check?url=${encodeURIComponent(href)}`);
+            const check = result.body;
+            console.log("Check", check, href);
+
+            if (check?.status === "ok" && check.destination) {
                 console.log("Bypass found", check.destination);
                 navigateTo(check.destination);
                 return;
             }
-        } catch (e) {
-            console.error("Error on check", e);
+        } catch (error) {
+            console.error("Error on check", error);
         }
 
         console.log("Bypass not found");
@@ -229,6 +266,8 @@ async function main() {
     listenerNavigation();
     handler();
 }
+// eslint-disable-next-line unicorn/prefer-top-level-await -- userscript
+main();
 
 function click(node) {
     const event = new MouseEvent("click", {
@@ -240,15 +279,18 @@ function click(node) {
     node.dispatchEvent(event);
 }
 
+function wait(ms) {
+    return new Promise(resolve => safeSetTimeout(resolve, ms));
+}
+
 async function justClick(selector, options = {}) {
-    const { wait = 0 } = options;
+    const { waitMs = 0 } = options;
     const node = await whenElement(selector, options);
     if (!node) return;
     node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-    if (wait > 0) {
-        return safeSetTimeout(() => click(node), wait);
+    if (waitMs > 0) {
+        return safeSetTimeout(() => click(node), waitMs);
     }
-    console.log("click", selector, node);
     click(node);
 }
 
@@ -268,9 +310,9 @@ async function justRemove(selector, options = {}) {
     node.remove();
 }
 
-function justDefine(owner, prop, { get, set }) {
-    const descriptor = Object.getOwnPropertyDescriptor(owner, prop);
-    Object.defineProperty(owner, prop, {
+function justDefine(owner, property, { get, set }) {
+    const descriptor = Object.getOwnPropertyDescriptor(owner, property);
+    Object.defineProperty(owner, property, {
         configurable: true,
         enumerable: true,
         get() {
@@ -291,9 +333,9 @@ function justDefine(owner, prop, { get, set }) {
 function justPatch(owner, name, wrapper) {
     const native = owner[name];
 
-    owner[name] = function (...args) {
-        const next = wrapper.apply(this, args);
-        return native.apply(this, Array.isArray(next) ? next : args);
+    owner[name] = function (...arguments_) {
+        const next = wrapper.apply(this, arguments_);
+        return native.apply(this, Array.isArray(next) ? next : arguments_);
     };
 
     return () => {
@@ -302,7 +344,7 @@ function justPatch(owner, name, wrapper) {
 }
 
 function whenElement(selector, options = {}) {
-    const { visible = false, text = null } = options;
+    const { visible = false, text } = options;
 
     return new Promise(resolve => {
         const check = () => {
@@ -312,8 +354,8 @@ function whenElement(selector, options = {}) {
 
                 if (visible && !node.offsetParent) continue;
 
-                if (typeof text === "string" && !node.innerText.includes(text)) continue;
-                if (text instanceof RegExp && !text.test(node.innerText)) continue;
+                if (typeof text === "string" && !node.textContent.includes(text)) continue;
+                if (text instanceof RegExp && !text.test(node.textContent)) continue;
 
                 resolve(node);
                 return;
@@ -353,51 +395,50 @@ function patchInterval(options = {}) {
 
     const now = () => {
         const realElapsed = HOOKS.Date.now() - startTime;
-        const virtualElapsed = factor === 0
-            ? realElapsed / 0.001
-            : realElapsed / factor;
+        const divisor = factor === 0 ? 0.001 : factor;
+        const virtualElapsed = realElapsed / divisor;
         return startTime + virtualElapsed;
     };
 
-    const cb = (target, thisArg, argArray) => {
-        if (typeof argArray[1] !== "number") {
-            return Reflect.apply(target, thisArg, argArray);
+    const callback = (target, thisArgument, argumentArray) => {
+        if (typeof argumentArray[1] !== "number") {
+            return Reflect.apply(target, thisArgument, argumentArray);
         }
 
-        const fn = argArray[0]?.toString();
-        if (text && !fn.includes(text)) {
-            return Reflect.apply(target, thisArg, argArray);
+        const function_ = argumentArray[0]?.toString();
+        if (text && !function_.includes(text)) {
+            return Reflect.apply(target, thisArgument, argumentArray);
         }
 
-        if (ms != null && ms === argArray[1]) {
-            return Reflect.apply(target, thisArg, argArray);
+        if (ms != undefined && ms === argumentArray[1]) {
+            return Reflect.apply(target, thisArgument, argumentArray);
         }
 
-        argArray[1] *= factor;
-        return Reflect.apply(target, thisArg, argArray);
+        argumentArray[1] *= factor;
+        return Reflect.apply(target, thisArgument, argumentArray);
     };
 
-    w.setInterval = new Proxy(w.setInterval, { apply: cb });
-    w.setTimeout = new Proxy(w.setTimeout, { apply: cb });
+    w.setInterval = new Proxy(w.setInterval, { apply: callback });
+    w.setTimeout = new Proxy(w.setTimeout, { apply: callback });
 
     w.Date = new Proxy(w.Date, {
-        construct(target, args) {
-            if (args.length === 0) {
+        construct(target, arguments_) {
+            if (arguments_.length === 0) {
                 return new target(now());
             }
-            return new target(...args);
+            return new target(...arguments_);
         },
-        apply(target, thisArg, args) {
-            if (args.length === 0) {
+        apply(target, thisArgument, arguments_) {
+            if (arguments_.length === 0) {
                 return new target(now()).toString();
             }
-            return target(...args);
+            return new target(...arguments_).toString();
         },
-        get(target, prop, receiver) {
-            if (prop === "now") {
+        get(target, property, receiver) {
+            if (property === "now") {
                 return () => now();
             }
-            return Reflect.get(target, prop, receiver);
+            return Reflect.get(target, property, receiver);
         },
     });
 }
@@ -407,10 +448,10 @@ function isFinalHost(hostname) {
 }
 
 function isOriginHost(host) {
-    return host === "tpi.li" || host === "oii.la";
+    return CONFIG.ORIGIN_DOMAINS.some((domain) => host === domain || host.endsWith("." + domain));
 }
 
-function requestAPI(method, endpoint, data = null) {
+function requestAPI(method, endpoint, data) {
     return new Promise((resolve, reject) => {
         GM_xmlhttpRequest({
             method,
@@ -418,8 +459,8 @@ function requestAPI(method, endpoint, data = null) {
             headers: { "Content-Type": "application/json" },
             responseType: "json",
             data: data ? JSON.stringify(data) : undefined,
-            onload: (res) => resolve(res.response),
-            onerror: (err) => reject(err),
+            onload: (httpResponse) => resolve({ status: httpResponse.status, body: httpResponse.response }),
+            onerror: (error) => reject(error),
         });
     });
 }
@@ -431,33 +472,40 @@ function navigateTo(url, info = "bypass_link") {
 function listenerNavigation() {
     if (!w.navigation || !CONFIG.WORKER_URL) return;
 
-    w.navigation.addEventListener("navigate", async (ev) => {
-        if (ev.info === "bypass_link") return;
+    navigation.addEventListener("navigate", async (event) => {
+        if (event.info === "bypass_link") return;
         if (!isOriginHost(location.hostname)) return;
 
         try {
-            const destURL = new URL(ev.destination.url);
+            const destinationURL = new URL(event.destination.url);
 
-            if (!isFinalHost(destURL.hostname)) return;
+            if (!isFinalHost(destinationURL.hostname)) return;
 
-            if (ev.cancelable) {
-                ev.preventDefault();
+            const shortlink = w.sessionStorage.getItem(CONFIG.TOKEN_URL_KEY);
+            if (!shortlink) return;
+            if (destinationURL.hostname === location.hostname) return;
 
-                console.log("Destination intercepted", ev.destination.url);
-
-                await requestAPI("POST", "/api/save", {
-                    shortlink: location.href,
-                    destination: ev.destination.url,
-                });
-
-                console.log("Saved!");
-
-                navigateTo(ev.destination.url);
+            if (event.cancelable) {
+                event.preventDefault();
             }
-        } catch (e) {
-            console.error("Error on save", e);
+
+            console.log("Destination intercepted", event.destination.url);
+
+            const result = await requestAPI("POST", "/api/save", {
+                shortlink,
+                destination: event.destination.url,
+            });
+
+            if (result.body?.status === "ok") {
+                console.log("Saved!");
+                w.sessionStorage.removeItem(CONFIG.TOKEN_URL_KEY);
+            } else {
+                console.warn("Save rejected", result.status, result.body?.message);
+            }
+
+            if (event.cancelable) navigateTo(event.destination.url);
+        } catch (error) {
+            console.error("Error on save", error);
         }
     });
 }
-
-main();

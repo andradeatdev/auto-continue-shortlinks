@@ -2,13 +2,18 @@ import js from "@eslint/js";
 import globals from "globals";
 import { defineConfig } from "eslint/config";
 import stylistic from "@stylistic/eslint-plugin";
+import sonarjs from "eslint-plugin-sonarjs";
+import unicorn from "eslint-plugin-unicorn";
 
 export default defineConfig([
+  js.configs.recommended,
+  sonarjs.configs.recommended,
+  unicorn.configs.recommended,
   {
     files: ["**/*.{js,mjs,cjs}"],
     plugins: { js },
     extends: ["js/recommended"],
-    languageOptions: { globals: globals.browser }
+    languageOptions: { globals: { ...globals.browser, ...globals.greasemonkey } }
   },
   {
     files: ["**/*.js"],
@@ -17,6 +22,10 @@ export default defineConfig([
     },
     languageOptions: { globals: globals.greasemonkey },
     rules: {
+      "unicorn/empty-brace-spaces": "off",
+      "unicorn/no-this-outside-of-class": "off",
+      "unicorn/name-replacements": "off",
+
       "@stylistic/semi": ["warn", "always"],
       "@stylistic/comma-dangle": ["warn", "always-multiline"],
       "@stylistic/quotes": ["warn", "double", { allowTemplateLiterals: "always" }],

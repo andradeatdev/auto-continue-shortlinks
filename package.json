@@ -16,7 +16,7 @@
     "@types/bun": "latest",
     "@violentmonkey/types": "^0.3.4",
     "concurrently": "^10.0.5",
-    "eslint": "^10.9.1",
+    "eslint": "^10.10.0",
     "globals": "^17.11.0",
     "http-server": "^14.1.1",
     "rollup": "^4.28.0"
@@ -26,6 +26,8 @@
   },
   "dependencies": {
     "@types/node": "^26.4.0",
+    "eslint-plugin-sonarjs": "^4.2.0",
+    "eslint-plugin-unicorn": "^74.0.0",
     "postcss-selector-parser": "^7.1.6"
   }
 }

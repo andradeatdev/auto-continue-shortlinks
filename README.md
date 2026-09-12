@@ -8,7 +8,8 @@ The goal is to make the script rule-based, so anyone with some knowledge of Java
 
 The script uses a Cloudflare Worker (`https://shortlinks.fdyzen.workers.dev`) as a shared cache to make bypasses go straight to the final URL when the shortlink was already bypassed by other users:
 
-- When you open a supported shortlink (`tpi.li`, `oii.la`), the script asks the Worker whether the final destination for that shortlink is already known. If so, it navigates straight there, skipping the timer/wait.
+- When you open a supported shortlink (`tpi.li`, `oii.la`, `intercelestial.com`, `pahe.plus`), the script asks the Worker whether the final destination for that shortlink is already known. If so, it navigates straight there, skipping the timer/wait.
+<!-- - Multi-hop chains (e.g. `intercelestial.com` → `pahe.plus` → final host) are resolved by the Worker to the deepest cached destination, so only the final URL is reached. -->
 - When your navigation reaches a final file host (`send.now`, `mega.nz`, ...), the script sends the visited shortlink URL and the reached destination URL to the Worker so other users' visits to the same shortlink go directly to the destination.
 
 For this to work, the following data is shared with the Worker:
