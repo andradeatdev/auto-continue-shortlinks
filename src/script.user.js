@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.13
+// @version            0.0.14
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -67,7 +67,6 @@ const CONFIG = {
     ORIGIN_DOMAINS: [
         "tpi.li",
         "oii.la",
-        "intercelestial.com",
         "pahe.plus",
     ],
     SHORTLINK_PATTERNS: {
@@ -114,7 +113,7 @@ const DOMAINS = {
     "linegee.net": async () => {
         const script = await whenElement("script:not([src])", { text: "atob(" });
         const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
-
+        console.log("LineGee: query", q);
         let xxc;
         while (!xxc) {
             const request = await fetch(location.href + q);
@@ -132,10 +131,34 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        justTap(document);
-        justClick(".myButton");
-        justClick(".myButton");
-        justClick(".myButton");
+        justPatch(w.TextEncoder.prototype, "encode", (input) => {
+            if (!input.includes("detected")) {
+                return;
+            }
+
+            const dot = input.indexOf(".");
+            const ts = input.slice(0, dot);
+            const body = JSON.parse(input.slice(dot + 1));
+            body.detected = false;
+            body.cycle = false;
+            body.triggered = [];
+            return [ts + "." + JSON.stringify(body)];
+        });
+
+
+        justPatch(w, "fetch", (url, options = {}) => {
+            if (typeof url === "string" && typeof options.body === "string") {
+                const body = JSON.parse(options.body);
+                if (Object.hasOwn(body, "detected")) {
+                    console.log("Detected", body);
+                    body.detected = false;
+                    body.cycle = false;
+                    body.triggered = [];
+                    options.body = JSON.stringify(body);
+                }
+            }
+            return [url, options];
+        });
 
         justDefine(w.Element.prototype, "innerHTML", {
             set(v) {
@@ -176,17 +199,15 @@ const DOMAINS = {
             set(_v) { },
         });
 
-        justPatch(w, "fetch", (url, options = {}) => {
-            if (typeof url === "string" && url.includes("/v1/event") && typeof options.body === "string") {
-                const body = JSON.parse(options.body);
-                if (body && "detected" in body) {
-                    body.detected = false;
-                    body.triggered = [];
-                    options.body = JSON.stringify(body);
-                }
-            }
-            return [url, options];
-        });
+        justClick(".myButton");
+
+        while (!w.LLAtt) {
+            justTap(document);
+            await wait(CONFIG.TIMEOUT_INTERVAL);
+        }
+
+        justClick(".myButton");
+        justClick(".myButton");
     },
     "pahe.plus": () => {
         justClick(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
@@ -240,7 +261,6 @@ async function main() {
     if (!handler) return;
 
     const pattern = CONFIG.SHORTLINK_PATTERNS[hostname];
-    console.log("Pattern", pattern, "→", pattern?.test(href));
     if (pattern?.test(href)) w.sessionStorage.setItem(CONFIG.TOKEN_URL_KEY, href);
 
     if (CONFIG.WORKER_URL && isOriginHost(hostname) && (pathname !== "/" || search !== "")) {
@@ -289,6 +309,7 @@ async function justClick(selector, options = {}) {
     if (waitMs > 0) {
         return safeSetTimeout(() => click(node), waitMs);
     }
+    justTap(node);
     click(node);
 }
 

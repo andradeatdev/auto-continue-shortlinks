@@ -31,11 +31,7 @@ The script can still automate other parts of the process on these sites, but the
 
 #### Notes
 
-> Intercelestial.com actively updates its detection code. One of the detection validates `Sec-Fetch-*`
-> headers — which the browser only sets on requests triggered by **real user activation** — so
-> the script alone is **not enough** to make it work there: a header-injection extension is
-> required. See [INTERCELESTIAL_ISSUES.md](INTERCELESTIAL_ISSUES.md) for the full breakdown and
-> setup instructions.
+> Intercelestial.com actively updates its detection code. To see more details, see [INTERCELESTIAL_ISSUES.md](INTERCELESTIAL_ISSUES.md).
 
 - **I recommend using an ad blocker, such as uBlock Origin or Adguard.**
 - This script **does not** solve **CAPTCHAs**. It only automates clicks, removes unnecessary elements, and performs other simple actions when possible. **You still need to solve the CAPTCHA manually**.
