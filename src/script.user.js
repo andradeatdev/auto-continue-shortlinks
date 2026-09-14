@@ -309,7 +309,6 @@ async function justClick(selector, options = {}) {
     if (waitMs > 0) {
         return safeSetTimeout(() => click(node), waitMs);
     }
-    justTap(node);
     click(node);
 }
 
