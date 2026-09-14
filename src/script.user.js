@@ -8,6 +8,8 @@
 // From: Pahe
 // @match              https://tpi.li/*
 // @match              https://oii.la/*
+// @match              https://srnky.com/*
+// @match              https://clksz.com//*
 //
 // @match              https://ssdhostting.com/*
 // @match              https://selfhostt.com/*
@@ -67,6 +69,8 @@ const CONFIG = {
     ORIGIN_DOMAINS: [
         "tpi.li",
         "oii.la",
+        "srnky.com",
+        "clksz.com",
         "pahe.plus",
     ],
     SHORTLINK_PATTERNS: {
@@ -107,6 +111,8 @@ const TEMPLATES = {
 const DOMAINS = {
     "tpi.li": TEMPLATES.TPI_OII,
     "oii.la": TEMPLATES.TPI_OII,
+    "srnky.com": TEMPLATES.TPI_OII,
+    "clksz.com": TEMPLATES.TPI_OII,
     "financeehelp.com": TEMPLATES.HOSTING,
     "cloudhostt.com": TEMPLATES.HOSTING,
     "financeguidz.com": TEMPLATES.HOSTING,
