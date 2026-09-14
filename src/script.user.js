@@ -76,6 +76,8 @@ const CONFIG = {
     SHORTLINK_PATTERNS: {
         "tpi.li": /^https:\/\/tpi\.li\/[A-Za-z0-9_-]{3,}$/,
         "oii.la": /^https:\/\/oii\.la\/[A-Za-z0-9_-]{3,}$/,
+        "srnky.com": /^https:\/\/srnky\.com\/[A-Za-z0-9_-]{3,}$/,
+        "clksz.com": /^https:\/\/clksz\.com\/[A-Za-z0-9_-]{3,}$/,
         "pahe.plus": /^https:\/\/pahe\.plus\/[A-Za-z0-9_-]{3,}$/,
     },
     TOKEN_URL_KEY: "pahe-acl-9d2f1c3e-4b7a-4e98-8c21-5f6d0a9b7c34",
