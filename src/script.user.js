@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.15
+// @version            0.0.16
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -87,6 +87,13 @@ const TEMPLATES = {
     TPI_OII: () => {
         justClick("#continue:not([disabled])");
         justClick(".get-link[href]:not(.disabled)");
+
+        justDefine(w.Element.prototype, "innerHTML", {
+            set(v) {
+                if (typeof v === "string" && v.includes("antiadblock")) return;
+                return v;
+            },
+        });
     },
     HOSTING: () => {
         patchInterval();
@@ -121,14 +128,13 @@ const DOMAINS = {
     "linegee.net": async () => {
         const script = await whenElement("script:not([src])", { text: "atob(" });
         const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
-        console.log("LineGee: query", q);
         let xxc;
         while (!xxc) {
             const request = await fetch(location.href + q);
             const response = await request.text();
             console.log("LineGee: response", response);
             const doc = new DOMParser().parseFromString(response, "text/html");
-            xxc = doc.querySelector("#xxc");
+            xxc = doc.querySelector("#xxc[href]");
             if (xxc) {
                 location.assign(xxc.href);
             } else {
@@ -269,6 +275,7 @@ async function main() {
     if (!handler) return;
 
     const pattern = CONFIG.SHORTLINK_PATTERNS[hostname];
+    console.log("Pattern", hostname, ">", pattern?.toString());
     if (pattern?.test(href)) w.sessionStorage.setItem(CONFIG.TOKEN_URL_KEY, href);
 
     if (CONFIG.WORKER_URL && isOriginHost(hostname) && (pathname !== "/" || search !== "")) {
