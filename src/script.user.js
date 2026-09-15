@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.16
+// @version            0.0.17
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -9,7 +9,7 @@
 // @match              https://tpi.li/*
 // @match              https://oii.la/*
 // @match              https://srnky.com/*
-// @match              https://clksz.com//*
+// @match              https://clksz.com/*
 //
 // @match              https://ssdhostting.com/*
 // @match              https://selfhostt.com/*
@@ -36,6 +36,11 @@
 // @match              https://upfilesgo.com/*
 // @match              https://safefileku.com/*
 // @match              https://uploadrar.com/*
+// 
+// From: OvaGames
+// @match              https://shrinkme.click/*
+// @match              https://themezon.net/*
+// @match              https://en.mrproblogger.com/*
 // 
 // Hosting
 // @match              https://send.now/*
@@ -65,6 +70,7 @@ const CONFIG = {
         "mega.nz",
         "vik1ngfile.site",
         "pahe.plus",
+        "filecrypt.cc",
     ],
     ORIGIN_DOMAINS: [
         "tpi.li",
@@ -72,6 +78,7 @@ const CONFIG = {
         "srnky.com",
         "clksz.com",
         "pahe.plus",
+        "en.mrproblogger.com",
     ],
     SHORTLINK_PATTERNS: {
         "tpi.li": /^https:\/\/tpi\.li\/[A-Za-z0-9_-]{3,}$/,
@@ -79,6 +86,7 @@ const CONFIG = {
         "srnky.com": /^https:\/\/srnky\.com\/[A-Za-z0-9_-]{3,}$/,
         "clksz.com": /^https:\/\/clksz\.com\/[A-Za-z0-9_-]{3,}$/,
         "pahe.plus": /^https:\/\/pahe\.plus\/[A-Za-z0-9_-]{3,}$/,
+        "en.mrproblogger.com": /^https:\/\/en\.mrproblogger\.com\/[A-Za-z0-9_-]{3,}$/,
     },
     TOKEN_URL_KEY: "pahe-acl-9d2f1c3e-4b7a-4e98-8c21-5f6d0a9b7c34",
 };
@@ -258,6 +266,16 @@ const DOMAINS = {
     },
     "send.now": async () => {
         justClick(":has([name='cf-turnstile-response'][value]) [type='submit']");
+    },
+    "shrinkme.click": async () => {
+        justClick(".btn-primary:not([disabled])");
+    },
+    "themezon.net": async () => {
+        justClick("#btn2");
+        justClick("#tp-snp2");
+    },
+    "en.mrproblogger.com": async () => {
+        justClick(".get-link:not(.disabled)");
     },
 };
 
@@ -523,11 +541,14 @@ function listenerNavigation() {
             }
 
             console.log("Destination intercepted", event.destination.url);
+            console.log("Is cancelable?", event.cancelable);
 
             const result = await requestAPI("POST", "/api/save", {
                 shortlink,
                 destination: event.destination.url,
             });
+
+            console.log("Status", result.status, "| Body", result.body);
 
             if (result.body?.status === "ok") {
                 console.log("Saved!");
