@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.17
+// @version            0.0.18
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -153,33 +153,38 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        justPatch(w.TextEncoder.prototype, "encode", (input) => {
-            if (!input.includes("detected")) {
-                return;
-            }
-
-            const dot = input.indexOf(".");
-            const ts = input.slice(0, dot);
-            const body = JSON.parse(input.slice(dot + 1));
-            body.detected = false;
-            body.cycle = false;
-            body.triggered = [];
-            return [ts + "." + JSON.stringify(body)];
+        // Temporary fix for intercelestial.com
+        Object.defineProperty(w.Object.prototype, "rid", {
+            configurable: true,
+            enumerable: false,
+            get() {
+                return this.__rid;
+            },
+            set(v) {
+                const own = k => Object.hasOwn(this, k);
+                if (own("siteId") && own("triggered")) {
+                    this.triggered = [];
+                    this.detected = false;
+                    this.cycle = false;
+                }
+                Object.defineProperty(this, "rid", { value: v, writable: true, enumerable: true, configurable: true });
+            },
         });
 
+        const FAKE_TRUSTED = {
+            get() { return true; },
+            set: undefined,
+            enumerable: true,
+            configurable: true,
+        };
 
-        justPatch(w, "fetch", (url, options = {}) => {
-            if (typeof url === "string" && typeof options.body === "string") {
-                const body = JSON.parse(options.body);
-                if (Object.hasOwn(body, "detected")) {
-                    console.log("Detected", body);
-                    body.detected = false;
-                    body.cycle = false;
-                    body.triggered = [];
-                    options.body = JSON.stringify(body);
-                }
+        // Temporary fix for intercelestial.com
+        proxyApplyMethod(w.Object, "getOwnPropertyDescriptor", (target, thisArgument, arguments_) => {
+            const desc = Reflect.apply(target, thisArgument, arguments_);
+            if (arguments_[1] === "isTrusted") {
+                return FAKE_TRUSTED;
             }
-            return [url, options];
+            return desc;
         });
 
         justDefine(w.Element.prototype, "innerHTML", {
@@ -187,33 +192,6 @@ const DOMAINS = {
                 if (typeof v === "string" && v.includes("antiadblock")) return;
                 return v;
             },
-        });
-
-        justPatch(w.JSON, "stringify", (object, ...rest) => {
-            if (object && typeof object === "object" && object.siteId && object.eid && "detected" in object) {
-                object.detected = false;
-                object.triggered = [];
-            }
-            return [object, ...rest];
-        });
-
-        justPatch(w.EventTarget.prototype, "addEventListener", (type, listener, options) => {
-            if (typeof listener !== "function") return;
-
-            const wrapped = function (event_) {
-                if (typeof event_ !== "object" || event_ === null || event_.isTrusted === true) {
-                    return listener.call(event_.currentTarget, event_);
-                }
-                return listener.call(event_.currentTarget, new Proxy(event_, {
-                    get(target, property) {
-                        if (property === "isTrusted") return true;
-                        const v = Reflect.get(target, property);
-                        return typeof v === "function" ? v.bind(target) : v;
-                    },
-                }));
-            };
-
-            return [type, wrapped, options];
         });
 
         justDefine(w, "open", {
@@ -334,6 +312,12 @@ function wait(ms) {
     return new Promise(resolve => safeSetTimeout(resolve, ms));
 }
 
+function proxyApplyMethod(owner, name, wrapper) {
+    owner[name] = new Proxy(owner[name], {
+        apply: wrapper,
+    });
+}
+
 async function justClick(selector, options = {}) {
     const { waitMs = 0 } = options;
     const node = await whenElement(selector, options);
@@ -385,7 +369,7 @@ function justPatch(owner, name, wrapper) {
     const native = owner[name];
 
     owner[name] = function (...arguments_) {
-        const next = wrapper.apply(this, arguments_);
+        const next = wrapper.apply(this, arguments_, native);
         return native.apply(this, Array.isArray(next) ? next : arguments_);
     };
 
