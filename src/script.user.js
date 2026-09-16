@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.18
+// @version            0.0.19
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -53,6 +53,8 @@
 //
 // @license            GPL-3.0
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
+// @downloadURL https://update.greasyfork.org/scripts/593212/Pahe%20-%20Auto%20continue%20links.user.js
+// @updateURL https://update.greasyfork.org/scripts/593212/Pahe%20-%20Auto%20continue%20links.meta.js
 // ==/UserScript==
 
 const w = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
@@ -153,38 +155,35 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        // Temporary fix for intercelestial.com
-        Object.defineProperty(w.Object.prototype, "rid", {
-            configurable: true,
-            enumerable: false,
-            get() {
-                return this.__rid;
-            },
-            set(v) {
-                const own = k => Object.hasOwn(this, k);
-                if (own("siteId") && own("triggered")) {
-                    this.triggered = [];
-                    this.detected = false;
-                    this.cycle = false;
-                }
-                Object.defineProperty(this, "rid", { value: v, writable: true, enumerable: true, configurable: true });
-            },
-        });
+        const nativo = w.JSON.stringify;
+        w.JSON.stringify = function (x) {
+            try {
+                for (const o of Array.isArray(x) ? x : [x]) {
+                    if (!(o && typeof o.siteId === "string" && Array.isArray(o.triggered)
+                        && typeof o.ua === "string" && o.ua.indexOf("Mozilla/") === 0) || o.ua === o.eid) {
+                        continue;
+                    }
 
-        const FAKE_TRUSTED = {
-            get() { return true; },
-            set: undefined,
-            enumerable: true,
-            configurable: true,
+                    o.detected = false;
+                    o.cycle = false;
+                    o.triggered.length = 0;
+                }
+            } catch { }
+            return Reflect.apply(nativo, this, arguments);
         };
 
-        // Temporary fix for intercelestial.com
-        proxyApplyMethod(w.Object, "getOwnPropertyDescriptor", (target, thisArgument, arguments_) => {
-            const desc = Reflect.apply(target, thisArgument, arguments_);
-            if (arguments_[1] === "isTrusted") {
-                return FAKE_TRUSTED;
-            }
-            return desc;
+        w.fetch = new Proxy(w.fetch, {
+            async apply(target, thisArg, argArray) {
+                const req = await Reflect.apply(target, thisArg, argArray);
+                const clone = req.clone();
+
+                const response = await clone.json();
+                if (response.att) {
+                    w.LLAtt = response.att;
+                }
+
+                return req;
+            },
         });
 
         justDefine(w.Element.prototype, "innerHTML", {
@@ -363,19 +362,6 @@ function justDefine(owner, property, { get, set }) {
             descriptor.set.call(this, v);
         },
     });
-}
-
-function justPatch(owner, name, wrapper) {
-    const native = owner[name];
-
-    owner[name] = function (...arguments_) {
-        const next = wrapper.apply(this, arguments_, native);
-        return native.apply(this, Array.isArray(next) ? next : arguments_);
-    };
-
-    return () => {
-        owner[name] = native;
-    };
 }
 
 function whenElement(selector, options = {}) {
