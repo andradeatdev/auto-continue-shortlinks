@@ -1,8 +1,14 @@
 # Pahe - Auto Continue Links
 
-This script automates shortlinks on pahe.ink and other sites that use the same hosts. More hosts will be added over time.
+[![Install on Greasy Fork](https://img.shields.io/badge/Install-Greasy_Fork-670000?flat-square)](https://greasyfork.org/scripts/593212)
+[![License](https://img.shields.io/github/license/andradeatdev/auto-continue-shortlinks?flat-square&logo=gnu)](LICENSE)
+[![Greasy Fork version](https://img.shields.io/greasyfork/v/593212?style=flat-square&label=version)](https://greasyfork.org/scripts/593212)
+[![Greasy Fork installs](https://img.shields.io/greasyfork/dt/593212?style=flat-square&label=installs)](https://greasyfork.org/scripts/593212)
+[![Greasy Fork rating](https://img.shields.io/greasyfork/rating-count/593212?style=flat-square&label=rating)](https://greasyfork.org/scripts/593212)
+[![Userscript managers](https://img.shields.io/badge/managers-Violentmonkey%20%7C%20Tampermonkey-00485B?style=flat-square)](https://violentmonkey.github.io/)
+[![Supported hosts](https://img.shields.io/badge/hosts-16%20supported-2EA44F?style=flat-square)](HOSTS.md)
 
-The goal is to make the script rule-based, so anyone with some knowledge of JavaScript, HTML, and CSS can create their own rules and share them with others.
+This script automates shortlinks on pahe.ink and other sites that use the same hosts. More hosts will be added over time.
 
 #### Instant Bypass Cache
 
