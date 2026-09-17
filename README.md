@@ -1,5 +1,7 @@
 # Pahe - Auto Continue Links
 
+**English** · [Português (BR)](README.pt-BR.md)
+
 [![Install on Greasy Fork](https://img.shields.io/badge/Install-Greasy_Fork-670000?flat-square)](https://greasyfork.org/scripts/593212)
 [![License](https://img.shields.io/github/license/andradeatdev/auto-continue-shortlinks?flat-square&logo=gnu)](LICENSE)
 [![Greasy Fork version](https://img.shields.io/greasyfork/v/593212?style=flat-square&label=version)](https://greasyfork.org/scripts/593212)
