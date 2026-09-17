@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.19
+// @version            0.0.20
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -36,6 +36,9 @@
 // @match              https://upfilesgo.com/*
 // @match              https://safefileku.com/*
 // @match              https://uploadrar.com/*
+// @match              https://uploady.io/*
+// @match              https://apkadmin.com/*
+// @match              https://www.up-4ever.net/*
 // 
 // From: OvaGames
 // @match              https://shrinkme.click/*
@@ -53,8 +56,6 @@
 //
 // @license            GPL-3.0
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
-// @downloadURL https://update.greasyfork.org/scripts/593212/Pahe%20-%20Auto%20continue%20links.user.js
-// @updateURL https://update.greasyfork.org/scripts/593212/Pahe%20-%20Auto%20continue%20links.meta.js
 // ==/UserScript==
 
 const w = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
@@ -155,22 +156,20 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        const nativo = w.JSON.stringify;
-        w.JSON.stringify = function (x) {
-            try {
-                for (const o of Array.isArray(x) ? x : [x]) {
-                    if (!(o && typeof o.siteId === "string" && Array.isArray(o.triggered)
-                        && typeof o.ua === "string" && o.ua.indexOf("Mozilla/") === 0) || o.ua === o.eid) {
-                        continue;
-                    }
+        const nativePush = Array.prototype.push;
+        Array.prototype.push = function (...args) {
+            if (typeof args[0] === "string" && args[0].includes("_")) {
+                return;
+            }
 
-                    o.detected = false;
-                    o.cycle = false;
-                    o.triggered.length = 0;
-                }
-            } catch { }
-            return Reflect.apply(nativo, this, arguments);
+            return nativePush.apply(this, args);
         };
+
+        Object.defineProperty(w.HTMLIFrameElement.prototype, "contentWindow", {
+            get() {
+                return w;
+            },
+        });
 
         w.fetch = new Proxy(w.fetch, {
             async apply(target, thisArg, argArray) {
@@ -178,6 +177,7 @@ const DOMAINS = {
                 const clone = req.clone();
 
                 const response = await clone.json();
+                console.log("Intercelestial.com response", response);
                 if (response.att) {
                     w.LLAtt = response.att;
                 }
@@ -253,6 +253,17 @@ const DOMAINS = {
     },
     "en.mrproblogger.com": async () => {
         justClick(".get-link:not(.disabled)");
+    },
+    "uploady.io": async () => {
+        justClick("#free_dwn");
+        justClick("#downloadbtn");
+    },
+    "apkadmin.com": async () => {
+        justClick("#downloadbtn");
+    },
+    "www.up-4ever.net": async () => {
+        justRemove("#u4ab_modal");
+        justClick(`button[name="method_free"]`);
     },
 };
 
