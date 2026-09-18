@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.20
+// @version            0.0.21
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -94,10 +94,117 @@ const CONFIG = {
     TOKEN_URL_KEY: "pahe-acl-9d2f1c3e-4b7a-4e98-8c21-5f6d0a9b7c34",
 };
 
+const tool = {
+    wait(ms) {
+        return new Promise(resolve => safeSetTimeout(resolve, ms));
+    },
+
+    async click(selector, options = {}) {
+        const { wait, visible, text, scroll, repeat = 1, delay } = options;
+        const node = await waitElement(selector, { visible, text });
+
+        if (scroll === true) {
+            node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        }
+
+        const event = new MouseEvent("click", {
+            bubbles: true,
+            cancelable: true,
+            view: w,
+        });
+
+        if (wait !== undefined) {
+            await tool.wait(wait);
+        }
+
+        for (let i = 0; i < repeat; i++) {
+            node.dispatchEvent(event);
+
+            if (delay !== undefined) {
+                await wait(delay);
+            }
+        }
+    },
+
+    async tap(node) {
+        node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    },
+
+    async scroll(selector, options = {}) {
+        const { visible, text } = options;
+        const node = await waitElement(selector, { visible, text });
+
+        node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    },
+
+    async remove(selector, options = {}) {
+        const { visible, text } = options;
+        const node = await waitElement(selector, { visible, text });
+        node.remove();
+    },
+};
+
+const patch = {
+    interval(options = {}) {
+        const { factor = CONFIG.PATCH_TIMER_FACTOR, text, ms } = options;
+
+        const startTime = hook.Date.now();
+
+        const now = () => {
+            const realElapsed = hook.Date.now() - startTime;
+            const divisor = factor === 0 ? 0.001 : factor;
+            const virtualElapsed = realElapsed / divisor;
+            return startTime + virtualElapsed;
+        };
+
+        const callback = (target, thisArg, argArray) => {
+            if (typeof argArray[1] !== "number") {
+                return Reflect.apply(target, thisArg, argArray);
+            }
+
+            const fn = argArray[0]?.toString();
+            if (text && !fn.includes(text)) {
+                return Reflect.apply(target, thisArg, argArray);
+            }
+
+            if (ms != undefined && ms === argArray[1]) {
+                return Reflect.apply(target, thisArg, argArray);
+            }
+
+            argArray[1] *= factor;
+            return Reflect.apply(target, thisArg, argArray);
+        };
+
+        w.setInterval = new Proxy(w.setInterval, { apply: callback });
+        w.setTimeout = new Proxy(w.setTimeout, { apply: callback });
+
+        w.Date = new Proxy(w.Date, {
+            construct(target, arguments_) {
+                if (arguments_.length === 0) {
+                    return new target(now());
+                }
+                return new target(...arguments_);
+            },
+            apply(target, thisArgument, arguments_) {
+                if (arguments_.length === 0) {
+                    return new target(now()).toString();
+                }
+                return new target(...arguments_).toString();
+            },
+            get(target, property, receiver) {
+                if (property === "now") {
+                    return () => now();
+                }
+                return Reflect.get(target, property, receiver);
+            },
+        });
+    },
+};
+
 const TEMPLATES = {
     TPI_OII: () => {
-        justClick("#continue:not([disabled])");
-        justClick(".get-link[href]:not(.disabled)");
+        tool.click("#continue:not([disabled])");
+        tool.click(".get-link[href]:not(.disabled)");
 
         justDefine(w.Element.prototype, "innerHTML", {
             set(v) {
@@ -106,25 +213,25 @@ const TEMPLATES = {
             },
         });
     },
-    HOSTING: () => {
-        patchInterval();
+    PAHE_HOSTING: () => {
+        patch.interval();
 
-        justRemove("#page > div", { text: "detected" });
-        justClick("#startButton");
-        justClick("a[href='#getmylink']", { visible: true });
-        justClick("#getnewlink");
+        tool.remove("#page > div", { text: "detected" });
+        tool.click("#startButton");
+        tool.click("a[href='#getmylink']", { visible: true });
+        tool.click("#getnewlink");
     },
     OUO: () => {
-        patchInterval();
+        patch.interval();
 
-        justClick("#btn-main:not(.disabled)");
+        tool.click("#btn-main:not(.disabled)");
     },
     DEVUPLOADS: () => {
-        patchInterval();
+        patch.interval();
 
-        justClick("#gdl[style*='block']");
-        justClick("#gdlf[style*='block']");
-        justScrollTo("#dln");
+        tool.click("#gdl[style*='block']");
+        tool.click("#gdlf[style*='block']");
+        tool.scroll("#dln");
     },
 };
 
@@ -133,11 +240,11 @@ const DOMAINS = {
     "oii.la": TEMPLATES.TPI_OII,
     "srnky.com": TEMPLATES.TPI_OII,
     "clksz.com": TEMPLATES.TPI_OII,
-    "financeehelp.com": TEMPLATES.HOSTING,
-    "cloudhostt.com": TEMPLATES.HOSTING,
-    "financeguidz.com": TEMPLATES.HOSTING,
+    "financeehelp.com": TEMPLATES.PAHE_HOSTING,
+    "cloudhostt.com": TEMPLATES.PAHE_HOSTING,
+    "financeguidz.com": TEMPLATES.PAHE_HOSTING,
     "linegee.net": async () => {
-        const script = await whenElement("script:not([src])", { text: "atob(" });
+        const script = await waitElement("script:not([src])", { text: "atob(" });
         const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
         let xxc;
         while (!xxc) {
@@ -149,22 +256,13 @@ const DOMAINS = {
             if (xxc) {
                 location.assign(xxc.href);
             } else {
-                await wait(500);
+                await tool.wait(500);
             }
         }
     },
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        const nativePush = Array.prototype.push;
-        Array.prototype.push = function (...args) {
-            if (typeof args[0] === "string" && args[0].includes("_")) {
-                return;
-            }
-
-            return nativePush.apply(this, args);
-        };
-
         Object.defineProperty(w.HTMLIFrameElement.prototype, "contentWindow", {
             get() {
                 return w;
@@ -194,86 +292,84 @@ const DOMAINS = {
         });
 
         justDefine(w, "open", {
-            get() { return dummyWindow; },
+            get() { return () => ({ closed: false, close() { }, focus() { }, postMessage() { } }); },
             set(_v) { },
         });
 
-        justClick(".myButton");
+        tool.click(".myButton");
 
         while (!w.LLAtt) {
-            justTap(document);
-            await wait(CONFIG.TIMEOUT_INTERVAL);
+            tool.tap(document);
+            await tool.wait(CONFIG.TIMEOUT_INTERVAL);
         }
 
-        justClick(".myButton");
-        justClick(".myButton");
+        tool.click(".myButton");
+        tool.click(".myButton");
     },
     "pahe.plus": () => {
-        justClick(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
+        tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
     },
     "vexfile.com": () => {
-        justClick(".generate-link:not(.blocked)");
+        tool.click(".generate-link:not(.blocked)");
     },
     "filespayouts.com": () => {
-        patchInterval({ text: "tick" });
+        patch.interval({ text: "tick" });
 
-        justClick("#method_free");
+        tool.click("#method_free");
     },
     "modsfire.com": () => {
-        patchInterval();
+        patch.interval();
 
-        justClick(".download-button:not([href])");
+        tool.click(".download-button:not([href])");
     },
     "www.file-upload.org": () => {
-        justClick("button[name='method_free'], :has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
+        tool.click("button[name='method_free'], :has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
     },
     "djxmaza.in": TEMPLATES.DEVUPLOADS,
     "smartfeecalculator.com": TEMPLATES.DEVUPLOADS,
     "gujjukhabar.in": TEMPLATES.DEVUPLOADS,
     "pdfhindibook.com": TEMPLATES.DEVUPLOADS,
     "upfilesgo.com": () => {
-        justClick("#link-button-free:not([disabled]), #file-captcha #link-button:not([disabled])");
+        tool.click("#link-button-free:not([disabled]), #file-captcha #link-button:not([disabled])");
     },
     "safefileku.com": () => {
-        patchInterval();
-        justClick(":has([name='cf-turnstile-response'][value]) button[type='submit']");
+        patch.interval();
+        tool.click(":has([name='cf-turnstile-response'][value]) button[type='submit']");
     },
     "uploadrar.com": () => {
-        justClick("button[name='method_free'], #downloadbtn:not([disabled])");
+        tool.click("button[name='method_free'], #downloadbtn:not([disabled])");
     },
     "send.now": async () => {
-        justClick(":has([name='cf-turnstile-response'][value]) [type='submit']");
+        tool.click(":has([name='cf-turnstile-response'][value]) [type='submit']");
     },
     "shrinkme.click": async () => {
-        justClick(".btn-primary:not([disabled])");
+        tool.click(".btn-primary:not([disabled])");
     },
     "themezon.net": async () => {
-        justClick("#btn2");
-        justClick("#tp-snp2");
+        tool.click("#btn2");
+        tool.click("#tp-snp2");
     },
     "en.mrproblogger.com": async () => {
-        justClick(".get-link:not(.disabled)");
+        tool.click(".get-link:not(.disabled)");
     },
     "uploady.io": async () => {
-        justClick("#free_dwn");
-        justClick("#downloadbtn");
+        tool.click("#free_dwn");
+        tool.click("#downloadbtn");
     },
     "apkadmin.com": async () => {
-        justClick("#downloadbtn");
+        tool.click("#downloadbtn");
     },
     "www.up-4ever.net": async () => {
-        justRemove("#u4ab_modal");
-        justClick(`button[name="method_free"]`);
+        tool.remove("#u4ab_modal");
+        tool.click(`button[name="method_free"]`);
     },
 };
 
-const HOOKS = {
+const hook = {
     setTimeout: w.setTimeout.bind(w),
-
+    setInterval: w.setInterval.bind(w),
     Date: w.Date,
 };
-
-const dummyWindow = () => ({ closed: false, close() { }, focus() { }, postMessage() { } });
 
 async function main() {
     const { hostname, href, pathname, search } = location;
@@ -308,53 +404,6 @@ async function main() {
 // eslint-disable-next-line unicorn/prefer-top-level-await -- userscript
 main();
 
-function click(node) {
-    const event = new MouseEvent("click", {
-        bubbles: true,
-        cancelable: true,
-        view: w,
-    });
-
-    node.dispatchEvent(event);
-}
-
-function wait(ms) {
-    return new Promise(resolve => safeSetTimeout(resolve, ms));
-}
-
-function proxyApplyMethod(owner, name, wrapper) {
-    owner[name] = new Proxy(owner[name], {
-        apply: wrapper,
-    });
-}
-
-async function justClick(selector, options = {}) {
-    const { waitMs = 0 } = options;
-    const node = await whenElement(selector, options);
-    if (!node) return;
-    node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-    if (waitMs > 0) {
-        return safeSetTimeout(() => click(node), waitMs);
-    }
-    click(node);
-}
-
-async function justScrollTo(selector, options = {}) {
-    const node = await whenElement(selector, options);
-    if (!node) return;
-    node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-}
-
-function justTap(node) {
-    node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-}
-
-async function justRemove(selector, options = {}) {
-    const node = await whenElement(selector, options);
-    if (!node) return;
-    node.remove();
-}
-
 function justDefine(owner, property, { get, set }) {
     const descriptor = Object.getOwnPropertyDescriptor(owner, property);
     Object.defineProperty(owner, property, {
@@ -375,21 +424,15 @@ function justDefine(owner, property, { get, set }) {
     });
 }
 
-function whenElement(selector, options = {}) {
-    const { visible = false, text } = options;
-
+function waitElement(selector, options = {}) {
     return new Promise(resolve => {
         const check = () => {
             const nodes = document.querySelectorAll(selector);
             for (const node of nodes) {
-                if (!node) continue;
+                const resolved = resolveNode(node, options);
+                if (!resolved) continue;
 
-                if (visible && !node.offsetParent) continue;
-
-                if (typeof text === "string" && !node.textContent.includes(text)) continue;
-                if (text instanceof RegExp && !text.test(node.textContent)) continue;
-
-                resolve(node);
+                resolve(resolved);
                 return;
             }
 
@@ -400,79 +443,36 @@ function whenElement(selector, options = {}) {
     });
 }
 
+function resolveNode(node, options = {}) {
+    if (!node) return;
+
+    const { visible, text } = options;
+
+    if (visible && !node.offsetParent) return;
+    if (typeof text === "string" && !node.textContent.includes(text)) return;
+    if (text instanceof RegExp && !text.test(node.textContent)) return;
+
+    return node;
+}
+
 function safeSetTimeout(callback, delay) {
-    const startTime = HOOKS.Date.now();
+    const startTime = hook.Date.now();
     let timeoutId;
 
     const check = () => {
-        const elapsed = HOOKS.Date.now() - startTime;
+        const elapsed = hook.Date.now() - startTime;
         if (elapsed >= delay) {
             callback();
         } else {
-            timeoutId = HOOKS.setTimeout(check, delay - elapsed);
+            timeoutId = hook.setTimeout(check, delay - elapsed);
         }
     };
 
-    timeoutId = HOOKS.setTimeout(check, delay);
+    timeoutId = hook.setTimeout(check, delay);
 
     return () => {
-        HOOKS.clearTimeout(timeoutId);
+        hook.clearTimeout(timeoutId);
     };
-}
-
-function patchInterval(options = {}) {
-    const { factor = CONFIG.PATCH_TIMER_FACTOR, text, ms } = options;
-
-    const startTime = HOOKS.Date.now();
-
-    const now = () => {
-        const realElapsed = HOOKS.Date.now() - startTime;
-        const divisor = factor === 0 ? 0.001 : factor;
-        const virtualElapsed = realElapsed / divisor;
-        return startTime + virtualElapsed;
-    };
-
-    const callback = (target, thisArgument, argumentArray) => {
-        if (typeof argumentArray[1] !== "number") {
-            return Reflect.apply(target, thisArgument, argumentArray);
-        }
-
-        const function_ = argumentArray[0]?.toString();
-        if (text && !function_.includes(text)) {
-            return Reflect.apply(target, thisArgument, argumentArray);
-        }
-
-        if (ms != undefined && ms === argumentArray[1]) {
-            return Reflect.apply(target, thisArgument, argumentArray);
-        }
-
-        argumentArray[1] *= factor;
-        return Reflect.apply(target, thisArgument, argumentArray);
-    };
-
-    w.setInterval = new Proxy(w.setInterval, { apply: callback });
-    w.setTimeout = new Proxy(w.setTimeout, { apply: callback });
-
-    w.Date = new Proxy(w.Date, {
-        construct(target, arguments_) {
-            if (arguments_.length === 0) {
-                return new target(now());
-            }
-            return new target(...arguments_);
-        },
-        apply(target, thisArgument, arguments_) {
-            if (arguments_.length === 0) {
-                return new target(now()).toString();
-            }
-            return new target(...arguments_).toString();
-        },
-        get(target, property, receiver) {
-            if (property === "now") {
-                return () => now();
-            }
-            return Reflect.get(target, property, receiver);
-        },
-    });
 }
 
 function isFinalHost(hostname) {
