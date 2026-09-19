@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.22
+// @version            0.0.23
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -139,13 +139,12 @@ const tool = {
         }
 
         for (let i = 0; i < repeat; i++) {
-            const node = await prepare();
-
-            node.dispatchEvent(event);
-
-            if (delay !== undefined && i < repeat - 1) {
+            if (delay !== undefined && i !== 0) {
                 await tool.wait(delay);
             }
+
+            const node = await prepare();
+            node.dispatchEvent(event);
         }
     },
 
@@ -303,33 +302,56 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        const nativePush = Array.prototype.push;
-        Array.prototype.push = function (...args) {
-            if (typeof args[0] === "string" && args[0].includes("_")) {
-                return;
-            }
-
-            return nativePush.apply(this, args);
+        const handleFetch = async (owner) => {
+            owner.fetch = new Proxy(owner.fetch, {
+                async apply(target, thisArg, argArray) {
+                    const req = await Reflect.apply(target, thisArg, argArray);
+                    if (req.type === "basic" || req.type === "cors") {
+                        const clone = req.clone();
+                        const body = await clone.json();
+                        console.log("Intercelestial.com response", body);
+                        if (body.ok) tool.click(".myButton", { visible: true, scroll: true, repeat: 2 });
+                    }
+                    return req;
+                },
+            });
         };
 
-        Object.defineProperty(w.HTMLIFrameElement.prototype, "contentWindow", {
+        let tlmUltimo;
+        Object.defineProperty(w, "__tlm", {
+            configurable: true,
             get() {
-                return w;
+                return tlmUltimo;
+            },
+            set(v) {
+                tlmUltimo = v;
+                try {
+                    if (v && Array.isArray(v.fired)) {
+                        v.fired.length = 0;
+                    }
+                } catch { }
             },
         });
 
-        w.fetch = new Proxy(w.fetch, {
-            async apply(target, thisArg, argArray) {
-                const req = await Reflect.apply(target, thisArg, argArray);
-                const clone = req.clone();
+        handleFetch(w);
 
-                const response = await clone.json();
-                console.log("Intercelestial.com response", response);
-                if (response.att) {
-                    w.LLAtt = response.att;
-                }
+        const nativeContentWindow = Object.getOwnPropertyDescriptor(w.HTMLIFrameElement.prototype, "contentWindow");
+        Object.defineProperty(w.HTMLIFrameElement.prototype, "contentWindow", {
+            get() {
+                const win = nativeContentWindow.get.call(this);
+                handleFetch(win);
+                return win;
+            },
+        });
 
-                return req;
+
+        const nativeContentDocument = Object.getOwnPropertyDescriptor(w.HTMLIFrameElement.prototype, "contentDocument");
+        Object.defineProperty(w.HTMLIFrameElement.prototype, "contentDocument", {
+            get() {
+                const doc = nativeContentDocument.get.call(this);
+                const win = doc.defaultView;
+                handleFetch(win);
+                return win;
             },
         });
 
@@ -345,13 +367,7 @@ const DOMAINS = {
             set(_v) { },
         });
 
-        tool.click(".myButton");
-
-        while (!w.LLAtt) {
-            await tool.wait(CONFIG.TIMEOUT_INTERVAL);
-        }
-
-        tool.click(".myButton", { scroll: true, repeat: 2 });
+        tool.click(".myButton", { visible: true, scroll: true, repeat: 1 });
     },
     "pahe.plus": () => {
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
