@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.21
+// @version            0.0.22
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -17,6 +17,7 @@
 // @match              https://cloudhostt.com/*
 // @match              https://linegee.net/*
 // @match              https://financeguidz.com/*
+// @match              https://techbixby.com/*
 //
 // @match              https://intercelestial.com/*
 // @match              https://pahe.plus/*
@@ -44,6 +45,15 @@
 // @match              https://shrinkme.click/*
 // @match              https://themezon.net/*
 // @match              https://en.mrproblogger.com/*
+// 
+// From: Others
+// @match              https://cloud.unblockedgames.world/*
+// @match              https://exeygo.com/*
+// @match              https://fc-lc.xyz/*
+// @match              https://jobzhub.store/*
+// @match              https://aii.sh/*
+// @match              https://oii.io/*
+// @match              https://aknewz.xyz/*
 // 
 // Hosting
 // @match              https://send.now/*
@@ -101,11 +111,22 @@ const tool = {
 
     async click(selector, options = {}) {
         const { wait, visible, text, scroll, repeat = 1, delay } = options;
-        const node = await waitElement(selector, { visible, text });
 
-        if (scroll === true) {
-            node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-        }
+        const getNode = () => waitElement(selector, { visible, text });
+
+        const prepare = async () => {
+            const node = await getNode();
+
+            if (scroll === true) {
+                node.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                    inline: "center",
+                });
+            }
+
+            return node;
+        };
 
         const event = new MouseEvent("click", {
             bubbles: true,
@@ -118,10 +139,12 @@ const tool = {
         }
 
         for (let i = 0; i < repeat; i++) {
+            const node = await prepare();
+
             node.dispatchEvent(event);
 
-            if (delay !== undefined) {
-                await wait(delay);
+            if (delay !== undefined && i < repeat - 1) {
+                await tool.wait(delay);
             }
         }
     },
@@ -138,14 +161,31 @@ const tool = {
     },
 
     async remove(selector, options = {}) {
-        const { visible, text } = options;
-        const node = await waitElement(selector, { visible, text });
+        const { visible, text, css } = options;
+        const node = await waitElement(selector, { visible, text, css });
         node.remove();
+    },
+
+    async request(url, options = {}) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: options.method || "GET",
+                url,
+                headers: options.headers || {},
+                responseType: options.responseType || "text",
+                timeout: options.timeout,
+                data: options.data,
+                onload: (response) => resolve(response),
+                onerror: (error) => reject(error),
+                ontimeout: (error) => reject(error),
+                onabort: (error) => reject(error),
+            });
+        });
     },
 };
 
 const patch = {
-    interval(options = {}) {
+    timer(options = {}) {
         const { factor = CONFIG.PATCH_TIMER_FACTOR, text, ms } = options;
 
         const startTime = hook.Date.now();
@@ -214,20 +254,20 @@ const TEMPLATES = {
         });
     },
     PAHE_HOSTING: () => {
-        patch.interval();
+        patch.timer();
 
-        tool.remove("#page > div", { text: "detected" });
+        tool.remove("div", { css: { position: "fixed" }, text: "detected" });
         tool.click("#startButton");
         tool.click("a[href='#getmylink']", { visible: true });
         tool.click("#getnewlink");
     },
     OUO: () => {
-        patch.interval();
+        patch.timer();
 
         tool.click("#btn-main:not(.disabled)");
     },
     DEVUPLOADS: () => {
-        patch.interval();
+        patch.timer();
 
         tool.click("#gdl[style*='block']");
         tool.click("#gdlf[style*='block']");
@@ -243,6 +283,7 @@ const DOMAINS = {
     "financeehelp.com": TEMPLATES.PAHE_HOSTING,
     "cloudhostt.com": TEMPLATES.PAHE_HOSTING,
     "financeguidz.com": TEMPLATES.PAHE_HOSTING,
+    "techbixby.com": TEMPLATES.PAHE_HOSTING,
     "linegee.net": async () => {
         const script = await waitElement("script:not([src])", { text: "atob(" });
         const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
@@ -250,7 +291,6 @@ const DOMAINS = {
         while (!xxc) {
             const request = await fetch(location.href + q);
             const response = await request.text();
-            console.log("LineGee: response", response);
             const doc = new DOMParser().parseFromString(response, "text/html");
             xxc = doc.querySelector("#xxc[href]");
             if (xxc) {
@@ -263,6 +303,15 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
+        const nativePush = Array.prototype.push;
+        Array.prototype.push = function (...args) {
+            if (typeof args[0] === "string" && args[0].includes("_")) {
+                return;
+            }
+
+            return nativePush.apply(this, args);
+        };
+
         Object.defineProperty(w.HTMLIFrameElement.prototype, "contentWindow", {
             get() {
                 return w;
@@ -299,12 +348,10 @@ const DOMAINS = {
         tool.click(".myButton");
 
         while (!w.LLAtt) {
-            tool.tap(document);
             await tool.wait(CONFIG.TIMEOUT_INTERVAL);
         }
 
-        tool.click(".myButton");
-        tool.click(".myButton");
+        tool.click(".myButton", { scroll: true, repeat: 2 });
     },
     "pahe.plus": () => {
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
@@ -313,12 +360,12 @@ const DOMAINS = {
         tool.click(".generate-link:not(.blocked)");
     },
     "filespayouts.com": () => {
-        patch.interval({ text: "tick" });
+        patch.timer({ text: "tick" });
 
         tool.click("#method_free");
     },
     "modsfire.com": () => {
-        patch.interval();
+        patch.timer();
 
         tool.click(".download-button:not([href])");
     },
@@ -333,7 +380,7 @@ const DOMAINS = {
         tool.click("#link-button-free:not([disabled]), #file-captcha #link-button:not([disabled])");
     },
     "safefileku.com": () => {
-        patch.interval();
+        patch.timer();
         tool.click(":has([name='cf-turnstile-response'][value]) button[type='submit']");
     },
     "uploadrar.com": () => {
@@ -362,6 +409,43 @@ const DOMAINS = {
     "www.up-4ever.net": async () => {
         tool.remove("#u4ab_modal");
         tool.click(`button[name="method_free"]`);
+    },
+    "cloud.unblockedgames.world": async () => {
+        tool.click("a[onclick]", { text: "Start Verification" });
+        tool.click("#verify_button2, #verify_button", { repeat: 2 });
+
+        const link = await waitElement("#two_steps_btn[href]");
+        location.assign(link.href);
+    },
+    "exeygo.com": async () => {
+        tool.click(`button[type="submit"]`);
+    },
+    "fc-lc.xyz": async () => {
+        tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
+        tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
+    },
+    "jobzhub.store": async () => {
+        tool.click("#next");
+        tool.click("#scroll");
+    },
+    "aii.sh": async () => {
+        tool.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
+        tool.click(".btn-primary[href]:not(.disabled)");
+    },
+    "oii.io": async () => {
+        tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
+        tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
+
+        mouseMove(120_000);
+    },
+    "aknewz.xyz": async () => {
+        // patch.timer();
+
+        tool.click(`:has([name="cf-turnstile-response"][value]) #surl`);
+
+        tool.click("#next");
+        await tool.click("#scroll:not(.hidden)");
+        tool.click("#scroll:not(.hidden)");
     },
 };
 
@@ -446,13 +530,60 @@ function waitElement(selector, options = {}) {
 function resolveNode(node, options = {}) {
     if (!node) return;
 
-    const { visible, text } = options;
+    const { visible, text, css } = options;
 
     if (visible && !node.offsetParent) return;
     if (typeof text === "string" && !node.textContent.includes(text)) return;
     if (text instanceof RegExp && !text.test(node.textContent)) return;
+    if (css) {
+        const style = getComputedStyle(node);
+        console.log("Style", node, style);
+        for (const [key, value] of Object.entries(css)) {
+            if (style[key] !== value) return;
+        }
+    }
 
     return node;
+}
+
+function mouseMove(duration = 1000) {
+    const start = {
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+    };
+
+    const end = {
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+    };
+
+    const startTime = performance.now();
+
+    const animate = (actualTime) => {
+        const progress = Math.min(
+            (actualTime - startTime) / duration,
+            1,
+        );
+
+        const smooth = progress * progress * (3 - 2 * progress);
+
+        const x = start.x + (end.x - start.x) * smooth;
+        const y = start.y + (end.y - start.y) * smooth;
+
+        document.dispatchEvent(
+            new MouseEvent("mousemove", {
+                bubbles: true,
+                clientX: x,
+                clientY: y,
+            }),
+        );
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        }
+    };
+
+    requestAnimationFrame(animate);
 }
 
 function safeSetTimeout(callback, delay) {
