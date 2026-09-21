@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.23
+// @version            0.0.24
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -396,46 +396,25 @@ const DOMAINS = {
             return result;
         });
 
-        w.EventTarget.prototype.addEventListener = new Proxy(w.EventTarget.prototype.addEventListener, {
-            apply(target, thisArg, argArray) {
-                const listener = argArray[1];
-                const wrapper = (event) => {
-                    const proxy = new Proxy(event, {
-                        get(innerTarget, property, receiver) {
-                            // console.log("Event", property);
-                            if (property === "isTrusted") return true;
-                            return Reflect.get(innerTarget, property, innerTarget);
-                        },
-                        getOwnPropertyDescriptor(innerTarget, property) {
-                            // console.log("Event.getOwnPropertyDescriptor", property);
-                            if (property === "isTrusted") return { get: () => true };
-                            return Reflect.getOwnPropertyDescriptor(innerTarget, property);
-                        },
-                    });
+        patch.apply(w.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
+            const listener = argArray[1];
+            const wrapper = (event) => {
+                const proxy = new Proxy(event, {
+                    get(innerTarget, property, _receiver) {
+                        if (property === "isTrusted") return true;
+                        return Reflect.get(innerTarget, property, innerTarget);
+                    },
+                    getOwnPropertyDescriptor(innerTarget, property) {
+                        if (property === "isTrusted") return { get: () => true };
+                        return Reflect.getOwnPropertyDescriptor(innerTarget, property);
+                    },
+                });
 
-                    listener(proxy);
-                };
-                argArray[1] = wrapper;
-                return Reflect.apply(target, thisArg, argArray);
-            },
+                listener(proxy);
+            };
+            argArray[1] = wrapper;
+            return Reflect.apply(target, thisArg, argArray);
         });
-
-        // patch.apply(w.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
-        //     const listener = argArray[1];
-        //     const wrapper = (event) => {
-        //         const proxy = new Proxy(event, {
-        //             get(innerTarget, property, receiver) {
-        //                 console.log("Event", property);
-        //                 if (property === "isTrusted") return true;
-        //                 return Reflect.get(innerTarget, property, innerTarget);
-        //             },
-        //         });
-
-        //         listener(proxy);
-        //     };
-        //     argArray[1] = wrapper;
-        //     return Reflect.apply(target, thisArg, argArray);
-        // });
 
         tool.style("body > div:has(a[href*='antiadblock'])", { styles: { display: "none !important" } });
         tool.click(".myButton", { visible: true, scroll: true });
