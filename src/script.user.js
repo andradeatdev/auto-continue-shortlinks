@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.24
+// @version            0.0.25
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -68,6 +68,8 @@
 // @license            GPL-3.0
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
 // ==/UserScript==
+
+// console.log("Intercelestial", document.documentElement.outerHTML);
 
 const w = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 
@@ -374,7 +376,6 @@ const DOMAINS = {
                     if (isJson && (res.type === "basic" || res.type === "cors")) {
                         res.clone().json()
                             .then(body => {
-                                console.log("JSON", body);
                                 if (body.ok) tool.click(".myButton", { visible: true, scroll: true, repeat: 2 });
                             })
                             .catch(() => { });
@@ -402,7 +403,11 @@ const DOMAINS = {
                 const proxy = new Proxy(event, {
                     get(innerTarget, property, _receiver) {
                         if (property === "isTrusted") return true;
-                        return Reflect.get(innerTarget, property, innerTarget);
+
+                        const value = Reflect.get(innerTarget, property, innerTarget);
+                        if (typeof value === "function") return value.bind(innerTarget);
+
+                        return value;
                     },
                     getOwnPropertyDescriptor(innerTarget, property) {
                         if (property === "isTrusted") return { get: () => true };
@@ -418,6 +423,37 @@ const DOMAINS = {
 
         tool.style("body > div:has(a[href*='antiadblock'])", { styles: { display: "none !important" } });
         tool.click(".myButton", { visible: true, scroll: true });
+
+        w.Promise.all = new Proxy(w.Promise.all, {
+            apply(target, thisArg, argArray) {
+                console.log("Promise all", argArray);
+
+                const result = Reflect.apply(target, thisArg, argArray);
+
+                console.log("Promise all result", result);
+                return [];
+            },
+        });
+
+        Object.defineProperty(w.HTMLScriptElement.prototype, "onerror", {
+            get() {
+                return () => { };
+            },
+            set(v) {
+                console.log("Script error", this);
+                this.dispatchEvent(new Event("load"));
+            },
+        });
+
+        Object.defineProperty(w.HTMLImageElement.prototype, "onerror", {
+            get() {
+                return () => { };
+            },
+            set(v) {
+                console.log("Script error", this);
+                this.dispatchEvent(new Event("load"));
+            },
+        });
     },
     "pahe.plus": () => {
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
