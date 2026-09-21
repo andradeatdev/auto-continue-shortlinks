@@ -54,6 +54,7 @@
 // @match              https://aii.sh/*
 // @match              https://oii.io/*
 // @match              https://aknewz.xyz/*
+// @match              https://toolskitpro.net/*
 // 
 // Hosting
 // @match              https://send.now/*
@@ -71,8 +72,10 @@
 const w = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 
 const CONFIG = {
-    TIMEOUT_INTERVAL: 250,
-    PATCH_TIMER_FACTOR: 0.05,
+    DEFAULT_TIMEOUT_INTERVAL: 250,
+    DEFAULT_CLICK_DELAY: 150,
+    DEFAULT_TIMER_FACTOR: 0.05,
+
     WORKER_URL: "https://shortlinks.fdyzen.workers.dev",
     FINAL_DOMAINS: [
         "send.now",
@@ -104,29 +107,20 @@ const CONFIG = {
     TOKEN_URL_KEY: "pahe-acl-9d2f1c3e-4b7a-4e98-8c21-5f6d0a9b7c34",
 };
 
-const tool = {
+const state = {
+    observer: undefined,
+    callbacks: new Set(),
+};
+
+const actions = {
     wait(ms) {
-        return new Promise(resolve => safeSetTimeout(resolve, ms));
+        return new Promise(resolve => setTimeout(resolve, ms));
     },
 
-    async click(selector, options = {}) {
-        const { wait, visible, text, scroll, repeat = 1, delay } = options;
+    async click(node, options = {}) {
+        const { wait, scroll } = options;
 
-        const getNode = () => waitElement(selector, { visible, text });
-
-        const prepare = async () => {
-            const node = await getNode();
-
-            if (scroll === true) {
-                node.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "center",
-                });
-            }
-
-            return node;
-        };
+        console.log("Click", node, options);
 
         const event = new MouseEvent("click", {
             bubbles: true,
@@ -134,35 +128,37 @@ const tool = {
             view: w,
         });
 
-        if (wait !== undefined) {
-            await tool.wait(wait);
-        }
+        if (wait !== undefined) await tool.wait(wait);
+        if (scroll) await actions.scroll(node, typeof scroll === "object" ? scroll : {});
 
-        for (let i = 0; i < repeat; i++) {
-            if (delay !== undefined && i !== 0) {
-                await tool.wait(delay);
-            }
-
-            const node = await prepare();
-            node.dispatchEvent(event);
-        }
+        node.dispatchEvent(event);
     },
 
     async tap(node) {
         node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     },
 
-    async scroll(selector, options = {}) {
-        const { visible, text } = options;
-        const node = await waitElement(selector, { visible, text });
-
-        node.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    async scroll(node, options = {}) {
+        const { behavior = "smooth", block = "center", inline = "center" } = options;
+        node.scrollIntoView({ behavior, block, inline });
     },
 
-    async remove(selector, options = {}) {
-        const { visible, text, css } = options;
-        const node = await waitElement(selector, { visible, text, css });
+    async remove(node) {
         node.remove();
+    },
+
+    async style(node, options = {}) {
+        const { styles } = options;
+
+        const randStr = Math.random().toString(36).slice(2);
+        node.setAttribute(randStr, "");
+
+        const sheet = new CSSStyleSheet();
+        for (const [key, value] of Object.entries(styles)) {
+            sheet.insertRule(`[${randStr}] { ${key}: ${value}; }`);
+        }
+
+        document.adoptedStyleSheets.push(sheet);
     },
 
     async request(url, options = {}) {
@@ -174,23 +170,39 @@ const tool = {
                 responseType: options.responseType || "text",
                 timeout: options.timeout,
                 data: options.data,
-                onload: (response) => resolve(response),
-                onerror: (error) => reject(error),
-                ontimeout: (error) => reject(error),
-                onabort: (error) => reject(error),
+                onload: resolve,
+                onerror: reject,
+                ontimeout: reject,
+                onabort: reject,
             });
         });
     },
 };
 
+const tool = new Proxy(actions, {
+    get(target, name) {
+        const action = target[name];
+        const isAction = typeof action !== "function";
+        const isDirect = ["request", "wait"].includes(name);
+
+        if (isAction || isDirect) {
+            return action;
+        }
+
+        return (selector, options = {}) => {
+            return executeAction(selector, options, action);
+        };
+    },
+});
+
 const patch = {
     timer(options = {}) {
-        const { factor = CONFIG.PATCH_TIMER_FACTOR, text, ms } = options;
+        const { factor = CONFIG.DEFAULT_TIMER_FACTOR, text, ms } = options;
 
-        const startTime = hook.Date.now();
+        const startTime = Date.now();
 
         const now = () => {
-            const realElapsed = hook.Date.now() - startTime;
+            const realElapsed = Date.now() - startTime;
             const divisor = factor === 0 ? 0.001 : factor;
             const virtualElapsed = realElapsed / divisor;
             return startTime + virtualElapsed;
@@ -218,17 +230,17 @@ const patch = {
         w.setTimeout = new Proxy(w.setTimeout, { apply: callback });
 
         w.Date = new Proxy(w.Date, {
-            construct(target, arguments_) {
-                if (arguments_.length === 0) {
+            construct(target, argArray) {
+                if (argArray.length === 0) {
                     return new target(now());
                 }
-                return new target(...arguments_);
+                return new target(...argArray);
             },
-            apply(target, thisArgument, arguments_) {
-                if (arguments_.length === 0) {
+            apply(target, thisArgument, argArray) {
+                if (argArray.length === 0) {
                     return new target(now()).toString();
                 }
-                return new target(...arguments_).toString();
+                return new target(...argArray).toString();
             },
             get(target, property, receiver) {
                 if (property === "now") {
@@ -238,26 +250,60 @@ const patch = {
             },
         });
     },
+
+    define(owner, property, { get, set }) {
+        const descriptor = Object.getOwnPropertyDescriptor(owner, property);
+        if (!descriptor) return;
+
+        let value;
+
+        const setter = (thisArg, v) => {
+            if (descriptor.set) descriptor.set.call(thisArg, v);
+            value = v;
+        };
+        const getter = (thisArg) => {
+            if (descriptor.get) return descriptor.get.call(thisArg);
+            return value;
+        };
+
+        Object.defineProperty(owner, property, {
+            configurable: true,
+            enumerable: true,
+            get() {
+                if (get) return get.call(this, () => getter(this));
+                if (descriptor.get) return descriptor.get.call(this);
+                return value;
+            },
+            set(v) {
+                if (set) set.call(this, v, (outV) => setter(this, outV));
+                if (descriptor.set) descriptor.set.call(this, v);
+                value = v;
+            },
+        });
+    },
+
+    apply(owner, property, applyFn) {
+        owner[property] = new Proxy(owner[property], {
+            apply: applyFn,
+        });
+    },
 };
 
 const TEMPLATES = {
     TPI_OII: () => {
+        patch.define(w, "onblur", { set() { } });
+
         tool.click("#continue:not([disabled])");
         tool.click(".get-link[href]:not(.disabled)");
 
-        justDefine(w.Element.prototype, "innerHTML", {
-            set(v) {
-                if (typeof v === "string" && v.includes("antiadblock")) return;
-                return v;
-            },
-        });
+        patch.define(w.Element.prototype, "innerHTML", { set(v) { return typeof v === "string" && v.includes("antiadblock") ? "" : v; } });
     },
     PAHE_HOSTING: () => {
         patch.timer();
 
         tool.remove("div", { css: { position: "fixed" }, text: "detected" });
         tool.click("#startButton");
-        tool.click("a[href='#getmylink']", { visible: true });
+        tool.click("a[href='#getmylink']");
         tool.click("#getnewlink");
     },
     OUO: () => {
@@ -302,72 +348,97 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        const handleFetch = async (owner) => {
+        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
+
+        const patchAttachShadow = async (owner) => {
+            owner.Element.prototype.attachShadow = new Proxy(owner.Element.prototype.attachShadow, {
+                apply(target, thisArg, argArray) {
+                    const shadowRoot = Reflect.apply(target, thisArg, argArray);
+                    shadowRoot.insertAdjacentHTML("beforeend", "<style>* { display: none !important; }</style>");
+                    return shadowRoot;
+                },
+            });
+        };
+        const patchFetch = async (owner) => {
             owner.fetch = new Proxy(owner.fetch, {
                 async apply(target, thisArg, argArray) {
-                    const req = await Reflect.apply(target, thisArg, argArray);
-                    if (req.type === "basic" || req.type === "cors") {
-                        const clone = req.clone();
-                        const body = await clone.json();
-                        console.log("Intercelestial.com response", body);
-                        if (body.ok) tool.click(".myButton", { visible: true, scroll: true, repeat: 2 });
+                    const url = String(typeof argArray[0] === "string" ? argArray[0] : argArray[0]?.url || "");
+                    if (AD.some(h => url.includes(h))) {
+                        try { await Reflect.apply(target, thisArg, argArray); } catch { }
+                        return Object.create(null);
                     }
-                    return req;
+
+                    const res = await Reflect.apply(target, thisArg, argArray);
+                    const isJson = res.headers.get("content-type")?.includes("json");
+
+                    if (isJson && (res.type === "basic" || res.type === "cors")) {
+                        res.clone().json()
+                            .then(body => {
+                                console.log("JSON", body);
+                                if (body.ok) tool.click(".myButton", { visible: true, scroll: true, repeat: 2 });
+                            })
+                            .catch(() => { });
+                    }
+                    return res;
                 },
             });
         };
 
-        let tlmUltimo;
-        Object.defineProperty(w, "__tlm", {
-            configurable: true,
-            get() {
-                return tlmUltimo;
-            },
-            set(v) {
-                tlmUltimo = v;
-                try {
-                    if (v && Array.isArray(v.fired)) {
-                        v.fired.length = 0;
-                    }
-                } catch { }
-            },
+        patchFetch(w);
+        patchAttachShadow(w);
+
+        patch.apply(w.Node.prototype, "appendChild", (target, thisArg, argArray) => {
+            const result = Reflect.apply(target, thisArg, argArray);
+            const node = argArray[0];
+            if (node.tagName === "IFRAME") {
+                patchFetch(node.contentWindow);
+            }
+            return result;
         });
 
-        handleFetch(w);
+        w.EventTarget.prototype.addEventListener = new Proxy(w.EventTarget.prototype.addEventListener, {
+            apply(target, thisArg, argArray) {
+                const listener = argArray[1];
+                const wrapper = (event) => {
+                    const proxy = new Proxy(event, {
+                        get(innerTarget, property, receiver) {
+                            // console.log("Event", property);
+                            if (property === "isTrusted") return true;
+                            return Reflect.get(innerTarget, property, innerTarget);
+                        },
+                        getOwnPropertyDescriptor(innerTarget, property) {
+                            // console.log("Event.getOwnPropertyDescriptor", property);
+                            if (property === "isTrusted") return { get: () => true };
+                            return Reflect.getOwnPropertyDescriptor(innerTarget, property);
+                        },
+                    });
 
-        const nativeContentWindow = Object.getOwnPropertyDescriptor(w.HTMLIFrameElement.prototype, "contentWindow");
-        Object.defineProperty(w.HTMLIFrameElement.prototype, "contentWindow", {
-            get() {
-                const win = nativeContentWindow.get.call(this);
-                handleFetch(win);
-                return win;
-            },
-        });
-
-
-        const nativeContentDocument = Object.getOwnPropertyDescriptor(w.HTMLIFrameElement.prototype, "contentDocument");
-        Object.defineProperty(w.HTMLIFrameElement.prototype, "contentDocument", {
-            get() {
-                const doc = nativeContentDocument.get.call(this);
-                const win = doc.defaultView;
-                handleFetch(win);
-                return win;
+                    listener(proxy);
+                };
+                argArray[1] = wrapper;
+                return Reflect.apply(target, thisArg, argArray);
             },
         });
 
-        justDefine(w.Element.prototype, "innerHTML", {
-            set(v) {
-                if (typeof v === "string" && v.includes("antiadblock")) return;
-                return v;
-            },
-        });
+        // patch.apply(w.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
+        //     const listener = argArray[1];
+        //     const wrapper = (event) => {
+        //         const proxy = new Proxy(event, {
+        //             get(innerTarget, property, receiver) {
+        //                 console.log("Event", property);
+        //                 if (property === "isTrusted") return true;
+        //                 return Reflect.get(innerTarget, property, innerTarget);
+        //             },
+        //         });
 
-        justDefine(w, "open", {
-            get() { return () => ({ closed: false, close() { }, focus() { }, postMessage() { } }); },
-            set(_v) { },
-        });
+        //         listener(proxy);
+        //     };
+        //     argArray[1] = wrapper;
+        //     return Reflect.apply(target, thisArg, argArray);
+        // });
 
-        tool.click(".myButton", { visible: true, scroll: true, repeat: 1 });
+        tool.style("body > div:has(a[href*='antiadblock'])", { styles: { display: "none !important" } });
+        tool.click(".myButton", { visible: true, scroll: true });
     },
     "pahe.plus": () => {
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
@@ -434,15 +505,18 @@ const DOMAINS = {
         location.assign(link.href);
     },
     "exeygo.com": async () => {
-        tool.click(`button[type="submit"]`);
+        tool.click(".link-button:not(.disabled)");
+        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
     },
     "fc-lc.xyz": async () => {
         tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
         tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
     },
     "jobzhub.store": async () => {
-        tool.click("#next");
-        tool.click("#scroll");
+        tool.click("#next", { visible: true });
+        tool.click("#scroll", { visible: true });
+        tool.click("#glink", { visible: true });
+        tool.click(`:has([name="cf-turnstile-response"][value]) #surl`);
     },
     "aii.sh": async () => {
         tool.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
@@ -455,20 +529,15 @@ const DOMAINS = {
         mouseMove(120_000);
     },
     "aknewz.xyz": async () => {
-        // patch.timer();
-
         tool.click(`:has([name="cf-turnstile-response"][value]) #surl`);
 
         tool.click("#next");
         await tool.click("#scroll:not(.hidden)");
         tool.click("#scroll:not(.hidden)");
     },
-};
-
-const hook = {
-    setTimeout: w.setTimeout.bind(w),
-    setInterval: w.setInterval.bind(w),
-    Date: w.Date,
+    "toolskitpro.net": async () => {
+        tool.remove("div", { css: { position: "fixed" } });
+    },
 };
 
 async function main() {
@@ -476,6 +545,14 @@ async function main() {
     const handler = DOMAINS[hostname];
     if (!handler) return;
 
+    checkCache(hostname, href, pathname, search);
+    listenerNavigation();
+    handler();
+}
+// eslint-disable-next-line unicorn/prefer-top-level-await -- userscript
+main();
+
+async function checkCache(hostname, href, pathname, search) {
     const pattern = CONFIG.SHORTLINK_PATTERNS[hostname];
     console.log("Pattern", hostname, ">", pattern?.toString());
     if (pattern?.test(href)) w.sessionStorage.setItem(CONFIG.TOKEN_URL_KEY, href);
@@ -497,30 +574,39 @@ async function main() {
 
         console.log("Bypass not found");
     }
-
-    listenerNavigation();
-    handler();
 }
-// eslint-disable-next-line unicorn/prefer-top-level-await -- userscript
-main();
 
-function justDefine(owner, property, { get, set }) {
-    const descriptor = Object.getOwnPropertyDescriptor(owner, property);
-    Object.defineProperty(owner, property, {
-        configurable: true,
-        enumerable: true,
-        get() {
-            if (get) return get.call(this, descriptor.get.bind(this));
-            return descriptor.get.call(this);
-        },
-        set(v) {
-            if (set) {
-                const result = set.call(this, v, descriptor.set.bind(this));
-                if (result !== undefined) descriptor.set.call(this, result);
-                return;
-            }
-            descriptor.set.call(this, v);
-        },
+function executeAction(selector, options, action) {
+    let remaining = options.repeat ?? 1;
+
+    const fn = async () => {
+        const nodes = document.querySelectorAll(selector);
+
+        for (const node of nodes) {
+            if (!resolveNode(node, options)) continue;
+
+            if (--remaining <= 0) state.callbacks.delete(fn);
+
+            await action(node, options);
+        }
+    };
+
+    state.callbacks.add(fn);
+    ensureObserver();
+    fn();
+}
+
+function ensureObserver() {
+    if (state.observer) return;
+
+    state.observer = new MutationObserver(() => {
+        for (const callback of state.callbacks) callback();
+    });
+
+    state.observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
     });
 }
 
@@ -536,10 +622,10 @@ function waitElement(selector, options = {}) {
                 return;
             }
 
-            safeSetTimeout(check, 250);
+            setTimeout(check, 250);
         };
 
-        safeSetTimeout(check, 250);
+        setTimeout(check, 250);
     });
 }
 
@@ -553,7 +639,6 @@ function resolveNode(node, options = {}) {
     if (text instanceof RegExp && !text.test(node.textContent)) return;
     if (css) {
         const style = getComputedStyle(node);
-        console.log("Style", node, style);
         for (const [key, value] of Object.entries(css)) {
             if (style[key] !== value) return;
         }
@@ -600,26 +685,6 @@ function mouseMove(duration = 1000) {
     };
 
     requestAnimationFrame(animate);
-}
-
-function safeSetTimeout(callback, delay) {
-    const startTime = hook.Date.now();
-    let timeoutId;
-
-    const check = () => {
-        const elapsed = hook.Date.now() - startTime;
-        if (elapsed >= delay) {
-            callback();
-        } else {
-            timeoutId = hook.setTimeout(check, delay - elapsed);
-        }
-    };
-
-    timeoutId = hook.setTimeout(check, delay);
-
-    return () => {
-        hook.clearTimeout(timeoutId);
-    };
 }
 
 function isFinalHost(hostname) {
