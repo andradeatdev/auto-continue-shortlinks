@@ -378,7 +378,11 @@ const DOMAINS = {
                 async apply(target, thisArg, argArray) {
                     const url = String(typeof argArray[0] === "string" ? argArray[0] : argArray[0]?.url || "");
                     if (AD.some(h => url.includes(h))) {
-                        try { await Reflect.apply(target, thisArg, argArray); } catch { }
+                        try {
+                            await Reflect.apply(target, thisArg, argArray);
+                        } catch {
+                            console.error("Error on fetch", url);
+                        }
                         return Object.create(null);
                     }
 
