@@ -25,6 +25,10 @@ export default defineConfig([
       "unicorn/empty-brace-spaces": "off",
       "unicorn/no-this-outside-of-class": "off",
       "unicorn/name-replacements": "off",
+      "unicorn/consistent-function-scoping": "off",
+      "unicorn/prefer-await": "off",
+
+      "sonarjs/pseudo-random": "off",
 
       "@stylistic/semi": ["warn", "always"],
       "@stylistic/comma-dangle": ["warn", "always-multiline"],
