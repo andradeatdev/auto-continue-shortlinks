@@ -32,6 +32,7 @@ The full list of hosts supported by `src/script.user.js` (**v0.0.27**).
 | intercelestial.com | — |
 | jobzhub.store | — |
 | linegee.net | — |
+| loanbixby.com | ✅ |
 | modsfire.com | ✅ |
 | oii.io | — |
 | oii.la | — |

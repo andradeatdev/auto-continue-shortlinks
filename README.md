@@ -8,7 +8,7 @@
 [![Greasy Fork installs](https://img.shields.io/greasyfork/dt/593212?style=flat-square&label=installs)](https://greasyfork.org/scripts/593212)
 [![Greasy Fork rating](https://img.shields.io/greasyfork/rating-count/593212?style=flat-square&label=rating)](https://greasyfork.org/scripts/593212)
 [![Userscript managers](https://img.shields.io/badge/managers-Violentmonkey%20%7C%20Tampermonkey-00485B?style=flat-square)](https://violentmonkey.github.io/)
-[![Supported hosts](https://img.shields.io/badge/hosts-33%20supported-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.md)
+[![Supported hosts](https://img.shields.io/badge/hosts-49%20supported-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.md)
 
 This script automates shortlinks on pahe.ink and other sites that use the same hosts. More hosts will be added over time.
 
