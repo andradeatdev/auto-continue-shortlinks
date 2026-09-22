@@ -438,35 +438,42 @@ const DOMAINS = {
         tool.style("body > div:has(a[href*='antiadblock'])", { styles: { display: "none !important" } });
         tool.click(".myButton", { visible: true, scroll: true });
 
-        w.Promise.all = new Proxy(w.Promise.all, {
-            apply(target, thisArg, argArray) {
-                console.log("Promise all", argArray);
+        const patchLegHits = (owner) => {
+            const LEG = /\/pagead\/conversion\.js(?:\?|$)|\/ads\/banners\/[0-9a-f]+\.gif(?:\?|$)/;
 
-                const result = Reflect.apply(target, thisArg, argArray);
+            const hijack = (proto, dest) => {
+                const desc = Object.getOwnPropertyDescriptor(proto, "src");
+                Object.defineProperty(proto, "src", {
+                    configurable: true,
+                    enumerable: desc.enumerable,
+                    get() { return desc.get.call(this); },
+                    set(value) {
+                        const url = String(value);
+                        if (!LEG.test(url)) {
+                            desc.set.call(this, value);
+                            return;
+                        }
 
-                console.log("Promise all result", result);
-                return [];
-            },
-        });
+                        tool.request(url, {
+                            headers: {
+                                "Referer": `${location.origin}/`,
+                                "Sec-Fetch-Dest": dest,
+                                "Sec-Fetch-Mode": "no-cors",
+                                "Sec-Fetch-Site": "same-origin",
+                            },
+                        })
+                            .then(() => this.dispatchEvent(new Event("load")));
+                    },
+                });
+            };
 
-        Object.defineProperty(w.HTMLScriptElement.prototype, "onerror", {
-            get() {
-                return () => { };
-            },
-            set(v) {
-                console.log("Script error", this);
-                this.dispatchEvent(new Event("load"));
-            },
-        });
+            hijack(owner.HTMLScriptElement.prototype, "script");
+            hijack(owner.HTMLImageElement.prototype, "image");
+        };
+        patchLegHits(w);
 
-        Object.defineProperty(w.HTMLImageElement.prototype, "onerror", {
-            get() {
-                return () => { };
-            },
-            set(v) {
-                console.log("Script error", this);
-                this.dispatchEvent(new Event("load"));
-            },
+        patch.apply(w.Promise, "all", () => {
+            return [];
         });
     },
     "pahe.plus": () => {
