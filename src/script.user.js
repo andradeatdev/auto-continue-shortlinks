@@ -72,7 +72,9 @@
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // @grant              GM_xmlhttpRequest
 // @grant              unsafeWindow
+// 
 // @connect            shortlinks.fdyzen.workers.dev
+// @connect            intercelestial.com
 //
 // @license            GPL-3.0
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
