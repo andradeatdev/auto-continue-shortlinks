@@ -11,8 +11,6 @@
 // @match              https://srnky.com/*
 // @match              https://clksz.com/*
 //
-// @match              https://ssdhostting.com/*
-// @match              https://selfhostt.com/*
 // @match              https://financeehelp.com/*
 // @match              https://cloudhostt.com/*
 // @match              https://linegee.net/*
