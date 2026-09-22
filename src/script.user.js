@@ -16,6 +16,7 @@
 // @match              https://linegee.net/*
 // @match              https://financeguidz.com/*
 // @match              https://techbixby.com/*
+// @match              https://loanbixby.com/*
 //
 // @match              https://intercelestial.com/*
 // @match              https://pahe.plus/*
@@ -343,6 +344,7 @@ const DOMAINS = {
     "cloudhostt.com": TEMPLATES.PAHE_HOSTING,
     "financeguidz.com": TEMPLATES.PAHE_HOSTING,
     "techbixby.com": TEMPLATES.PAHE_HOSTING,
+    "loanbixby.com": TEMPLATES.PAHE_HOSTING,
     "linegee.net": async () => {
         const script = await waitElement("script:not([src])", { text: "atob(" });
         const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
