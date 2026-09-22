@@ -48,13 +48,23 @@
 // 
 // From: Others
 // @match              https://cloud.unblockedgames.world/*
-// @match              https://exeygo.com/*
 // @match              https://fc-lc.xyz/*
 // @match              https://jobzhub.store/*
 // @match              https://aii.sh/*
 // @match              https://oii.io/*
 // @match              https://aknewz.xyz/*
 // @match              https://toolskitpro.net/*
+// 
+// @match              https://exeygo.com/*
+// @match              https://cuttty.com/*
+// @match              https://cety.app/*
+// @match              https://cutlink.net/*
+// @match              https://cutnet.net/*
+// @match              https://cuttlinks.com/*
+// @match              https://exe-links.com/*
+// @match              https://exe-urls.com/*
+// @match              https://exego.app/*
+// @match              https://exnion.com/*
 // 
 // Hosting
 // @match              https://send.now/*
@@ -320,6 +330,10 @@ const TEMPLATES = {
         tool.click("#gdlf[style*='block']");
         tool.scroll("#dln");
     },
+    EXE_IO: async () => {
+        tool.click(".link-button:not(.disabled)");
+        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+    },
 };
 
 const DOMAINS = {
@@ -519,10 +533,16 @@ const DOMAINS = {
         const link = await waitElement("#two_steps_btn[href]");
         location.assign(link.href);
     },
-    "exeygo.com": async () => {
-        tool.click(".link-button:not(.disabled)");
-        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
-    },
+    "exeygo.com": TEMPLATES.EXE_IO,
+    "cuttty.com": TEMPLATES.EXE_IO,
+    "cety.app": TEMPLATES.EXE_IO,
+    "cutlink.net": TEMPLATES.EXE_IO,
+    "cutnet.net": TEMPLATES.EXE_IO,
+    "cuttlinks.com": TEMPLATES.EXE_IO,
+    "exe-links.com": TEMPLATES.EXE_IO,
+    "exe-urls.com": TEMPLATES.EXE_IO,
+    "exego.app": TEMPLATES.EXE_IO,
+    "exnion.com": TEMPLATES.EXE_IO,
     "fc-lc.xyz": async () => {
         tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
         tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
