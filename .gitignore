@@ -40,3 +40,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Specific files
 TESTS.md
+
+# Agent instructions (local only)
+AGENTS.md
+INTERCELESTIAL-FOUNDS.md
