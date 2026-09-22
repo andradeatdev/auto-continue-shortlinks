@@ -6,9 +6,9 @@
 [![Licença](https://img.shields.io/github/license/andradeatdev/auto-continue-shortlinks?style=flat-square&logo=gnu)](LICENSE)
 [![Versão](https://img.shields.io/greasyfork/v/593212?style=flat-square&label=vers%C3%A3o)](https://greasyfork.org/scripts/593212)
 [![Instalações](https://img.shields.io/greasyfork/dt/593212?style=flat-square&label=instala%C3%A7%C3%B5es)](https://greasyfork.org/scripts/593212)
-[![Avaliação](https://img.shields.io/greasyfork/r/593212?style=flat-square&label=avalia%C3%A7%C3%A3o)](https://greasyfork.org/scripts/593212)
+[![Avaliação](https://img.shields.io/greasyfork/rating-count/593212?style=flat-square&label=avalia%C3%A7%C3%A3o)](https://greasyfork.org/scripts/593212)
 [![Gerenciadores](https://img.shields.io/badge/gerenciadores-Violentmonkey%20%7C%20Tampermonkey-00485B?style=flat-square)](https://violentmonkey.github.io/)
-[![Hosts suportados](https://img.shields.io/badge/hosts-16%20suportados-2EA44F?style=flat-square)](HOSTS.md)
+[![Hosts suportados](https://img.shields.io/badge/hosts-33%20suportados-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.md)
 
 Este script automatiza shortlinks no pahe.ink e em outros sites que usam os mesmos hosts. Mais hosts serão adicionados com o tempo.
 
