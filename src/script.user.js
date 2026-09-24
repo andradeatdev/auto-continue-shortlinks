@@ -53,6 +53,7 @@
 // @match              https://oii.io/*
 // @match              https://aknewz.xyz/*
 // @match              https://toolskitpro.net/*
+// @match              https://icutlink.com/*
 // 
 // @match              https://exeygo.com/*
 // @match              https://cuttty.com/*
@@ -222,20 +223,14 @@ const patch = {
         };
 
         const callback = (target, thisArg, argArray) => {
-            if (typeof argArray[1] !== "number") {
-                return Reflect.apply(target, thisArg, argArray);
+            const isDelayValid = typeof argArray[1] === "number";
+            const isTextMatch = !text || argArray[0]?.toString().includes(text);
+            const isMsMatch = ms === undefined || ms === argArray[1];
+
+            if (isDelayValid && isTextMatch && isMsMatch) {
+                argArray[1] *= factor;
             }
 
-            const fn = argArray[0]?.toString();
-            if (text && !fn.includes(text)) {
-                return Reflect.apply(target, thisArg, argArray);
-            }
-
-            if (ms != undefined && ms === argArray[1]) {
-                return Reflect.apply(target, thisArg, argArray);
-            }
-
-            argArray[1] *= factor;
             return Reflect.apply(target, thisArg, argArray);
         };
 
@@ -316,8 +311,8 @@ const TEMPLATES = {
 
         tool.remove("div", { css: { position: "fixed" }, text: "detected" });
         tool.click("#startButton");
-        tool.click("a[href='#getmylink']");
-        tool.click("#getnewlink");
+        // tool.click("a[href='#getmylink']");
+        // tool.click("#getnewlink");
     },
     OUO: () => {
         patch.timer();
@@ -396,7 +391,7 @@ const DOMAINS = {
                     if (isJson && (res.type === "basic" || res.type === "cors")) {
                         res.clone().json()
                             .then(body => {
-                                if (body.ok) tool.click(".myButton", { visible: true, scroll: true, repeat: 2 });
+                                if (body.ok) tool.click(".myButton", { visible: true, scroll: true, loops: 2 });
                             })
                             .catch(() => { });
                     }
@@ -444,39 +439,35 @@ const DOMAINS = {
         tool.style("body > div:has(a[href*='antiadblock'])", { styles: { display: "none !important" } });
         tool.click(".myButton", { visible: true, scroll: true });
 
-        const patchLegHits = (owner) => {
-            const LEG = /\/pagead\/conversion\.js(?:\?|$)|\/ads\/banners\/[0-9a-f]+\.gif(?:\?|$)/;
+        w.Element.prototype.setAttribute = new Proxy(w.Element.prototype.setAttribute, {
+            apply(target, thisArg, argArray) {
+                const [name, value] = argArray;
 
-            const hijack = (proto, dest) => {
-                const desc = Object.getOwnPropertyDescriptor(proto, "src");
-                Object.defineProperty(proto, "src", {
-                    configurable: true,
-                    enumerable: desc.enumerable,
-                    get() { return desc.get.call(this); },
-                    set(value) {
-                        const url = String(value);
-                        if (!LEG.test(url)) {
-                            desc.set.call(this, value);
-                            return;
-                        }
-
-                        tool.request(url, {
-                            headers: {
-                                "Referer": `${location.origin}/`,
-                                "Sec-Fetch-Dest": dest,
-                                "Sec-Fetch-Mode": "no-cors",
-                                "Sec-Fetch-Site": "same-origin",
-                            },
+                if (name === "src" && /ads|pagead/.test(value)) {
+                    tool.request(value, {
+                        headers: {
+                            "Referer": `${location.origin}/`,
+                            "Sec-Fetch-Dest": thisArg.tagName === "SCRIPT" ? "script" : "image",
+                            "Sec-Fetch-Mode": "no-cors",
+                            "Sec-Fetch-Site": "same-origin",
+                        },
+                        responseType: "blob",
+                    })
+                        .then(() => {
+                            Reflect.apply(target, thisArg, [name, value]);
+                            if (thisArg.tagName === "IMG") {
+                                Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
+                            }
+                            thisArg.dispatchEvent(new Event("load"));
                         })
-                            .then(() => this.dispatchEvent(new Event("load")));
-                    },
-                });
-            };
+                        .catch(() => thisArg.dispatchEvent(new Event("error")));
 
-            hijack(owner.HTMLScriptElement.prototype, "script");
-            hijack(owner.HTMLImageElement.prototype, "image");
-        };
-        patchLegHits(w);
+                    return;
+                }
+
+                return Reflect.apply(target, thisArg, argArray);
+            },
+        });
 
         patch.apply(w.Promise, "all", () => {
             return [];
@@ -585,6 +576,12 @@ const DOMAINS = {
     },
     "toolskitpro.net": async () => {
         tool.remove("div", { css: { position: "fixed" } });
+        tool.click(".show #afterBtn");
+        tool.click("#nxt");
+        tool.click("#getl");
+    },
+    "icutlink.com": async () => {
+        tool.click(".get-link:not(.disabled)");
     },
 };
 
@@ -625,17 +622,33 @@ async function checkCache(hostname, href, pathname, search) {
 }
 
 function executeAction(selector, options, action) {
-    let remaining = options.repeat ?? 1;
+    const { repeat = Infinity, loops = 1 } = options;
+    let remaining = repeat;
+    let loop = 0;
 
     const fn = async () => {
         const nodes = document.querySelectorAll(selector);
+        const promises = [];
 
         for (const node of nodes) {
             if (!resolveNode(node, options)) continue;
+            if (remaining <= 0) break;
 
-            if (--remaining <= 0) state.callbacks.delete(fn);
+            remaining--;
+            promises.push(action(node, options));
 
-            await action(node, options);
+            if (remaining === 0) {
+                state.callbacks.delete(fn);
+                break;
+            }
+        }
+
+        if (promises.length > 0) loop++;
+
+        await Promise.allSettled(promises);
+
+        if (loop >= loops) {
+            state.callbacks.delete(fn);
         }
     };
 
@@ -647,8 +660,14 @@ function executeAction(selector, options, action) {
 function ensureObserver() {
     if (state.observer) return;
 
+    let isScheduled = false;
     state.observer = new MutationObserver(() => {
-        for (const callback of state.callbacks) callback();
+        if (isScheduled) return;
+        isScheduled = true;
+        requestAnimationFrame(() => {
+            isScheduled = false;
+            for (const callback of state.callbacks) callback();
+        });
     });
 
     state.observer.observe(document.documentElement, {
@@ -682,7 +701,7 @@ function resolveNode(node, options = {}) {
 
     const { visible, text, css } = options;
 
-    if (visible && !node.offsetParent) return;
+    if (visible && !node.checkVisibility({ visibilityProperty: true })) return;
     if (typeof text === "string" && !node.textContent.includes(text)) return;
     if (text instanceof RegExp && !text.test(node.textContent)) return;
     if (css) {
