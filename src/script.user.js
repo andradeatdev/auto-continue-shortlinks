@@ -65,6 +65,7 @@
 // @match              https://exe-urls.com/*
 // @match              https://exego.app/*
 // @match              https://exnion.com/*
+// @match              https://lnbz.la/*
 // 
 // Hosting
 // @match              https://send.now/*
@@ -80,8 +81,6 @@
 // @license            GPL-3.0
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
 // ==/UserScript==
-
-// console.log("Intercelestial", document.documentElement.outerHTML);
 
 const w = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 
@@ -311,13 +310,14 @@ const TEMPLATES = {
 
         tool.remove("div", { css: { position: "fixed" }, text: "detected" });
         tool.click("#startButton");
-        // tool.click("a[href='#getmylink']");
-        // tool.click("#getnewlink");
+        tool.click("a[href='#getmylink']");
+        tool.click("#getnewlink");
     },
-    OUO: () => {
+    OUO: async () => {
         patch.timer();
 
         tool.click("#btn-main:not(.disabled)");
+        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
     },
     DEVUPLOADS: () => {
         patch.timer();
@@ -555,7 +555,7 @@ const DOMAINS = {
         tool.click("#next", { visible: true });
         tool.click("#scroll", { visible: true });
         tool.click("#glink", { visible: true });
-        tool.click(`:has([name="cf-turnstile-response"][value]) #surl`);
+        tool.click(`:has([name="cf-turnstile-response"][value]) #surl:not(.disabled)`);
     },
     "aii.sh": async () => {
         tool.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
@@ -582,6 +582,19 @@ const DOMAINS = {
     },
     "icutlink.com": async () => {
         tool.click(".get-link:not(.disabled)");
+    },
+    "lnbz.la": async () => {
+        const patchAttachShadow = async (owner) => {
+            owner.Element.prototype.attachShadow = new Proxy(owner.Element.prototype.attachShadow, {
+                apply(target, thisArg, argArray) {
+                    const shadowRoot = Reflect.apply(target, thisArg, argArray);
+                    shadowRoot.insertAdjacentHTML("beforeend", "<style>* { display: none !important; }</style>");
+                    return shadowRoot;
+                },
+            });
+        };
+
+        patchAttachShadow(w);
     },
 };
 
@@ -626,35 +639,38 @@ function executeAction(selector, options, action) {
     let remaining = repeat;
     let loop = 0;
 
-    const fn = async () => {
-        const nodes = document.querySelectorAll(selector);
-        const promises = [];
+    return new Promise(resolve => {
+        const fn = async () => {
+            const nodes = document.querySelectorAll(selector);
+            const promises = [];
 
-        for (const node of nodes) {
-            if (!resolveNode(node, options)) continue;
-            if (remaining <= 0) break;
+            for (const node of nodes) {
+                if (!resolveNode(node, options)) continue;
+                if (remaining <= 0) break;
 
-            remaining--;
-            promises.push(action(node, options));
+                remaining--;
+                promises.push(action(node, options));
 
-            if (remaining === 0) {
-                state.callbacks.delete(fn);
-                break;
+                if (remaining === 0) {
+                    state.callbacks.delete(fn);
+                    break;
+                }
             }
-        }
 
-        if (promises.length > 0) loop++;
+            if (promises.length > 0) loop++;
 
-        await Promise.allSettled(promises);
+            await Promise.allSettled(promises);
 
-        if (loop >= loops) {
-            state.callbacks.delete(fn);
-        }
-    };
+            if (loop >= loops) {
+                state.callbacks.delete(fn);
+                resolve();
+            }
+        };
 
-    state.callbacks.add(fn);
-    ensureObserver();
-    fn();
+        state.callbacks.add(fn);
+        ensureObserver();
+        fn();
+    });
 }
 
 function ensureObserver() {
