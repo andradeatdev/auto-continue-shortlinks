@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.31
+// @version            0.0.32
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -304,30 +304,7 @@ const TEMPLATES = {
         tool.click("#continue:not([disabled])");
         tool.click(".get-link[href]:not(.disabled)");
 
-        tool.style("*", { styles: { display: "none !important" }, text: "adblocker" });
-
-        const patchAttachShadow = async (owner) => {
-            owner.Element.prototype.attachShadow = new Proxy(owner.Element.prototype.attachShadow, {
-                apply(target, thisArg, argArray) {
-                    console.log("Attach shadow", argArray);
-                    if (typeof argArray[0] === "object" && argArray[0].mode === "closed") {
-                        argArray[0].mode = "open";
-                    }
-                    const shadowRoot = Reflect.apply(target, thisArg, argArray);
-                    return shadowRoot;
-                },
-            });
-        };
-        patchAttachShadow(w);
-
-        patch.apply(w.Node.prototype, "appendChild", (target, thisArg, argArray) => {
-            const result = Reflect.apply(target, thisArg, argArray);
-            const node = argArray[0];
-            if (node.tagName === "IFRAME" && node.contentWindow) {
-                patchAttachShadow(node.contentWindow);
-            }
-            return result;
-        });
+        tool.style("html > :not(head, body)", { styles: { display: "none !important" } });
 
         patch.define(w.Element.prototype, "innerHTML", { set(v) { return typeof v === "string" && v.includes("antiadblock") ? "" : v; } });
     },
