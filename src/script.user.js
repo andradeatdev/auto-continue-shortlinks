@@ -171,7 +171,8 @@ const actions = {
             sheet.insertRule(`[${randStr}] { ${key}: ${value}; }`);
         }
 
-        document.adoptedStyleSheets.push(sheet);
+        const doc = node.getRootNode();
+        doc.adoptedStyleSheets.push(sheet);
     },
 
     async request(url, options = {}) {
