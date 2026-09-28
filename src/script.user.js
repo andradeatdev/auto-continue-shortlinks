@@ -469,11 +469,18 @@ const DOMAINS = {
             apply(target, thisArg, argArray) {
                 const [name, value] = argArray;
 
-                if (name === "src" && /ads|pagead/.test(value)) {
+                if ((name === "src" || name === "href") && /ads|pagead|\d+x\d+/.test(value)) {
+                    const destMap = {
+                        IMG: "image",
+                        SCRIPT: "script",
+                        LINK: "style",
+                    };
+                    const dest = destMap[thisArg.tagName];
+
                     tool.request(value, {
                         headers: {
                             "Referer": `${location.origin}/`,
-                            "Sec-Fetch-Dest": thisArg.tagName === "SCRIPT" ? "script" : "image",
+                            "Sec-Fetch-Dest": dest,
                             "Sec-Fetch-Mode": "no-cors",
                             "Sec-Fetch-Site": "same-origin",
                         },
@@ -483,7 +490,10 @@ const DOMAINS = {
                             Reflect.apply(target, thisArg, [name, value]);
                             if (thisArg.tagName === "IMG") {
                                 Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
+                            } else if (thisArg.tagName === "LINK") {
+                                Object.defineProperty(thisArg, "sheet", { get: () => ({}), configurable: true });
                             }
+                            thisArg.onerror = null;
                             thisArg.dispatchEvent(new Event("load"));
                         })
                         .catch(() => thisArg.dispatchEvent(new Event("error")));
