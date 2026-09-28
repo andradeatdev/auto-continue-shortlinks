@@ -304,6 +304,31 @@ const TEMPLATES = {
         tool.click("#continue:not([disabled])");
         tool.click(".get-link[href]:not(.disabled)");
 
+        tool.style("*", { styles: { display: "none !important" }, text: "adblocker" });
+
+        const patchAttachShadow = async (owner) => {
+            owner.Element.prototype.attachShadow = new Proxy(owner.Element.prototype.attachShadow, {
+                apply(target, thisArg, argArray) {
+                    console.log("Attach shadow", argArray);
+                    if (typeof argArray[0] === "object" && argArray[0].mode === "closed") {
+                        argArray[0].mode = "open";
+                    }
+                    const shadowRoot = Reflect.apply(target, thisArg, argArray);
+                    return shadowRoot;
+                },
+            });
+        };
+        patchAttachShadow(w);
+
+        patch.apply(w.Node.prototype, "appendChild", (target, thisArg, argArray) => {
+            const result = Reflect.apply(target, thisArg, argArray);
+            const node = argArray[0];
+            if (node.tagName === "IFRAME" && node.contentWindow) {
+                patchAttachShadow(node.contentWindow);
+            }
+            return result;
+        });
+
         patch.define(w.Element.prototype, "innerHTML", { set(v) { return typeof v === "string" && v.includes("antiadblock") ? "" : v; } });
     },
     PAHE_HOSTING: () => {
