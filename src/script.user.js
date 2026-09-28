@@ -676,11 +676,15 @@ function executeAction(selector, options, action) {
     let loop = 0;
 
     return new Promise(resolve => {
-        const fn = async () => {
-            const nodes = document.querySelectorAll(selector);
+        const fn = async (doc = document) => {
+            const nodes = doc.querySelectorAll(selector);
             const promises = [];
 
             for (const node of nodes) {
+                if (node.shadowRoot) {
+                    fn(node.shadowRoot);
+                }
+
                 if (!resolveNode(node, options)) continue;
                 if (remaining <= 0) break;
 
