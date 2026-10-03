@@ -140,16 +140,14 @@ const actions = {
     async click(node, options = {}) {
         const { wait, scroll } = options;
 
-        console.log("Click", node, options);
+        if (wait !== undefined) await tool.wait(wait);
+        if (scroll) await actions.scroll(node, typeof scroll === "object" ? scroll : {});
 
         const event = new MouseEvent("click", {
             bubbles: true,
             cancelable: true,
             view: w,
         });
-
-        if (wait !== undefined) await tool.wait(wait);
-        if (scroll) await actions.scroll(node, typeof scroll === "object" ? scroll : {});
 
         node.dispatchEvent(event);
     },
