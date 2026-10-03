@@ -657,11 +657,10 @@ const DOMAINS = {
         tool.click(".btn-download:not(.disabled)");
     },
     "cloudfam.io": async () => {
-        tool.remove("#clean-upsell-modal");
-        tool.click("#btn-clean-continue[href]", { redirect: true });
-        tool.click("#cf-btn-free[href]", { redirect: true });
-        tool.click("#free-btn[href]", { redirect: true });
-        tool.click("#cf-dl-btn[href]", { redirect: true });
+        tool.redirect("#btn-clean-continue[href]");
+        tool.redirect("#cf-btn-free[href]");
+        tool.redirect("#free-btn[href]");
+        tool.redirect("#cf-dl-btn[href]");
     },
     "uiil.ink": async () => {
         tool.click("#form-continue [type='submit']");
