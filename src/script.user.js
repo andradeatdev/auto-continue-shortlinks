@@ -39,6 +39,8 @@
 // @match              https://uploady.io/*
 // @match              https://apkadmin.com/*
 // @match              https://www.up-4ever.net/*
+// @match              https://zdrive.to/*
+// @match              https://cloudfam.io/*
 // 
 // From: OvaGames
 // @match              https://shrinkme.click/*
@@ -54,6 +56,11 @@
 // @match              https://aknewz.xyz/*
 // @match              https://toolskitpro.net/*
 // @match              https://icutlink.com/*
+// @match              https://uiil.ink/*
+// 
+// @match              https://boost.ink/*
+// @match              https://bst.gg/*
+// @match              https://rekonise.com/*
 // 
 // @match              https://exeygo.com/*
 // @match              https://cuttty.com/*
@@ -333,6 +340,9 @@ const TEMPLATES = {
         tool.click(".link-button:not(.disabled)");
         tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
     },
+    BOOSTINK: async () => {
+        tool.redirect("script[src*='unlock.js']", { preprocess: ["base64"], attr: /[a-z]{5,}/ });
+    },
 };
 
 const DOMAINS = {
@@ -608,6 +618,35 @@ const DOMAINS = {
         };
 
         patchAttachShadow(w);
+    },
+    "zdrive.to": async () => {
+        tool.click("#freeBtn", { wait: 500 });
+        tool.click("#down_1Form button", { visible: true });
+        tool.click("#down_2Form button", { visible: true });
+        tool.click(".btn-download:not(.disabled)");
+    },
+    "cloudfam.io": async () => {
+        tool.remove("#clean-upsell-modal");
+        tool.click("#btn-clean-continue[href]", { redirect: true });
+        tool.click("#cf-btn-free[href]", { redirect: true });
+        tool.click("#free-btn[href]", { redirect: true });
+        tool.click("#cf-dl-btn[href]", { redirect: true });
+    },
+    "uiil.ink": async () => {
+        tool.click("#form-continue [type='submit']");
+        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+        tool.click(`#multiLinkBtn:not(.disabled)`);
+    },
+    "boost.ink": TEMPLATES.BOOSTINK,
+    "bst.gg": TEMPLATES.BOOSTINK,
+    "rekonise.com": async () => {
+        patch.apply(w, "open", (target, thisArg, argArray) => {
+            if (!document.querySelector(".all-done-row")) return;
+            location.assign(argArray[0]);
+        });
+
+        tool.click(".action-button:not([disabled])", { loops: Infinity });
+        tool.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
     },
 };
 
