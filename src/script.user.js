@@ -182,6 +182,34 @@ const actions = {
         doc.adoptedStyleSheets.push(sheet);
     },
 
+    async redirect(node, options = {}) {
+        const { attr = "href", preprocess } = options;
+
+        let sourceAttr = attr;
+        if (attr instanceof RegExp) {
+            const attrNames = node.getAttributeNames();
+            for (const name of attrNames) {
+                if (attr.test(name)) {
+                    sourceAttr = name;
+                    break;
+                }
+            }
+        }
+
+        let url = node.getAttribute(sourceAttr);
+        if (!url) return;
+
+        if (preprocess !== undefined && preprocess.length > 0) {
+            for (const pre of preprocess) {
+                if (pre === "base64") {
+                    url = atob(url);
+                }
+            }
+        }
+
+        location.assign(url);
+    },
+
     async request(url, options = {}) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
