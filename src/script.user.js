@@ -580,6 +580,11 @@ const DOMAINS = {
     "www.up-4ever.net": async () => {
         tool.remove("#u4ab_modal");
         tool.click(`button[name="method_free"]`);
+
+        tool.scroll("#downloadbtn");
+
+        tool.click(":has([name='cf-turnstile-response'][value]) [type='submit']:not([disabled])");
+        tool.click("#dl2btn");
     },
     "cloud.unblockedgames.world": async () => {
         tool.click("a[onclick]", { text: "Start Verification" });
