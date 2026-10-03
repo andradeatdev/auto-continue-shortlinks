@@ -769,7 +769,7 @@ function ensureObserver() {
     state.observer = new MutationObserver(() => {
         if (isScheduled) return;
         isScheduled = true;
-        requestAnimationFrame(() => {
+        queueMicrotask(() => {
             isScheduled = false;
             for (const callback of state.callbacks) callback();
         });
