@@ -29,6 +29,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .npm-cache
 *.tsbuildinfo
 
+# python
+__pycache__/
+*.pyc
+
 # IntelliJ based IDEs
 .idea
 
@@ -44,3 +48,9 @@ TESTS.md
 # Agent instructions (local only)
 AGENTS.md
 INTERCELESTIAL-FOUNDS.md
+
+# Tools
+tools/
+
+# Shortlinks
+SHORTLINK-CANDIDATES.md
