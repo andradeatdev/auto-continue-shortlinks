@@ -73,6 +73,7 @@
 // @match              https://exego.app/*
 // @match              https://exnion.com/*
 // @match              https://lnbz.la/*
+// @match              https://avnsgames.com/*
 // 
 // Hosting
 // @match              https://send.now/*
@@ -400,127 +401,8 @@ const DOMAINS = {
     "ouo.io": TEMPLATES.OUO,
     "ouo.press": TEMPLATES.OUO,
     "intercelestial.com": async () => {
-        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
-
-        const patchAttachShadow = async (owner) => {
-            owner.Element.prototype.attachShadow = new Proxy(owner.Element.prototype.attachShadow, {
-                apply(target, thisArg, argArray) {
-                    const shadowRoot = Reflect.apply(target, thisArg, argArray);
-                    shadowRoot.insertAdjacentHTML("beforeend", "<style>* { display: none !important; }</style>");
-                    return shadowRoot;
-                },
-            });
-        };
-        const patchFetch = async (owner) => {
-            owner.fetch = new Proxy(owner.fetch, {
-                async apply(target, thisArg, argArray) {
-                    const url = String(typeof argArray[0] === "string" ? argArray[0] : argArray[0]?.url || "");
-                    if (AD.some(h => url.includes(h))) {
-                        try {
-                            await Reflect.apply(target, thisArg, argArray);
-                        } catch {
-                            console.error("Error on fetch", url);
-                        }
-                        return Object.create(null);
-                    }
-
-                    const res = await Reflect.apply(target, thisArg, argArray);
-                    const isJson = res.headers.get("content-type")?.includes("json");
-
-                    if (isJson && (res.type === "basic" || res.type === "cors")) {
-                        res.clone().json()
-                            .then(body => {
-                                if (body.ok) tool.click(".myButton", { visible: true, scroll: true, loops: 2 });
-                            })
-                            .catch(() => { });
-                    }
-                    return res;
-                },
-            });
-        };
-
-        patchFetch(w);
-        patchAttachShadow(w);
-
-        patch.apply(w.Node.prototype, "appendChild", (target, thisArg, argArray) => {
-            const result = Reflect.apply(target, thisArg, argArray);
-            const node = argArray[0];
-            if (node.tagName === "IFRAME") {
-                patchFetch(node.contentWindow);
-            }
-            return result;
-        });
-
-        patch.apply(w.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
-            const listener = argArray[1];
-            const wrapper = (event) => {
-                const proxy = new Proxy(event, {
-                    get(innerTarget, property, _receiver) {
-                        if (property === "isTrusted") return true;
-
-                        const value = Reflect.get(innerTarget, property, innerTarget);
-                        if (typeof value === "function") return value.bind(innerTarget);
-
-                        return value;
-                    },
-                    getOwnPropertyDescriptor(innerTarget, property) {
-                        if (property === "isTrusted") return { get: () => true };
-                        return Reflect.getOwnPropertyDescriptor(innerTarget, property);
-                    },
-                });
-
-                listener(proxy);
-            };
-            argArray[1] = wrapper;
-            return Reflect.apply(target, thisArg, argArray);
-        });
-
         tool.style("body > div:has(a[href*='antiadblock'])", { styles: { display: "none !important" } });
-        tool.click(".myButton", { visible: true, scroll: true });
-
-        w.Element.prototype.setAttribute = new Proxy(w.Element.prototype.setAttribute, {
-            apply(target, thisArg, argArray) {
-                const [name, value] = argArray;
-
-                if ((name === "src" || name === "href") && /ads|pagead|\d+x\d+/.test(value)) {
-                    const destMap = {
-                        IMG: "image",
-                        SCRIPT: "script",
-                        LINK: "style",
-                    };
-                    const dest = destMap[thisArg.tagName];
-
-                    tool.request(value, {
-                        headers: {
-                            "Referer": `${location.origin}/`,
-                            "Sec-Fetch-Dest": dest,
-                            "Sec-Fetch-Mode": "no-cors",
-                            "Sec-Fetch-Site": "same-origin",
-                        },
-                        responseType: "blob",
-                    })
-                        .then(() => {
-                            Reflect.apply(target, thisArg, [name, value]);
-                            if (thisArg.tagName === "IMG") {
-                                Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
-                            } else if (thisArg.tagName === "LINK") {
-                                Object.defineProperty(thisArg, "sheet", { get: () => ({}), configurable: true });
-                            }
-                            thisArg.onerror = null;
-                            thisArg.dispatchEvent(new Event("load"));
-                        })
-                        .catch(() => thisArg.dispatchEvent(new Event("error")));
-
-                    return;
-                }
-
-                return Reflect.apply(target, thisArg, argArray);
-            },
-        });
-
-        patch.apply(w.Promise, "all", () => {
-            return [];
-        });
+        tool.click(".myButton", { visible: true, scroll: true, loops: 4 });
     },
     "pahe.plus": () => {
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
@@ -638,17 +520,12 @@ const DOMAINS = {
         tool.click(".get-link:not(.disabled)");
     },
     "lnbz.la": async () => {
-        const patchAttachShadow = async (owner) => {
-            owner.Element.prototype.attachShadow = new Proxy(owner.Element.prototype.attachShadow, {
-                apply(target, thisArg, argArray) {
-                    const shadowRoot = Reflect.apply(target, thisArg, argArray);
-                    shadowRoot.insertAdjacentHTML("beforeend", "<style>* { display: none !important; }</style>");
-                    return shadowRoot;
-                },
-            });
-        };
-
-        patchAttachShadow(w);
+        tool.style("html > :not(head, body)", { styles: { display: "none !important" }, loops: 50 });
+        tool.click(`:has([name="cf-turnstile-response"][value]) #continue`);
+        tool.click(".get-link:not(.disabled)");
+    },
+    "avnsgames.com": async () => {
+        tool.click("#getnewlink");
     },
     "zdrive.to": async () => {
         tool.click("#freeBtn", { wait: 500 });
