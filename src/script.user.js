@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.36
+// @version            0.0.37
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -530,6 +530,77 @@ const DOMAINS = {
         });
     },
     "pahe.plus": () => {
+        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
+
+        const patchFetch = async (owner) => {
+            owner.fetch = new Proxy(owner.fetch, {
+                async apply(target, thisArg, argArray) {
+                    const url = String(typeof argArray[0] === "string" ? argArray[0] : argArray[0]?.url || "");
+                    if (AD.some(h => url.includes(h))) {
+                        try {
+                            await Reflect.apply(target, thisArg, argArray);
+                        } catch {
+                            console.error("Error on fetch", url);
+                        }
+                        return Object.create(null);
+                    }
+
+                    const res = await Reflect.apply(target, thisArg, argArray);
+                    const isJson = res.headers.get("content-type")?.includes("json");
+
+                    if (isJson && (res.type === "basic" || res.type === "cors")) {
+                        res.clone().json()
+                            .then(body => {
+                                if (body.ok) tool.click(".myButton", { visible: true, scroll: true, loops: 2 });
+                            })
+                            .catch(() => { });
+                    }
+                    return res;
+                },
+            });
+        };
+        patchFetch(w);
+
+        w.Element.prototype.setAttribute = new Proxy(w.Element.prototype.setAttribute, {
+            apply(target, thisArg, argArray) {
+                const [name, value] = argArray;
+
+                if ((name === "src" || name === "href") && /ads|pagead|\d+x\d+/.test(value)) {
+                    const destMap = {
+                        IMG: "image",
+                        SCRIPT: "script",
+                        LINK: "style",
+                    };
+                    const dest = destMap[thisArg.tagName];
+
+                    tool.request(value, {
+                        headers: {
+                            "Referer": `${location.origin}/`,
+                            "Sec-Fetch-Dest": dest,
+                            "Sec-Fetch-Mode": "no-cors",
+                            "Sec-Fetch-Site": "same-origin",
+                        },
+                        responseType: "blob",
+                    })
+                        .then(() => {
+                            Reflect.apply(target, thisArg, [name, value]);
+                            if (thisArg.tagName === "IMG") {
+                                Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
+                            } else if (thisArg.tagName === "LINK") {
+                                Object.defineProperty(thisArg, "sheet", { get: () => ({}), configurable: true });
+                            }
+                            thisArg.onerror = null;
+                            thisArg.dispatchEvent(new Event("load"));
+                        })
+                        .catch(() => thisArg.dispatchEvent(new Event("error")));
+
+                    return;
+                }
+
+                return Reflect.apply(target, thisArg, argArray);
+            },
+        });
+
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
         tool.append("html > [style*='block']", { to: "head" });
     },
