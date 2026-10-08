@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.35
+// @version            0.0.36
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -166,7 +166,7 @@ const actions = {
         node.remove();
     },
 
-    async style(node, options = {}) {
+    style(node, options = {}) {
         const { styles } = options;
 
         const randStr = Math.random().toString(36).slice(2);
@@ -179,6 +179,12 @@ const actions = {
 
         const doc = node.getRootNode();
         doc.adoptedStyleSheets.push(sheet);
+    },
+
+    append(node, options = {}) {
+        const { to = "body" } = options;
+        const target = document.querySelector(to);
+        target.append(node);
     },
 
     async redirect(node, options = {}) {
@@ -525,6 +531,7 @@ const DOMAINS = {
     },
     "pahe.plus": () => {
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
+        tool.append("html > [style*='block']", { to: "head" });
     },
     "vexfile.com": () => {
         tool.click(".generate-link:not(.blocked)");
