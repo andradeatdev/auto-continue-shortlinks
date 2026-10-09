@@ -8,7 +8,7 @@
 [![Instalações](https://img.shields.io/greasyfork/dt/593212?style=flat-square&label=instala%C3%A7%C3%B5es)](https://greasyfork.org/scripts/593212)
 [![Avaliação](https://img.shields.io/greasyfork/rating-count/593212?style=flat-square&label=avalia%C3%A7%C3%A3o)](https://greasyfork.org/scripts/593212)
 [![Gerenciadores](https://img.shields.io/badge/gerenciadores-Violentmonkey%20%7C%20Tampermonkey-00485B?style=flat-square)](https://violentmonkey.github.io/)
-[![Hosts suportados](https://img.shields.io/badge/hosts-49%20suportados-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.md)
+[![Hosts suportados](https://img.shields.io/badge/hosts-57%20suportados-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.md)
 
 Este script automatiza shortlinks no pahe.ink e em outros sites que usam os mesmos hosts. Mais hosts serão adicionados com o tempo.
 
@@ -23,8 +23,6 @@ Para isso funcionar, os seguintes dados são compartilhados com o Worker:
 
 - A URL do shortlink que você está visitando.
 - A URL de destino que a sua navegação alcançou.
-
-Esses dados ficam armazenados no Cloudflare KV, são usados apenas para devolver o destino salvo em visitas futuras (suas e de outros usuários) e **não** são compartilhados com terceiros. O recurso pode ser desativado editando `CONFIG.WORKER_URL` (deixe vazio) no script.
 
 #### Hosts Suportados
 
