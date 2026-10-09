@@ -1,12 +1,12 @@
-# Supported Hosts
+# Hosts suportados
 
-**English** · [Português (BR)](HOSTS.pt-BR.md)
+[English](HOSTS.md) · **Português (BR)**
 
-The complete list of supported hosts.
+A lista completa de hosts suportados.
 
 ## Hosts
 
-| Host | speeds up the timer | uses the cache |
+| Host | acelera o timer | usa o cache |
 | ---- | :--------: | :--------: |
 | aii.sh | — | — |
 | aknewz.xyz | — | — |
@@ -66,5 +66,5 @@ The complete list of supported hosts.
 | www.up-4ever.net | — | — |
 | zdrive.to | — | — |
 
-- **speeds up the timer** — ✅ means the script can shorten that site's countdown; — means the countdown is validated server-side and has to run in full.
-- **uses the cache** — ✅ means shortlinks from that host use the worker cache.
+- **acelera o timer** — ✅ significa que o script consegue encurtar a contagem do site; — significa que a contagem é validada no servidor e precisa rodar por inteiro.
+- **usa o cache** — ✅ significa que os shortlinks desse host usam o cache do worker.
