@@ -435,7 +435,7 @@ const bypass = {
             }),
             onload: (data) => {
                 const { response } = data;
-                if (response.status !== "ok") return;
+                if (response.status !== "ok") { console.error(response); }
                 navigation.navigate(destination, { info: "bypass_link" });
             },
         });
