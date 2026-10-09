@@ -463,8 +463,8 @@ const templates = {
     tpi() {
         templates.antiAdblockCore();
 
-        tools.click("#continue:not([disabled])");
-        tools.click(".get-link[href]:not(.disabled)");
+        // tools.click("#continue:not([disabled])");
+        // tools.click(".get-link[href]:not(.disabled)");
     },
     host() {
         patches.timer();
@@ -508,6 +508,8 @@ const templates = {
             });
         };
         patchFetch(local);
+
+        patches.apply(local.Promise, "all", () => []);
 
         local.Element.prototype.setAttribute = new Proxy(local.Element.prototype.setAttribute, {
             apply(target, thisArg, argArray) {
