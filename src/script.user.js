@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            1.0.4
+// @version            1.0.5
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -77,6 +77,7 @@
 //
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
+// 
 // @grant              GM_xmlhttpRequest
 // @grant              unsafeWindow
 // 
@@ -91,7 +92,7 @@ const config = {
     defaultTimerFactor: 0.05,
 };
 
-const local = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
+const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 
 const watch = {
     observing: false,
@@ -194,7 +195,7 @@ const tools = {
                 const event = new MouseEvent("click", {
                     bubbles: true,
                     cancelable: true,
-                    view: local,
+                    view: win,
                 });
 
                 node.dispatchEvent(event);
@@ -511,7 +512,7 @@ const templates = {
         tools.redirect("script[src*='unlock.js']", { preprocess: ["base64"], attr: /[a-z]{5,}/ });
     },
     pahe() {
-        local.Element.prototype.setAttribute = new Proxy(local.Element.prototype.setAttribute, {
+        win.Element.prototype.setAttribute = new Proxy(win.Element.prototype.setAttribute, {
             apply(target, thisArg, argArray) {
                 const [name, value] = argArray;
 
@@ -561,9 +562,9 @@ const templates = {
                 },
             });
         };
-        patchFetch(local);
+        patchFetch(win);
 
-        patches.apply(local.Promise, "all", () => []);
+        patches.apply(win.Promise, "all", () => []);
     },
 };
 
@@ -736,7 +737,7 @@ domains.execute("aii.sh", async () => {
 });
 
 domains.execute("oii.io", async () => {
-    patches.define(local, "AdscoreInit", { get: () => () => { } });
+    patches.define(win, "AdscoreInit", { get: () => () => { } });
 
     tools.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
     tools.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
@@ -797,7 +798,7 @@ domains.execute("uiil.ink", async () => {
 });
 
 domains.execute("rekonise.com", async () => {
-    patches.apply(local, "open", (target, thisArg, argArray) => {
+    patches.apply(win, "open", (target, thisArg, argArray) => {
         if (!document.querySelector(".all-done-row")) return;
         location.assign(argArray[0]);
     });
