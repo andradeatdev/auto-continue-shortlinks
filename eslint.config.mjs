@@ -27,8 +27,10 @@ export default defineConfig([
       "unicorn/name-replacements": "off",
       "unicorn/consistent-function-scoping": "off",
       "unicorn/prefer-await": "off",
+      "unicorn/prefer-add-event-listener": "off",
 
       "sonarjs/pseudo-random": "off",
+      "sonarjs/super-linear-regex": "off",
 
       "@stylistic/semi": ["warn", "always"],
       "@stylistic/comma-dangle": ["warn", "always-multiline"],
