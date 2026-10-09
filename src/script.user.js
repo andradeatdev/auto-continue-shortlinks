@@ -642,11 +642,13 @@ domains.execute("modsfire.com", () => {
 });
 
 domains.execute("www.file-upload.org", () => {
-    tools.click("button[name='method_free'], :has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
+    tools.click("button[name='method_free']");
+    tools.click(":has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
 });
 
 domains.execute("upfilesgo.com", () => {
-    tools.click("#link-button-free:not([disabled]), #file-captcha #link-button:not([disabled])");
+    tools.click("#link-button-free:not([disabled])");
+    tools.click("#file-captcha #link-button:not([disabled])");
 });
 
 domains.execute("safefileku.com", () => {
@@ -655,7 +657,8 @@ domains.execute("safefileku.com", () => {
 });
 
 domains.execute("uploadrar.com", () => {
-    tools.click("button[name='method_free'], #downloadbtn:not([disabled])");
+    tools.click("button[name='method_free']");
+    tools.click("#downloadbtn:not([disabled])");
 });
 
 domains.execute("shrinkme.click", async () => {
@@ -692,7 +695,8 @@ domains.execute("www.up-4ever.net", async () => {
 
 domains.execute("cloud.unblockedgames.world", async () => {
     tools.click("a[onclick]", { text: "Start Verification" });
-    tools.click("#verify_button2, #verify_button", { count: 2 });
+    tools.click("#verify_button2");
+    tools.click("##verify_button");
 
     const link = await tools.element("#two_steps_btn[href]");
     location.assign(link.href);
