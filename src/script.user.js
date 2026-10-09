@@ -416,7 +416,7 @@ const bypass = {
             const isFinalHost = this.isFinalHost(destinationURL.hostname);
             const isSameURL = destinationURL.href === href;
 
-            if (!isFinalHost || !isSameURL) return;
+            if (!isFinalHost || isSameURL) return;
             event.preventDefault();
 
             this.save(href, destinationURL.href);
