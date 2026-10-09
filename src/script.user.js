@@ -494,23 +494,7 @@ const templates = {
     boostink() {
         tools.redirect("script[src*='unlock.js']", { preprocess: ["base64"], attr: /[a-z]{5,}/ });
     },
-    antiAdblockCore() {
-        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
-
-        const patchFetch = async (owner) => {
-            owner.fetch = new Proxy(owner.fetch, {
-                async apply(target, thisArg, argArray) {
-                    const [url] = argArray;
-                    if (AD.some(h => url.includes(h))) return Object.create(null);
-
-                    return Reflect.apply(target, thisArg, argArray);
-                },
-            });
-        };
-        patchFetch(local);
-
-        patches.apply(local.Promise, "all", () => []);
-
+    pahe() {
         local.Element.prototype.setAttribute = new Proxy(local.Element.prototype.setAttribute, {
             apply(target, thisArg, argArray) {
                 const [name, value] = argArray;
@@ -547,6 +531,23 @@ const templates = {
                 return Reflect.apply(target, thisArg, argArray);
             },
         });
+    },
+    antiAdblockCore() {
+        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
+
+        const patchFetch = async (owner) => {
+            owner.fetch = new Proxy(owner.fetch, {
+                async apply(target, thisArg, argArray) {
+                    const [url] = argArray;
+                    if (AD.some(h => url.includes(h))) return Object.create(null);
+
+                    return Reflect.apply(target, thisArg, argArray);
+                },
+            });
+        };
+        patchFetch(local);
+
+        patches.apply(local.Promise, "all", () => []);
     },
 };
 
@@ -604,11 +605,14 @@ domains.execute("linegee.net", async () => {
 
 domains.execute("pahe.plus", () => {
     templates.antiAdblockCore();
-    tools.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
+    templates.pahe();
+    tools.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled])");
+    tools.redirect(".get-link[href]:not(.disabled)");
 });
 
 domains.execute("intercelestial.com", async () => {
     templates.antiAdblockCore();
+    templates.pahe();
     tools.click(".myButton", { count: 3 });
 
     if (/^\?ht=[a-zA-Z0-9%]+$/.test(location.search)) {
