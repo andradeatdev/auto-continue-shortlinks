@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            1.0.5
+// @version            1.0.6
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -277,15 +277,9 @@ const tools = {
 
 const patches = {
     apply(owner, property, applyFn) {
-        const target = owner[property];
-
-        const wrapper = function (...args) {
-            return applyFn(target, this, args);
-        };
-
-        owner[property] = typeof exportFunction === "function"
-            ? exportFunction(wrapper, owner)
-            : new Proxy(target, { apply: applyFn });
+        owner[property] = new Proxy(owner[property], {
+            apply: applyFn,
+        });
     },
 
     define(owner, property, { get, set }) {
@@ -321,10 +315,13 @@ const patches = {
     timer(options = {}) {
         const { factor = config.defaultTimerFactor, text, ms } = options;
 
-        const nativeNow = win.Date.now.bind(win.Date);
-        const startTime = nativeNow();
-        const divisor = factor === 0 ? 0.001 : factor;
-        const now = () => startTime + (nativeNow() - startTime) / divisor;
+        const startTime = Date.now();
+        const now = () => {
+            const realElapsed = Date.now() - startTime;
+            const divisor = factor === 0 ? 0.001 : factor;
+            const virtualElapsed = realElapsed / divisor;
+            return startTime + virtualElapsed;
+        };
 
         const callback = (target, thisArg, argArray) => {
             const isDelayValid = typeof argArray[1] === "number";
@@ -341,39 +338,26 @@ const patches = {
         patches.apply(win, "setInterval", callback);
         patches.apply(win, "setTimeout", callback);
 
-        const construct = (target, argArray) =>
-            argArray.length === 0 ? new target(now()) : new target(...argArray);
-
-        const call = (target, thisArg, argArray) =>
-            argArray.length === 0
-                ? new target(now()).toString()
-                : new target(...argArray).toString();
-
-        // Chromium - don't have exportFunction
-        if (typeof exportFunction !== "function") {
-            win.Date = new Proxy(win.Date, {
-                construct,
-                apply: call,
-                get(target, property, receiver) {
-                    if (property === "now") return now;
-                    return Reflect.get(target, property, receiver);
-                },
-            });
-            return;
-        }
-
-        // Tampermonkey fix - bad injection strategy
-        const exportedNow = exportFunction(now, win);
-
-        const handler = new win.Object();
-        handler.apply = exportFunction(call, win);
-        handler.construct = exportFunction(construct, win);
-        handler.get = exportFunction((target, property, receiver) => {
-            if (property === "now") return exportedNow;
-            return win.Reflect.get(target, property, receiver);
-        }, win);
-
-        win.Date = new win.Proxy(win.Date, handler);
+        win.Date = new Proxy(win.Date, {
+            construct(target, argArray) {
+                if (argArray.length === 0) {
+                    return new target(now());
+                }
+                return new target(...argArray);
+            },
+            apply(target, thisArgument, argArray) {
+                if (argArray.length === 0) {
+                    return new target(now()).toString();
+                }
+                return new target(...argArray).toString();
+            },
+            get(target, property, receiver) {
+                if (property === "now") {
+                    return () => now();
+                }
+                return Reflect.get(target, property, receiver);
+            },
+        });
     },
 };
 
