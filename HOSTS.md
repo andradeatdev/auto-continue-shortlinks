@@ -68,3 +68,25 @@ The complete list of supported hosts.
 
 - **speeds up the timer** — ✅ means the script can shorten that site's countdown; — means the countdown is validated server-side and has to run in full.
 - **uses the cache** — ✅ means shortlinks from that host use the worker cache.
+
+## Final hosts (destinations)
+
+When your navigation ends on one of these hosts, the script records which shortlink led there,
+so the next visit goes straight to the destination. `pahe.plus`, `ouo.io` and `ouo.press` also
+appear in the table above — they are shortlinks **and** destinations.
+
+| Host | What it is | Notes |
+| --- | --- | --- |
+| send.now | file host | — |
+| 1fichier.com | file host | — |
+| 1024tera.com | cloud storage | — |
+| gdflix.io / gdflix.dev | download host | covers subdomains (`www.gdflix.io`), not the bare domain |
+| mega.nz | cloud storage | — |
+| vik1ngfile.site | file host | — |
+| pahe.plus | link index | also a shortlink ("uses the cache" ✅ above) |
+| filecrypt.cc | link container | — |
+| ouo.io | shortlink | also automated by its own template |
+| ouo.press | shortlink | also automated by its own template |
+
+- The "shortlink → destination" pairs go to the shared worker cache; nothing else about the
+  visit is sent.
