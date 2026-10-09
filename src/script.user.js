@@ -376,7 +376,7 @@ const bypass = {
         "send.now",
         "1fichier.com",
         "1024tera.com",
-        /\w+\.gdflix\.(io|dev)$/,
+        /^(\w+\.)?gdflix\.(io|dev)$/,
         "mega.nz",
         "vik1ngfile.site",
         "pahe.plus",
