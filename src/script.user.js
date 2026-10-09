@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            0.0.37
+// @version            1.0.0
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -74,9 +74,6 @@
 // @match              https://exnion.com/*
 // @match              https://lnbz.la/*
 // @match              https://avnsgames.com/*
-// 
-// Hosting
-// @match              https://send.now/*
 //
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
@@ -90,132 +87,134 @@
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
 // ==/UserScript==
 
-const w = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
-
-const CONFIG = {
-    DEFAULT_TIMEOUT_INTERVAL: 250,
-    DEFAULT_CLICK_DELAY: 150,
-    DEFAULT_TIMER_FACTOR: 0.05,
-
-    WORKER_URL: "https://shortlinks.fdyzen.workers.dev",
-    FINAL_DOMAINS: [
-        "send.now",
-        "1fichier.com",
-        "1024tera.com",
-        "gdflix.io",
-        "gdflix.dev",
-        "mega.nz",
-        "vik1ngfile.site",
-        "pahe.plus",
-        "filecrypt.cc",
-    ],
-    ORIGIN_DOMAINS: [
-        "tpi.li",
-        "oii.la",
-        "srnky.com",
-        "clksz.com",
-        "pahe.plus",
-        "en.mrproblogger.com",
-    ],
-    SHORTLINK_PATTERNS: {
-        "tpi.li": /^https:\/\/tpi\.li\/[A-Za-z0-9_-]{3,}$/,
-        "oii.la": /^https:\/\/oii\.la\/[A-Za-z0-9_-]{3,}$/,
-        "srnky.com": /^https:\/\/srnky\.com\/[A-Za-z0-9_-]{3,}$/,
-        "clksz.com": /^https:\/\/clksz\.com\/[A-Za-z0-9_-]{3,}$/,
-        "pahe.plus": /^https:\/\/pahe\.plus\/[A-Za-z0-9_-]{3,}$/,
-        "en.mrproblogger.com": /^https:\/\/en\.mrproblogger\.com\/[A-Za-z0-9_-]{3,}$/,
-    },
-    TOKEN_URL_KEY: "pahe-acl-9d2f1c3e-4b7a-4e98-8c21-5f6d0a9b7c34",
+const config = {
+    defaultTimerFactor: 0.05,
 };
 
-const state = {
+const local = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
+
+const watch = {
+    observing: false,
     observer: undefined,
     callbacks: new Set(),
+
+    observe() {
+        if (watch.observing) return;
+        watch.observing = true;
+
+        let isScheduled = false;
+        const schedule = (mutations) => {
+            if (isScheduled) return;
+            isScheduled = true;
+            requestAnimationFrame(() => {
+                isScheduled = false;
+                for (const callback of watch.callbacks) callback(mutations);
+            });
+        };
+
+        watch.observer = new MutationObserver((mutations) => {
+            schedule(mutations);
+        });
+        watch.observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+        });
+    },
+
+    change(callback) {
+        if (!watch.observing) watch.observe();
+        watch.callbacks.add(callback);
+
+        return () => watch.callbacks.delete(callback);
+    },
+
+    aside(callback) {
+        watch.observer.disconnect();
+        callback();
+        watch.observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+        });
+    },
 };
 
-const actions = {
+const resolvers = {
+    visible(node, visible) {
+        return node.checkVisibility({ visibilityProperty: true }) === visible;
+    },
+    text(node, text) {
+        if (typeof text === "string") return node.textContent.includes(text);
+        if (text instanceof RegExp) return text.test(node.textContent);
+    },
+    css(node, css) {
+        const style = getComputedStyle(node);
+        for (const [key, value] of Object.entries(css)) {
+            if (style[key] !== value) return false;
+        }
+        return true;
+    },
+};
+
+const tools = {
+    sheet: new CSSStyleSheet(),
+
     wait(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     },
 
-    async click(node, options = {}) {
-        const { wait, scroll } = options;
+    *select(selector, options = {}) {
+        const { visible, text, css } = options;
 
-        if (wait !== undefined) await tool.wait(wait);
-        if (scroll) await actions.scroll(node, typeof scroll === "object" ? scroll : {});
-
-        const event = new MouseEvent("click", {
-            bubbles: true,
-            cancelable: true,
-            view: w,
-        });
-
-        node.dispatchEvent(event);
-    },
-
-    async tap(node) {
-        node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-    },
-
-    async scroll(node, options = {}) {
-        const { behavior = "smooth", block = "center", inline = "center" } = options;
-        node.scrollIntoView({ behavior, block, inline });
-    },
-
-    async remove(node) {
-        node.remove();
-    },
-
-    style(node, options = {}) {
-        const { styles } = options;
-
-        const randStr = Math.random().toString(36).slice(2);
-        node.setAttribute(randStr, "");
-
-        const sheet = new CSSStyleSheet();
-        for (const [key, value] of Object.entries(styles)) {
-            sheet.insertRule(`[${randStr}] { ${key}: ${value}; }`);
+        const nodes = document.querySelectorAll(selector);
+        for (const node of nodes) {
+            if (typeof visible === "boolean" && !resolvers.visible(node, visible)) continue;
+            if (text !== undefined && !resolvers.text(node, text)) continue;
+            if (css !== undefined && !resolvers.css(node, css)) continue;
+            yield node;
         }
-
-        const doc = node.getRootNode();
-        doc.adoptedStyleSheets.push(sheet);
     },
 
-    append(node, options = {}) {
-        const { to = "body" } = options;
-        const target = document.querySelector(to);
-        target.append(node);
-    },
+    click(selector, options = {}) {
+        const { wait = 0, scroll = false, count = 1 } = options;
+        let remaining = count;
 
-    async redirect(node, options = {}) {
-        const { attr = "href", preprocess } = options;
-
-        let sourceAttr = attr;
-        if (attr instanceof RegExp) {
-            const attrNames = node.getAttributeNames();
-            for (const name of attrNames) {
-                if (attr.test(name)) {
-                    sourceAttr = name;
+        const cleanup = watch.change(async () => {
+            const nodes = tools.select(selector, options);
+            for (const node of nodes) {
+                if (remaining-- <= 0) {
+                    cleanup();
                     break;
                 }
+
+                if (wait > 0) await tools.wait(wait);
+                if (scroll !== false) await tools.scroll(node, typeof scroll === "object" ? scroll : {});
+
+                const event = new MouseEvent("click", {
+                    bubbles: true,
+                    cancelable: true,
+                    view: local,
+                });
+
+                node.dispatchEvent(event);
             }
-        }
 
-        let url = node.getAttribute(sourceAttr);
-        if (!url) return;
-
-        if (preprocess !== undefined && preprocess.length > 0) {
-            for (const pre of preprocess) {
-                if (pre === "base64") {
-                    url = atob(url);
-                }
-            }
-        }
-
-        location.assign(url);
+        });
     },
 
-    async request(url, options = {}) {
+    remove(selector, options = {}) {
+        watch.change(() => {
+            const nodes = tools.select(selector, options);
+            for (const node of nodes) {
+                node.remove();
+            }
+        });
+    },
+
+    request(url, options = {}) {
+        if (typeof url !== "string") return console.error("[tools.request] Missing `url` argument");
+
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: options.method || "GET",
@@ -231,77 +230,59 @@ const actions = {
             });
         });
     },
+
+    redirect(selector, options = {}) {
+        const { attr = "href", decodeB64 = false } = options;
+
+        const foundAttr = (node) => {
+            if (typeof attr === "string") return node.getAttribute(attr);
+            if (attr instanceof RegExp) {
+                const attrNames = node.getAttributeNames();
+                for (const name of attrNames) {
+                    if (attr.test(name)) {
+                        return name;
+                    }
+                }
+            }
+        };
+
+        watch.change(() => {
+            const nodes = tools.select(selector, options);
+            for (const node of nodes) {
+                let url = foundAttr(node);
+                if (!url) continue;
+
+                if (decodeB64 === true) {
+                    url = atob(url);
+                }
+
+                location.assign(url);
+            }
+        });
+    },
+
+    element(selector, options = {}) {
+        return new Promise((resolve) => {
+            watch.change(() => {
+                const nodes = tools.select(selector, options);
+                for (const node of nodes) {
+                    resolve(node);
+                    return;
+                }
+            });
+        });
+    },
 };
 
-const tool = new Proxy(actions, {
-    get(target, name) {
-        const action = target[name];
-        const isAction = typeof action !== "function";
-        const isDirect = ["request", "wait"].includes(name);
-
-        if (isAction || isDirect) {
-            return action;
-        }
-
-        return (selector, options = {}) => {
-            return executeAction(selector, options, action);
-        };
-    },
-});
-
-const patch = {
-    timer(options = {}) {
-        const { factor = CONFIG.DEFAULT_TIMER_FACTOR, text, ms } = options;
-
-        const startTime = Date.now();
-
-        const now = () => {
-            const realElapsed = Date.now() - startTime;
-            const divisor = factor === 0 ? 0.001 : factor;
-            const virtualElapsed = realElapsed / divisor;
-            return startTime + virtualElapsed;
-        };
-
-        const callback = (target, thisArg, argArray) => {
-            const isDelayValid = typeof argArray[1] === "number";
-            const isTextMatch = !text || argArray[0]?.toString().includes(text);
-            const isMsMatch = ms === undefined || ms === argArray[1];
-
-            if (isDelayValid && isTextMatch && isMsMatch) {
-                argArray[1] *= factor;
-            }
-
-            return Reflect.apply(target, thisArg, argArray);
-        };
-
-        w.setInterval = new Proxy(w.setInterval, { apply: callback });
-        w.setTimeout = new Proxy(w.setTimeout, { apply: callback });
-
-        w.Date = new Proxy(w.Date, {
-            construct(target, argArray) {
-                if (argArray.length === 0) {
-                    return new target(now());
-                }
-                return new target(...argArray);
-            },
-            apply(target, thisArgument, argArray) {
-                if (argArray.length === 0) {
-                    return new target(now()).toString();
-                }
-                return new target(...argArray).toString();
-            },
-            get(target, property, receiver) {
-                if (property === "now") {
-                    return () => now();
-                }
-                return Reflect.get(target, property, receiver);
-            },
+const patches = {
+    apply(owner, property, applyFn) {
+        owner[property] = new Proxy(owner[property], {
+            apply: applyFn,
         });
     },
 
     define(owner, property, { get, set }) {
-        const descriptor = Object.getOwnPropertyDescriptor(owner, property);
-        if (!descriptor) return;
+        const descriptor = Object.getOwnPropertyDescriptor(owner, property) || {};
 
         let value;
 
@@ -330,672 +311,471 @@ const patch = {
         });
     },
 
-    apply(owner, property, applyFn) {
-        owner[property] = new Proxy(owner[property], {
-            apply: applyFn,
-        });
-    },
-};
+    timer(options = {}) {
+        const { factor = config.defaultTimerFactor, text, ms } = options;
 
-const TEMPLATES = {
-    TPI_OII: () => {
-        patch.define(w, "onblur", { set() { } });
-
-        tool.click("#continue:not([disabled])");
-        tool.click(".get-link[href]:not(.disabled)");
-
-        tool.style("html > :not(head, body)", { styles: { display: "none !important" } });
-
-        patch.define(w.Element.prototype, "innerHTML", { set(v) { return typeof v === "string" && v.includes("antiadblock") ? "" : v; } });
-    },
-    PAHE_HOSTING: () => {
-        patch.timer();
-
-        tool.remove("div", { css: { position: "fixed" }, text: "detected" });
-        tool.click("#startButton");
-        tool.click("a[href='#getmylink']");
-        tool.click("#getnewlink");
-    },
-    OUO: async () => {
-        patch.timer();
-
-        tool.click("#btn-main:not(.disabled)");
-        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
-    },
-    DEVUPLOADS: () => {
-        patch.timer();
-
-        tool.click("#gdl[style*='block']");
-        tool.click("#gdlf[style*='block']");
-        tool.scroll("#dln");
-    },
-    EXE_IO: async () => {
-        tool.click(".link-button:not(.disabled)");
-        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
-    },
-    BOOSTINK: async () => {
-        tool.redirect("script[src*='unlock.js']", { preprocess: ["base64"], attr: /[a-z]{5,}/ });
-    },
-};
-
-const DOMAINS = {
-    "tpi.li": TEMPLATES.TPI_OII,
-    "oii.la": TEMPLATES.TPI_OII,
-    "srnky.com": TEMPLATES.TPI_OII,
-    "clksz.com": TEMPLATES.TPI_OII,
-    "financeehelp.com": TEMPLATES.PAHE_HOSTING,
-    "cloudhostt.com": TEMPLATES.PAHE_HOSTING,
-    "financeguidz.com": TEMPLATES.PAHE_HOSTING,
-    "techbixby.com": TEMPLATES.PAHE_HOSTING,
-    "loanbixby.com": TEMPLATES.PAHE_HOSTING,
-    "linegee.net": async () => {
-        const script = await waitElement("script:not([src])", { text: "atob(" });
-        const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
-        let xxc;
-        while (!xxc) {
-            const request = await fetch(location.href + q);
-            const response = await request.text();
-            const doc = new DOMParser().parseFromString(response, "text/html");
-            xxc = doc.querySelector("#xxc[href]");
-            if (xxc) {
-                location.assign(xxc.href);
-            } else {
-                await tool.wait(500);
-            }
-        }
-    },
-    "ouo.io": TEMPLATES.OUO,
-    "ouo.press": TEMPLATES.OUO,
-    "intercelestial.com": async () => {
-        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
-
-        const patchAttachShadow = async (owner) => {
-            owner.Element.prototype.attachShadow = new Proxy(owner.Element.prototype.attachShadow, {
-                apply(target, thisArg, argArray) {
-                    const shadowRoot = Reflect.apply(target, thisArg, argArray);
-                    shadowRoot.insertAdjacentHTML("beforeend", "<style>* { display: none !important; }</style>");
-                    return shadowRoot;
-                },
-            });
-        };
-        const patchFetch = async (owner) => {
-            owner.fetch = new Proxy(owner.fetch, {
-                async apply(target, thisArg, argArray) {
-                    const url = String(typeof argArray[0] === "string" ? argArray[0] : argArray[0]?.url || "");
-                    if (AD.some(h => url.includes(h))) {
-                        try {
-                            await Reflect.apply(target, thisArg, argArray);
-                        } catch {
-                            console.error("Error on fetch", url);
-                        }
-                        return Object.create(null);
-                    }
-
-                    const res = await Reflect.apply(target, thisArg, argArray);
-                    const isJson = res.headers.get("content-type")?.includes("json");
-
-                    if (isJson && (res.type === "basic" || res.type === "cors")) {
-                        res.clone().json()
-                            .then(body => {
-                                if (body.ok) tool.click(".myButton", { visible: true, scroll: true, loops: 2 });
-                            })
-                            .catch(() => { });
-                    }
-                    return res;
-                },
-            });
+        const startTime = Date.now();
+        const now = () => {
+            const realElapsed = Date.now() - startTime;
+            const divisor = factor === 0 ? 0.001 : factor;
+            const virtualElapsed = realElapsed / divisor;
+            return startTime + virtualElapsed;
         };
 
-        patchFetch(w);
-        patchAttachShadow(w);
+        const callback = (target, thisArg, argArray) => {
+            const isDelayValid = typeof argArray[1] === "number";
+            const isTextMatch = !text || argArray[0]?.toString().includes(text);
+            const isMsMatch = ms === undefined || ms === argArray[1];
 
-        patch.apply(w.Node.prototype, "appendChild", (target, thisArg, argArray) => {
-            const result = Reflect.apply(target, thisArg, argArray);
-            const node = argArray[0];
-            if (node.tagName === "IFRAME") {
-                patchFetch(node.contentWindow);
+            if (isDelayValid && isTextMatch && isMsMatch) {
+                argArray[1] *= factor;
             }
-            return result;
-        });
 
-        patch.apply(w.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
-            const listener = argArray[1];
-            const wrapper = (event) => {
-                const proxy = new Proxy(event, {
-                    get(innerTarget, property, _receiver) {
-                        if (property === "isTrusted") return true;
-
-                        const value = Reflect.get(innerTarget, property, innerTarget);
-                        if (typeof value === "function") return value.bind(innerTarget);
-
-                        return value;
-                    },
-                    getOwnPropertyDescriptor(innerTarget, property) {
-                        if (property === "isTrusted") return { get: () => true };
-                        return Reflect.getOwnPropertyDescriptor(innerTarget, property);
-                    },
-                });
-
-                listener(proxy);
-            };
-            argArray[1] = wrapper;
             return Reflect.apply(target, thisArg, argArray);
-        });
-
-        tool.style("body > div:has(a[href*='antiadblock'])", { styles: { display: "none !important" } });
-        tool.click(".myButton", { visible: true, scroll: true });
-
-        w.Element.prototype.setAttribute = new Proxy(w.Element.prototype.setAttribute, {
-            apply(target, thisArg, argArray) {
-                const [name, value] = argArray;
-
-                if ((name === "src" || name === "href") && /ads|pagead|\d+x\d+/.test(value)) {
-                    const destMap = {
-                        IMG: "image",
-                        SCRIPT: "script",
-                        LINK: "style",
-                    };
-                    const dest = destMap[thisArg.tagName];
-
-                    tool.request(value, {
-                        headers: {
-                            "Referer": `${location.origin}/`,
-                            "Sec-Fetch-Dest": dest,
-                            "Sec-Fetch-Mode": "no-cors",
-                            "Sec-Fetch-Site": "same-origin",
-                        },
-                        responseType: "blob",
-                    })
-                        .then(() => {
-                            Reflect.apply(target, thisArg, [name, value]);
-                            if (thisArg.tagName === "IMG") {
-                                Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
-                            } else if (thisArg.tagName === "LINK") {
-                                Object.defineProperty(thisArg, "sheet", { get: () => ({}), configurable: true });
-                            }
-                            thisArg.onerror = null;
-                            thisArg.dispatchEvent(new Event("load"));
-                        })
-                        .catch(() => thisArg.dispatchEvent(new Event("error")));
-
-                    return;
-                }
-
-                return Reflect.apply(target, thisArg, argArray);
-            },
-        });
-
-        patch.apply(w.Promise, "all", () => {
-            return [];
-        });
-    },
-    "pahe.plus": () => {
-        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
-
-        const patchFetch = async (owner) => {
-            owner.fetch = new Proxy(owner.fetch, {
-                async apply(target, thisArg, argArray) {
-                    const url = String(typeof argArray[0] === "string" ? argArray[0] : argArray[0]?.url || "");
-                    if (AD.some(h => url.includes(h))) {
-                        try {
-                            await Reflect.apply(target, thisArg, argArray);
-                        } catch {
-                            console.error("Error on fetch", url);
-                        }
-                        return Object.create(null);
-                    }
-
-                    const res = await Reflect.apply(target, thisArg, argArray);
-                    const isJson = res.headers.get("content-type")?.includes("json");
-
-                    if (isJson && (res.type === "basic" || res.type === "cors")) {
-                        res.clone().json()
-                            .then(body => {
-                                if (body.ok) tool.click(".myButton", { visible: true, scroll: true, loops: 2 });
-                            })
-                            .catch(() => { });
-                    }
-                    return res;
-                },
-            });
         };
-        patchFetch(w);
 
-        w.Element.prototype.setAttribute = new Proxy(w.Element.prototype.setAttribute, {
-            apply(target, thisArg, argArray) {
-                const [name, value] = argArray;
+        patches.apply(local, "setInterval", callback);
+        patches.apply(local, "setTimeout", callback);
 
-                if ((name === "src" || name === "href") && /ads|pagead|\d+x\d+/.test(value)) {
-                    const destMap = {
-                        IMG: "image",
-                        SCRIPT: "script",
-                        LINK: "style",
-                    };
-                    const dest = destMap[thisArg.tagName];
-
-                    tool.request(value, {
-                        headers: {
-                            "Referer": `${location.origin}/`,
-                            "Sec-Fetch-Dest": dest,
-                            "Sec-Fetch-Mode": "no-cors",
-                            "Sec-Fetch-Site": "same-origin",
-                        },
-                        responseType: "blob",
-                    })
-                        .then(() => {
-                            Reflect.apply(target, thisArg, [name, value]);
-                            if (thisArg.tagName === "IMG") {
-                                Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
-                            } else if (thisArg.tagName === "LINK") {
-                                Object.defineProperty(thisArg, "sheet", { get: () => ({}), configurable: true });
-                            }
-                            thisArg.onerror = null;
-                            thisArg.dispatchEvent(new Event("load"));
-                        })
-                        .catch(() => thisArg.dispatchEvent(new Event("error")));
-
-                    return;
+        local.Date = new Proxy(local.Date, {
+            construct(target, argArray) {
+                if (argArray.length === 0) {
+                    return new target(now());
                 }
-
-                return Reflect.apply(target, thisArg, argArray);
+                return new target(...argArray);
+            },
+            apply(target, thisArgument, argArray) {
+                if (argArray.length === 0) {
+                    return new target(now()).toString();
+                }
+                return new target(...argArray).toString();
+            },
+            get(target, property, receiver) {
+                if (property === "now") {
+                    return () => now();
+                }
+                return Reflect.get(target, property, receiver);
             },
         });
-
-        tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
-        tool.append("html > [style*='block']", { to: "head" });
-    },
-    "vexfile.com": () => {
-        tool.click(".generate-link:not(.blocked)");
-    },
-    "filespayouts.com": () => {
-        patch.timer({ text: "tick" });
-
-        tool.click("#method_free");
-    },
-    "modsfire.com": () => {
-        patch.timer();
-
-        tool.click(".download-button:not([href])");
-    },
-    "www.file-upload.org": () => {
-        tool.click("button[name='method_free'], :has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
-    },
-    "djxmaza.in": TEMPLATES.DEVUPLOADS,
-    "smartfeecalculator.com": TEMPLATES.DEVUPLOADS,
-    "gujjukhabar.in": TEMPLATES.DEVUPLOADS,
-    "pdfhindibook.com": TEMPLATES.DEVUPLOADS,
-    "upfilesgo.com": () => {
-        tool.click("#link-button-free:not([disabled]), #file-captcha #link-button:not([disabled])");
-    },
-    "safefileku.com": () => {
-        patch.timer();
-        tool.click(":has([name='cf-turnstile-response'][value]) button[type='submit']");
-    },
-    "uploadrar.com": () => {
-        tool.click("button[name='method_free'], #downloadbtn:not([disabled])");
-    },
-    "send.now": async () => {
-        tool.click(":has([name='cf-turnstile-response'][value]) [type='submit']");
-    },
-    "shrinkme.click": async () => {
-        tool.click(".btn-primary:not([disabled])");
-    },
-    "themezon.net": async () => {
-        tool.click("#btn2");
-        tool.click("#tp-snp2");
-    },
-    "en.mrproblogger.com": async () => {
-        tool.click(".get-link:not(.disabled)");
-    },
-    "uploady.io": async () => {
-        tool.click("#free_dwn");
-        tool.click("#downloadbtn");
-    },
-    "apkadmin.com": async () => {
-        tool.click("#downloadbtn");
-    },
-    "www.up-4ever.net": async () => {
-        tool.remove("#u4ab_modal");
-        tool.click(`button[name="method_free"]`);
-
-        tool.scroll("#downloadbtn");
-
-        tool.click(":has([name='cf-turnstile-response'][value]) [type='submit']:not([disabled])");
-        tool.click("#dl2btn");
-    },
-    "cloud.unblockedgames.world": async () => {
-        tool.click("a[onclick]", { text: "Start Verification" });
-        tool.click("#verify_button2, #verify_button", { repeat: 2 });
-
-        const link = await waitElement("#two_steps_btn[href]");
-        location.assign(link.href);
-    },
-    "exeygo.com": TEMPLATES.EXE_IO,
-    "cuttty.com": TEMPLATES.EXE_IO,
-    "cety.app": TEMPLATES.EXE_IO,
-    "cutlink.net": TEMPLATES.EXE_IO,
-    "cutnet.net": TEMPLATES.EXE_IO,
-    "cuttlinks.com": TEMPLATES.EXE_IO,
-    "exe-links.com": TEMPLATES.EXE_IO,
-    "exe-urls.com": TEMPLATES.EXE_IO,
-    "exego.app": TEMPLATES.EXE_IO,
-    "exnion.com": TEMPLATES.EXE_IO,
-    "fc-lc.xyz": async () => {
-        tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
-        tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
-    },
-    "jobzhub.store": async () => {
-        tool.click("#next", { visible: true });
-        tool.click("#scroll", { visible: true });
-        tool.click("#glink", { visible: true });
-        tool.click(`:has([name="cf-turnstile-response"][value]) #surl:not(.disabled)`);
-    },
-    "aii.sh": async () => {
-        tool.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
-        tool.click(".btn-primary[href]:not(.disabled)");
-    },
-    "oii.io": async () => {
-        tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
-        tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
-
-        mouseMove(120_000);
-    },
-    "aknewz.xyz": async () => {
-        tool.click(`:has([name="cf-turnstile-response"][value]) #surl`);
-
-        tool.click("#next");
-        await tool.click("#scroll:not(.hidden)");
-        tool.click("#scroll:not(.hidden)");
-    },
-    "toolskitpro.net": async () => {
-        tool.remove("div", { css: { position: "fixed" } });
-        tool.click(".show #afterBtn");
-        tool.click("#nxt");
-        tool.click("#getl");
-    },
-    "icutlink.com": async () => {
-        tool.click(".get-link:not(.disabled)");
-    },
-    "lnbz.la": async () => {
-        tool.style("html > :not(head, body)", { styles: { display: "none !important" }, loops: 50 });
-        tool.click(`:has([name="cf-turnstile-response"][value]) #continue`);
-        tool.click(".get-link:not(.disabled)");
-    },
-    "avnsgames.com": async () => {
-        tool.click("#getnewlink");
-    },
-    "zdrive.to": async () => {
-        tool.click("#freeBtn", { wait: 500 });
-        tool.click("#down_1Form button", { visible: true });
-        tool.click("#down_2Form button", { visible: true });
-        tool.click(".btn-download:not(.disabled)");
-    },
-    "cloudfam.io": async () => {
-        tool.redirect("#btn-clean-continue[href]");
-        tool.redirect("#cf-btn-free[href]");
-        tool.redirect("#free-btn[href]");
-        tool.redirect("#cf-dl-btn[href]");
-    },
-    "uiil.ink": async () => {
-        tool.click("#form-continue [type='submit']");
-        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
-        tool.click(`#multiLinkBtn:not(.disabled)`);
-    },
-    "boost.ink": TEMPLATES.BOOSTINK,
-    "bst.gg": TEMPLATES.BOOSTINK,
-    "rekonise.com": async () => {
-        patch.apply(w, "open", (target, thisArg, argArray) => {
-            if (!document.querySelector(".all-done-row")) return;
-            location.assign(argArray[0]);
-        });
-
-        tool.click(".action-button:not([disabled])", { loops: Infinity });
-        tool.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
     },
 };
 
-async function main() {
-    const { hostname, href, pathname, search } = location;
-    const handler = DOMAINS[hostname];
-    if (!handler) return;
+const bypass = {
+    cacheURL: "https://shortlinks.fdyzen.workers.dev",
+    shortenerPatterns: {
+        "tpi.li": /^\/[A-Za-z0-9_-]{3,}$/,
+        "oii.la": /^\/[A-Za-z0-9_-]{3,}$/,
+        "srnky.com": /^\/[A-Za-z0-9_-]{3,}$/,
+        "clksz.com": /^\/[A-Za-z0-9_-]{3,}$/,
+        "pahe.plus": /^\/[A-Za-z0-9_-]{3,}$/,
+        "en.mrproblogger.com": /^\/[A-Za-z0-9_-]{3,}$/,
+        "intercelestial.com": /^\/\?ht=[a-zA-Z0-9%]+$/,
+    },
+    finalDomains: [
+        "send.now",
+        "1fichier.com",
+        "1024tera.com",
+        /\w+\.gdflix\.(io|dev)$/,
+        "mega.nz",
+        "vik1ngfile.site",
+        "pahe.plus",
+        "filecrypt.cc",
+        "ouo.io",
+        "ouo.press",
+    ],
 
-    checkCache(hostname, href, pathname, search);
-    listenerNavigation();
-    handler();
-}
-// eslint-disable-next-line unicorn/prefer-top-level-await -- userscript
-main();
+    exec(hostname, href, pathname, search) {
+        if (!this.cacheURL) return;
 
-async function checkCache(hostname, href, pathname, search) {
-    const pattern = CONFIG.SHORTLINK_PATTERNS[hostname];
-    console.log("Pattern", hostname, ">", pattern?.toString());
-    if (pattern?.test(href)) w.sessionStorage.setItem(CONFIG.TOKEN_URL_KEY, href);
+        const pattern = this.shortenerPatterns[hostname];
+        if (!pattern?.test(pathname + search)) return;
 
-    if (CONFIG.WORKER_URL && isOriginHost(hostname) && (pathname !== "/" || search !== "")) {
-        try {
-            const result = await requestAPI("GET", `/api/check?url=${encodeURIComponent(href)}`);
-            const check = result.body;
-            console.log("Check", check, href);
+        this.cache(href);
+        this.listener(href);
+    },
 
-            if (check?.status === "ok" && check.destination) {
-                console.log("Bypass found", check.destination);
-                navigateTo(check.destination);
-                return;
-            }
-        } catch (error) {
-            console.error("Error on check", error);
-        }
-
-        console.log("Bypass not found");
-    }
-}
-
-function executeAction(selector, options, action) {
-    const { repeat = Infinity, loops = 1 } = options;
-    let remaining = repeat;
-    let loop = 0;
-
-    return new Promise(resolve => {
-        const fn = async (doc = document) => {
-            const nodes = doc.querySelectorAll(selector);
-            const promises = [];
-
-            for (const node of nodes) {
-                if (node.shadowRoot) {
-                    fn(node.shadowRoot);
-                }
-
-                if (!resolveNode(node, options)) continue;
-                if (remaining <= 0) break;
-
-                remaining--;
-                promises.push(action(node, options));
-
-                if (remaining === 0) {
-                    state.callbacks.delete(fn);
-                    break;
-                }
-            }
-
-            if (promises.length > 0) loop++;
-
-            await Promise.allSettled(promises);
-
-            if (loop >= loops) {
-                state.callbacks.delete(fn);
-                resolve();
-            }
-        };
-
-        state.callbacks.add(fn);
-        ensureObserver();
-        fn();
-    });
-}
-
-function ensureObserver() {
-    if (state.observer) return;
-
-    let isScheduled = false;
-    state.observer = new MutationObserver(() => {
-        if (isScheduled) return;
-        isScheduled = true;
-        queueMicrotask(() => {
-            isScheduled = false;
-            for (const callback of state.callbacks) callback();
-        });
-    });
-
-    state.observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-    });
-}
-
-function waitElement(selector, options = {}) {
-    return new Promise(resolve => {
-        const check = () => {
-            const nodes = document.querySelectorAll(selector);
-            for (const node of nodes) {
-                const resolved = resolveNode(node, options);
-                if (!resolved) continue;
-
-                resolve(resolved);
-                return;
-            }
-
-            setTimeout(check, 250);
-        };
-
-        setTimeout(check, 250);
-    });
-}
-
-function resolveNode(node, options = {}) {
-    if (!node) return;
-
-    const { visible, text, css } = options;
-
-    if (visible && !node.checkVisibility({ visibilityProperty: true })) return;
-    if (typeof text === "string" && !node.textContent.includes(text)) return;
-    if (text instanceof RegExp && !text.test(node.textContent)) return;
-    if (css) {
-        const style = getComputedStyle(node);
-        for (const [key, value] of Object.entries(css)) {
-            if (style[key] !== value) return;
-        }
-    }
-
-    return node;
-}
-
-function mouseMove(duration = 1000) {
-    const start = {
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-    };
-
-    const end = {
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
-    };
-
-    const startTime = performance.now();
-
-    const animate = (actualTime) => {
-        const progress = Math.min(
-            (actualTime - startTime) / duration,
-            1,
-        );
-
-        const smooth = progress * progress * (3 - 2 * progress);
-
-        const x = start.x + (end.x - start.x) * smooth;
-        const y = start.y + (end.y - start.y) * smooth;
-
-        document.dispatchEvent(
-            new MouseEvent("mousemove", {
-                bubbles: true,
-                clientX: x,
-                clientY: y,
-            }),
-        );
-
-        if (progress < 1) {
-            requestAnimationFrame(animate);
-        }
-    };
-
-    requestAnimationFrame(animate);
-}
-
-function isFinalHost(hostname) {
-    return CONFIG.FINAL_DOMAINS.some((domain) => hostname === domain || hostname.endsWith("." + domain));
-}
-
-function isOriginHost(host) {
-    return CONFIG.ORIGIN_DOMAINS.some((domain) => host === domain || host.endsWith("." + domain));
-}
-
-function requestAPI(method, endpoint, data) {
-    return new Promise((resolve, reject) => {
+    cache(href) {
         GM_xmlhttpRequest({
-            method,
-            url: `${CONFIG.WORKER_URL}${endpoint}`,
+            method: "GET",
+            url: `${this.cacheURL}/api/check?url=${encodeURIComponent(href)}`,
             headers: { "Content-Type": "application/json" },
             responseType: "json",
-            data: data ? JSON.stringify(data) : undefined,
-            onload: (httpResponse) => resolve({ status: httpResponse.status, body: httpResponse.response }),
-            onerror: (error) => reject(error),
+            onload: (data) => {
+                const { response } = data;
+                if (response.status !== "ok" || !response.destination) return;
+                navigation.navigate(response.destination, { info: "bypass_link" });
+            },
         });
-    });
-}
+    },
 
-function navigateTo(url, info = "bypass_link") {
-    w.navigation.navigate(url, { info });
-}
+    listener(href) {
+        navigation.addEventListener("navigate", (event) => {
+            if (event.info === "bypass_link") return;
 
-function listenerNavigation() {
-    if (!w.navigation || !CONFIG.WORKER_URL) return;
-
-    navigation.addEventListener("navigate", async (event) => {
-        if (event.info === "bypass_link") return;
-        if (!isOriginHost(location.hostname)) return;
-
-        try {
             const destinationURL = new URL(event.destination.url);
+            const isFinalHost = this.isFinalHost(destinationURL.hostname);
+            const isSameURL = destinationURL.href === href;
 
-            if (!isFinalHost(destinationURL.hostname)) return;
+            if (!isFinalHost || !isSameURL) return;
+            event.preventDefault();
 
-            const shortlink = w.sessionStorage.getItem(CONFIG.TOKEN_URL_KEY);
-            if (!shortlink) return;
-            if (destinationURL.hostname === location.hostname) return;
+            this.save(href, destinationURL.href);
+        });
+    },
 
-            if (event.cancelable) {
-                event.preventDefault();
-            }
+    save(href, destination) {
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: `${this.cacheURL}/api/save`,
+            headers: { "Content-Type": "application/json" },
+            responseType: "json",
+            data: JSON.stringify({
+                shortlink: href,
+                destination,
+            }),
+            onload: (data) => {
+                const { response } = data;
+                if (response.status !== "ok") return;
+                navigation.navigate(destination, { info: "bypass_link" });
+            },
+        });
+    },
 
-            console.log("Destination intercepted", event.destination.url);
-            console.log("Is cancelable?", event.cancelable);
-
-            const result = await requestAPI("POST", "/api/save", {
-                shortlink,
-                destination: event.destination.url,
-            });
-
-            console.log("Status", result.status, "| Body", result.body);
-
-            if (result.body?.status === "ok") {
-                console.log("Saved!");
-                w.sessionStorage.removeItem(CONFIG.TOKEN_URL_KEY);
-            } else {
-                console.warn("Save rejected", result.status, result.body?.message);
-            }
-
-            if (event.cancelable) navigateTo(event.destination.url);
-        } catch (error) {
-            console.error("Error on save", error);
+    isFinalHost(hostname) {
+        for (const domain of this.finalDomains) {
+            if (typeof domain === "string" && hostname === domain) return true;
+            if (domain instanceof RegExp && domain.test(hostname)) return true;
         }
+    },
+};
+
+const domains = {
+    execute(domain, handler) {
+        const { hostname, href, pathname, search } = location;
+        if (hostname !== domain) return;
+
+        bypass.exec(hostname, href, pathname, search);
+        handler();
+    },
+};
+
+const templates = {
+    tpi() {
+        templates.antiAdblockCore();
+
+        tools.click("#continue:not([disabled])");
+        tools.click(".get-link[href]:not(.disabled)");
+    },
+    host() {
+        patches.timer();
+
+        tools.remove("div", { css: { position: "fixed" }, text: "detected" });
+        tools.click("#startButton");
+        tools.click("a[href='#getmylink']");
+        tools.click("#getnewlink");
+    },
+    ouo() {
+        patches.timer();
+
+        tools.click("#btn-main:not(.disabled)");
+        tools.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+    },
+    devuploads() {
+        patches.timer();
+
+        tools.click("#gdl[style*='block']");
+        tools.click("#gdlf[style*='block']");
+        tools.click("#dln");
+    },
+    exeio() {
+        tools.click(".link-button:not(.disabled)");
+        tools.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+    },
+    boostink() {
+        tools.redirect("script[src*='unlock.js']", { preprocess: ["base64"], attr: /[a-z]{5,}/ });
+    },
+    antiAdblockCore() {
+        const AD = ["pagead2.googlesyndication.com", "securepubads.g.doubleclick.net", "googletagservices.com", "s.amazon-adsystem.com", "googleadservices.com"];
+
+        const patchFetch = async (owner) => {
+            owner.fetch = new Proxy(owner.fetch, {
+                async apply(target, thisArg, argArray) {
+                    const [url] = argArray;
+                    if (AD.some(h => url.includes(h))) return Object.create(null);
+
+                    return Reflect.apply(target, thisArg, argArray);
+                },
+            });
+        };
+        patchFetch(local);
+
+        local.Element.prototype.setAttribute = new Proxy(local.Element.prototype.setAttribute, {
+            apply(target, thisArg, argArray) {
+                const [name, value] = argArray;
+
+                if ((name === "src" || name === "href") && /\d+x\d+|pagead|ads/.test(value)) {
+                    const destMap = {
+                        IMG: "image",
+                        SCRIPT: "script",
+                        LINK: "style",
+                    };
+                    const dest = destMap[thisArg.tagName];
+
+                    tools.request(value, {
+                        headers: {
+                            "Referer": `${location.origin}/`,
+                            "Sec-Fetch-Dest": dest,
+                            "Sec-Fetch-Mode": "no-cors",
+                            "Sec-Fetch-Site": "same-origin",
+                        },
+                    }).then(() => {
+                        Reflect.apply(target, thisArg, [name, value]);
+                        if (thisArg.tagName === "IMG") {
+                            Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
+                        } else if (thisArg.tagName === "LINK") {
+                            Object.defineProperty(thisArg, "sheet", { get: () => ({}), configurable: true });
+                        }
+                        thisArg.onerror = () => { };
+                        thisArg.dispatchEvent(new Event("load"));
+                    });
+
+                    return;
+                }
+
+                return Reflect.apply(target, thisArg, argArray);
+            },
+        });
+    },
+};
+
+domains.execute("tpi.li", templates.tpi);
+domains.execute("oii.la", templates.tpi);
+domains.execute("srnky.com", templates.tpi);
+domains.execute("clksz.com", templates.tpi);
+
+domains.execute("financeehelp.com", templates.host);
+domains.execute("cloudhostt.com", templates.host);
+domains.execute("financeguidz.com", templates.host);
+domains.execute("techbixby.com", templates.host);
+domains.execute("loanbixby.com", templates.host);
+
+domains.execute("ouo.io", templates.ouo);
+domains.execute("ouo.press", templates.ouo);
+
+domains.execute("djxmaza.in", templates.devuploads);
+domains.execute("smartfeecalculator.com", templates.devuploads);
+domains.execute("gujjukhabar.in", templates.devuploads);
+domains.execute("pdfhindibook.com", templates.devuploads);
+
+domains.execute("exeygo.com", templates.exeio);
+domains.execute("cuttty.com", templates.exeio);
+domains.execute("cety.app", templates.exeio);
+domains.execute("cutlink.net", templates.exeio);
+domains.execute("cutnet.net", templates.exeio);
+domains.execute("cuttlinks.com", templates.exeio);
+domains.execute("exe-links.com", templates.exeio);
+domains.execute("exe-urls.com", templates.exeio);
+domains.execute("exego.app", templates.exeio);
+domains.execute("exnion.com", templates.exeio);
+
+domains.execute("boost.ink", templates.boostink);
+domains.execute("bst.gg", templates.boostink);
+
+domains.execute("linegee.net", async () => {
+    templates.antiAdblockCore();
+
+    const script = await tools.element("script:not([src])", { text: "atob(" });
+    const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
+    let xxc;
+    while (!xxc) {
+        const request = await fetch(location.href + q);
+        const response = await request.text();
+        const doc = new DOMParser().parseFromString(response, "text/html");
+        xxc = doc.querySelector("#xxc[href]");
+        if (xxc) {
+            location.assign(xxc.href);
+        } else {
+            await tools.wait(500);
+        }
+    }
+});
+
+domains.execute("pahe.plus", () => {
+    templates.antiAdblockCore();
+    tools.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled]), .get-link:not(.disabled)");
+});
+
+domains.execute("intercelestial.com", async () => {
+    templates.antiAdblockCore();
+    tools.click(".myButton", { count: 3 });
+
+    if (/^\?ht=[a-zA-Z0-9%]+$/.test(location.search)) {
+        sessionStorage.setItem("acs-shortlink", location.href);
+    };
+
+    const xxc = document.querySelector("#xxc[href]");
+    const shortlink = sessionStorage.getItem("acs-shortlink");
+    if (xxc && shortlink) {
+        window.stop();
+        bypass.save(shortlink, xxc.href);
+    }
+});
+
+domains.execute("vexfile.com", () => {
+    tools.click(".generate-link:not(.blocked)");
+});
+
+domains.execute("filespayouts.com", () => {
+    patches.timer({ text: "tick" });
+    tools.click("#method_free");
+});
+
+domains.execute("modsfire.com", () => {
+    patches.timer();
+    tools.click(".download-button:not([href])");
+});
+
+domains.execute("www.file-upload.org", () => {
+    tools.click("button[name='method_free'], :has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
+});
+
+domains.execute("upfilesgo.com", () => {
+    tools.click("#link-button-free:not([disabled]), #file-captcha #link-button:not([disabled])");
+});
+
+domains.execute("safefileku.com", () => {
+    patches.timer();
+    tools.click(":has([name='cf-turnstile-response'][value]) button[type='submit']");
+});
+
+domains.execute("uploadrar.com", () => {
+    tools.click("button[name='method_free'], #downloadbtn:not([disabled])");
+});
+
+domains.execute("shrinkme.click", async () => {
+    tools.click(".btn-primary:not([disabled])");
+});
+
+domains.execute("themezon.net", async () => {
+    tools.click("#btn2");
+    tools.click("#tp-snp2");
+});
+
+domains.execute("en.mrproblogger.com", async () => {
+    tools.click(".get-link:not(.disabled)");
+});
+
+domains.execute("uploady.io", async () => {
+    tools.click("#free_dwn");
+    tools.click("#downloadbtn");
+});
+
+domains.execute("apkadmin.com", async () => {
+    tools.click("#downloadbtn");
+});
+
+domains.execute("www.up-4ever.net", async () => {
+    tools.remove("#u4ab_modal");
+    tools.click(`button[name="method_free"]`);
+
+    tools.click("#downloadbtn");
+
+    tools.click(":has([name='cf-turnstile-response'][value]) [type='submit']:not([disabled])");
+    tools.click("#dl2btn");
+});
+
+domains.execute("cloud.unblockedgames.world", async () => {
+    tools.click("a[onclick]", { text: "Start Verification" });
+    tools.click("#verify_button2, #verify_button", { count: 2 });
+
+    const link = await tools.element("#two_steps_btn[href]");
+    location.assign(link.href);
+});
+
+domains.execute("fc-lc.xyz", async () => {
+    tools.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
+    tools.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
+});
+
+domains.execute("jobzhub.store", async () => {
+    tools.click("#next", { visible: true });
+    tools.click("#scroll", { visible: true });
+    tools.click("#glink", { visible: true });
+    tools.click(`:has([name="cf-turnstile-response"][value]) #surl:not(.disabled)`);
+});
+
+domains.execute("aii.sh", async () => {
+    tools.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
+    tools.click(".btn-primary[href]:not(.disabled)");
+});
+
+domains.execute("oii.io", async () => {
+    patches.define(local, "AdscoreInit", { get: () => () => { } });
+
+    tools.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
+    tools.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
+
+    while (true) {
+        document.dispatchEvent(new MouseEvent("mousemove"));
+        await tools.wait(100);
+    }
+});
+
+domains.execute("aknewz.xyz", async () => {
+    tools.click("#next");
+    tools.click("#scroll:not(.hidden)", { count: 2 });
+
+    tools.click(`:has([name="cf-turnstile-response"][value]) #surl`);
+});
+
+domains.execute("toolskitpro.net", async () => {
+    tools.remove("div", { css: { position: "fixed" } });
+    tools.click(".show #afterBtn");
+    tools.click("#nxt");
+    tools.click("#getl");
+});
+
+domains.execute("icutlink.com", async () => {
+    tools.click(".get-link:not(.disabled)");
+});
+
+domains.execute("lnbz.la", async () => {
+    templates.antiAdblockCore();
+
+    tools.click(`:has([name="cf-turnstile-response"][value]) #continue`);
+    tools.click(".get-link:not(.disabled)");
+});
+
+domains.execute("avnsgames.com", async () => {
+    tools.click("#getnewlink");
+});
+
+domains.execute("zdrive.to", async () => {
+    tools.click("#freeBtn", { wait: 500 });
+    tools.click("#down_1Form button", { visible: true });
+    tools.click("#down_2Form button", { visible: true });
+    tools.click(".btn-download:not(.disabled)");
+});
+
+domains.execute("cloudfam.io", async () => {
+    tools.redirect("#btn-clean-continue[href]");
+    tools.redirect("#cf-btn-free[href]");
+    tools.redirect("#free-btn[href]");
+    tools.redirect("#cf-dl-btn[href]");
+});
+
+domains.execute("uiil.ink", async () => {
+    tools.click("#form-continue [type='submit']");
+    tools.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+    tools.click(`#multiLinkBtn:not(.disabled)`);
+});
+
+domains.execute("rekonise.com", async () => {
+    patches.apply(local, "open", (target, thisArg, argArray) => {
+        if (!document.querySelector(".all-done-row")) return;
+        location.assign(argArray[0]);
     });
-}
+
+    tools.click(".action-button:not([disabled])", { count: 10 });
+    tools.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
+});
