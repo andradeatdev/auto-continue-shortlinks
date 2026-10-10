@@ -80,6 +80,9 @@
 // 
 // @grant              GM_xmlhttpRequest
 // @grant              unsafeWindow
+// @grant              GM_getValue
+// @grant              GM_setValue
+// @grant              GM_registerMenuCommand
 // 
 // @connect            shortlinks.fdyzen.workers.dev
 // @connect            intercelestial.com
@@ -95,9 +98,43 @@
 
 const config = {
     defaultTimerFactor: 0.05,
+
+    get useCache() {
+        return commands.cmds.useCache.value;
+    },
+    get useContinue() {
+        return commands.cmds.useContinue.value;
+    },
 };
 
 const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
+
+const commands = {
+    cmds: {
+        useCache: {
+            name: "Use cache",
+            desc: "Use cache to bypass shortlinks",
+            value: GM_getValue("useCache", true),
+        },
+        useContinue: {
+            name: "Use continue",
+            desc: "Use continue to continue links",
+            value: GM_getValue("useContinue", true),
+        },
+    },
+
+    exec() {
+        for (const [name, cmd] of Object.entries(this.cmds)) {
+            GM_registerMenuCommand(`[${cmd.value ? "✔" : "✘"}] ${cmd.name}`, () => this.toggleCommand(name, cmd));
+        }
+    },
+
+    toggleCommand(name, cmd) {
+        const value = GM_getValue(name, cmd.value);
+        GM_setValue(name, !value);
+        location.reload();
+    },
+};
 
 const watch = {
     observing: false,
@@ -460,8 +497,9 @@ const domains = {
         const { hostname, href, pathname, search } = location;
         if (hostname !== domain) return;
 
-        bypass.exec(hostname, href, pathname, search);
-        handler();
+        commands.exec();
+        if (config.useCache) bypass.exec(hostname, href, pathname, search);
+        if (config.useContinue) handler();
     },
 };
 
