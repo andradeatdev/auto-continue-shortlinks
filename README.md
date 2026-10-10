@@ -43,3 +43,7 @@ The script can still automate other parts of the process on these sites, but the
 - Somes sites **can't be timer accelerated**, the timer validation is done on the server side, to see what sites have `tuner-timer`, see [HOSTS.md](HOSTS.md).
 - Pahe.ink add news domains sometimes, so the script may not work on some new sites, you can try to **add them manually or wait for the next update**.
 - Interestial.com return invalid session if you open multiple tabs, **this issue is not related to this script**.
+
+#### License
+
+**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). If you copy, modify or redistribute this script, you must keep the copyright notice and the source code under GPL-3.0. See [LICENSE](LICENSE).

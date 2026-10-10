@@ -84,9 +84,14 @@
 // @connect            shortlinks.fdyzen.workers.dev
 // @connect            intercelestial.com
 //
+// @copyright          2024-2026 hdyzen (andradeatdev) — https://github.com/andradeatdev/auto-continue-shortlinks/
 // @license            GPL-3.0
 // @homepageURL        https://github.com/andradeatdev/auto-continue-shortlinks/
 // ==/UserScript==
+
+// Copyright (C) 2026 hdyzen (andradeatdev). This script is free software:
+// you may copy, modify and redistribute it only under the GNU General Public
+// License v3. Source and this notice must be kept intact (GPL-3.0, §4–§5).
 
 const config = {
     defaultTimerFactor: 0.05,

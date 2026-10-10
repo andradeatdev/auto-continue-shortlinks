@@ -43,3 +43,7 @@ O script ainda consegue automatizar outras partes do processo nesses sites, mas 
 - Alguns sites **não podem ter o timer acelerado** — a validação do timer é feita no servidor; para ver quais sites têm `tuner-timer`, consulte [HOSTS.md](HOSTS.md).
 - O pahe.ink adiciona novos domínios às vezes, então o script pode não funcionar em alguns sites novos — você pode tentar **adicioná-los manualmente ou esperar a próxima atualização**.
 - O Interestial.com retorna "sessão inválida" se você abrir múltiplas abas, **esse problema não é relacionado a este script**.
+
+#### Licença
+
+**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). Se você copiar, modificar ou redistribuir este script, deve manter o aviso de copyright e o código-fonte sob GPL-3.0. Veja [LICENSE](LICENSE).
