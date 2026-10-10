@@ -137,49 +137,67 @@ const commands = {
 };
 
 const watch = {
-    observing: false,
-    observer: undefined,
+    OPTIONS: { childList: true, subtree: true, attributes: true, characterData: true },
     callbacks: new Set(),
+    observer: undefined,
+    queue: [],
+    isScheduled: false,
+
+    drain() {
+        for (const record of this.observer.takeRecords()) this.queue.push(record);
+    },
+
+    flush() {
+        this.isScheduled = false;
+        this.drain();
+
+        const records = this.queue;
+        this.queue = [];
+        if (records.length === 0) return;
+
+        for (const callback of this.callbacks) {
+            try {
+                callback(records);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        this.observer.takeRecords();
+    },
+
+    schedule() {
+        if (this.isScheduled) return;
+        this.isScheduled = true;
+        requestAnimationFrame(() => this.flush());
+    },
 
     observe() {
-        if (watch.observing) return;
-        watch.observing = true;
-
-        let isScheduled = false;
-        const schedule = (mutations) => {
-            if (isScheduled) return;
-            isScheduled = true;
-            requestAnimationFrame(() => {
-                isScheduled = false;
-                for (const callback of watch.callbacks) callback(mutations);
-            });
-        };
-
-        watch.observer = new MutationObserver((mutations) => {
-            schedule(mutations);
+        if (this.observer) return;
+        this.observer = new MutationObserver((records) => {
+            for (const record of records) this.queue.push(record);
+            this.schedule();
         });
-        watch.observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-        });
+        this.observer.observe(document.documentElement, this.OPTIONS);
     },
 
     change(callback) {
-        if (!watch.observing) watch.observe();
-        watch.callbacks.add(callback);
-
-        return () => watch.callbacks.delete(callback);
+        this.observe();
+        this.callbacks.add(callback);
+        return () => this.callbacks.delete(callback);
     },
 
-    aside(callback) {
-        watch.observer.disconnect();
-        callback();
-        watch.observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-        });
+    ignore(callback) {
+        if (!this.observer) return callback();
+
+        this.drain();
+        if (this.queue.length > 0) this.schedule();
+
+        try {
+            return callback();
+        } finally {
+            this.observer.takeRecords();
+        }
     },
 };
 
