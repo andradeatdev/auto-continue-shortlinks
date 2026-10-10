@@ -201,80 +201,178 @@ const watch = {
     },
 };
 
-const resolvers = {
-    visible(node, visible) {
-        return node.checkVisibility({ visibilityProperty: true }) === visible;
-    },
-    text(node, text) {
-        if (typeof text === "string") return node.textContent.includes(text);
-        if (text instanceof RegExp) return text.test(node.textContent);
-    },
-    css(node, css) {
-        const style = getComputedStyle(node);
-        for (const [key, value] of Object.entries(css)) {
-            if (style[key] !== value) return false;
+const tool = {
+    assertSelector(name, selector) {
+        if (typeof selector !== "string") {
+            throw new TypeError(`[tools.${name}] 'selector' must be a string`);
         }
-        return true;
     },
-};
 
-const tools = {
-    sheet: new CSSStyleSheet(),
+    isVisible(node, isVisible) {
+        if (typeof isVisible !== "boolean") return true;
+        return node.checkVisibility({ visibilityProperty: true }) === isVisible;
+    },
+
+    hasText(node, text) {
+        if (text === undefined || text === null) return true;
+        const content = node.textContent;
+        if (typeof text === "string") return content.includes(text);
+        if (text instanceof RegExp) {
+            text.lastIndex = 0;
+            return text.test(content);
+        }
+        return false;
+    },
+
+    hasCSS(node, css) {
+        if (!css) return true;
+
+        const style = getComputedStyle(node);
+        return Object.entries(css).every(([key, value]) => style[key] === value);
+    },
+
+    getAttr(node, attr) {
+        if (typeof attr === "string") return node.getAttribute(attr);
+        if (attr instanceof RegExp) {
+            attr.lastIndex = 0;
+            const name = node.getAttributeNames().find(n => attr.test(n));
+            return node.getAttribute(name);
+        }
+    },
 
     wait(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     },
 
     *select(selector, options = {}) {
+        this.assertSelector("select", selector);
         const { visible, text, css } = options;
 
         const nodes = document.querySelectorAll(selector);
         for (const node of nodes) {
-            if (typeof visible === "boolean" && !resolvers.visible(node, visible)) continue;
-            if (text !== undefined && !resolvers.text(node, text)) continue;
-            if (css !== undefined && !resolvers.css(node, css)) continue;
+            if (!tool.isVisible(node, visible)) continue;
+            if (!tool.hasText(node, text)) continue;
+            if (!tool.hasCSS(node, css)) continue;
             yield node;
         }
     },
 
-    click(selector, options = {}) {
-        const { wait = 0, scroll = false, count = 1 } = options;
-        let remaining = count;
+    each(selector, options = {}, handler) {
+        this.assertSelector("each", selector);
 
-        const cleanup = watch.change(async () => {
-            const nodes = tools.select(selector, options);
-            for (const node of nodes) {
-                if (remaining-- <= 0) {
-                    cleanup();
-                    break;
-                }
+        const seen = new WeakSet();
+        let isStopped = false;
+        let isRunning = false;
+        let isDirty = false;
 
-                if (wait > 0) await tools.wait(wait);
-                if (scroll !== false) await tools.scroll(node, typeof scroll === "object" ? scroll : {});
+        const handle = async (node) => {
+            if (seen.has(node)) return;
+            if (await handler(node, stop) === false) return;
+            seen.add(node);
+        };
 
-                const event = new MouseEvent("click", {
-                    bubbles: true,
-                    cancelable: true,
-                    view: win,
-                });
-
-                node.dispatchEvent(event);
+        const run = async () => {
+            if (isStopped) return;
+            if (isRunning) {
+                isDirty = true;
+                return;
             }
 
+            isRunning = true;
+            let nodes = tool.select(selector, options);
+            // eslint-disable-next-line no-unmodified-loop-condition -- isStopped can be changed by handle()
+            while (!isStopped) {
+                const { value: node, done } = nodes.next();
+                if (!done) await handle(node);
+                else if (isDirty) {
+                    isDirty = false;
+                    nodes = tool.select(selector, options);
+                } else break;
+            }
+            isRunning = false;
+        };
+
+        const unwatch = watch.change(run);
+        const stop = () => {
+            isStopped = true;
+            unwatch();
+        };
+
+        run();
+        return stop;
+    },
+
+    click(selector, options = {}) {
+        this.assertSelector("click", selector);
+        const { wait = 0, scroll = false, count = 1, bubbles = true } = options;
+        let remaining = count;
+
+        return tool.each(selector, options, async (node, stop) => {
+            if (wait > 0) await tool.wait(wait);
+            if (!node.isConnected) return false;
+
+            if (scroll !== false) await tool.scroll(node, typeof scroll === "object" ? scroll : {});
+
+            const event = new MouseEvent("click", {
+                bubbles,
+                cancelable: true,
+                view: win,
+            });
+
+            node.dispatchEvent(event);
+
+            if (--remaining <= 0) stop();
         });
     },
 
     remove(selector, options = {}) {
-        watch.change(() => {
-            const nodes = tools.select(selector, options);
-            for (const node of nodes) {
-                node.remove();
+        this.assertSelector("remove", selector);
+        return tool.each(selector, options, (node) => node.remove());
+    },
+
+    redirect(selector, options = {}) {
+        this.assertSelector("redirect", selector);
+        const { attr = "href", decodeB64 = false } = options;
+
+        return tool.each(selector, options, async (node, stop) => {
+            let url = tool.getAttr(node, attr);
+            if (!url) return false;
+
+            if (decodeB64 === true) {
+                try { url = atob(url); } catch { return; }
+            }
+
+            stop();
+            location.assign(url);
+        });
+    },
+
+    element(selector, options = {}) {
+        this.assertSelector("element", selector);
+        const { timeout } = options;
+
+        return new Promise((resolve) => {
+            let timer;
+            let isDone = false;
+
+            const stop = tool.each(selector, options, (node, stop) => {
+                isDone = true;
+                clearTimeout(timer);
+                stop();
+                resolve(node);
+            });
+
+            if (!isDone && timeout > 0) {
+                timer = setTimeout(() => {
+                    stop();
+                    resolve();
+                }, timeout);
             }
         });
     },
 
     request(url, options = {}) {
-        if (typeof url !== "string") return console.error("[tools.request] Missing `url` argument");
+        if (typeof url !== "string") throw new TypeError("[tools.request] Missing `url` argument");
 
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
