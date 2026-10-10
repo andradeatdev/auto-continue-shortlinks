@@ -34,6 +34,15 @@ Alguns hosts fazem validação de timer no lado do servidor. Nesses sites, o tim
 
 O script ainda consegue automatizar outras partes do processo nesses sites, mas o timer precisa rodar pelo tempo exigido.
 
+#### Opções do Menu
+
+O cache e o auto-continue podem ser ativados/desativados individualmente, se seu gerenciador de scripts suportar registro de menu comandos.
+
+- **Use cache** — alterna o bypass do cache. Padrão: **ligado**.
+- **Use continue** — alterna a automação de continuação/cliques nos links. Padrão: **ligado**.
+
+Clique no comando para alternar: ele mostra **✔** quando ativo e **✘** quando desativado. A página atual recarrega após a alteração.
+
 #### Notas
 
 > O Intercelestial.com atualiza o código de detecção com frequência. Recomendo procurar outras formas de encontrar o filme/série que você procura, já que só consigo corrigir quando tenho tempo.

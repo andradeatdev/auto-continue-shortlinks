@@ -34,6 +34,15 @@ Some hosts perform server-side timer validation. For these sites, the timer **ca
 
 The script can still automate other parts of the process on these sites, but the timer must run for its required duration.
 
+#### Menu Options
+
+Cache and auto-continue can be enabled/disabled individually, if your userscript manager supports command menu registration.
+
+- **Use cache** — toggles the cache bypass. Default: **on**.
+- **Use continue** — toggles the continue/click automation on links. Default: **on**.
+
+Click a command to toggle it: it's shown with a check (**✔**) when active and a cross (**✘**) when off. The current page reloads after the change.
+
 #### Notes
 
 > Intercelestial.com actively updates its detection code. I recommend finding other ways to find the movie/series you’re looking for, since I can only fix it when I have time.
