@@ -475,6 +475,25 @@ const patch = {
             },
         });
     },
+
+    fetch(options = {}) {
+        const { url, returnValue = Object.create(null) } = options;
+
+        const isValidUrl = (u) => {
+            if (typeof url === "string") return u.includes(url);
+            if (url instanceof RegExp) {
+                url.lastIndex = 0;
+                return url.test(u);
+            }
+            return true;
+        };
+
+        patch.apply(win, "fetch", (target, thisArg, argArray) => {
+            const [url] = argArray;
+            if (isValidUrl(url)) return returnValue;
+            return Reflect.apply(target, thisArg, argArray);
+        });
+    },
 };
 
 const bypass = {
