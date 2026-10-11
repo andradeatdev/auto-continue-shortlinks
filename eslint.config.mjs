@@ -5,6 +5,56 @@ import stylistic from "@stylistic/eslint-plugin";
 import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
 
+const duplicateDomainRule = {
+  meta: {
+    type: "problem",
+    schema: [],
+    messages: {
+      duplicate: "The domain '{{domain}}' has already been used in domains.execute().",
+    },
+  },
+
+  create(context) {
+    const domainsInFile = new Set();
+
+    return {
+      CallExpression(node) {
+        const callee = node.callee;
+
+        if (
+          callee.type !== "MemberExpression" ||
+          callee.object.name !== "domains" ||
+          callee.property.name !== "execute"
+        ) {
+          return;
+        }
+
+        const firstArgument = node.arguments[0];
+
+        if (
+          !firstArgument ||
+          firstArgument.type !== "Literal" ||
+          typeof firstArgument.value !== "string"
+        ) {
+          return;
+        }
+
+        const domain = firstArgument.value;
+
+        if (domainsInFile.has(domain)) {
+          context.report({
+            node: firstArgument,
+            messageId: "duplicate",
+            data: { domain },
+          });
+        } else {
+          domainsInFile.add(domain);
+        }
+      },
+    };
+  },
+};
+
 export default defineConfig([
   js.configs.recommended,
   sonarjs.configs.recommended,
@@ -18,7 +68,12 @@ export default defineConfig([
   {
     files: ["**/*.js"],
     plugins: {
-      "@stylistic": stylistic
+      "@stylistic": stylistic,
+      local: {
+        rules: {
+          "duplicate-domain": duplicateDomainRule,
+        },
+      },
     },
     languageOptions: { globals: globals.greasemonkey },
     rules: {
@@ -31,6 +86,8 @@ export default defineConfig([
 
       "sonarjs/pseudo-random": "off",
       "sonarjs/super-linear-regex": "off",
+
+      "local/duplicate-domain": "warn",
 
       "@stylistic/semi": ["warn", "always"],
       "@stylistic/comma-dangle": ["warn", "always-multiline"],
