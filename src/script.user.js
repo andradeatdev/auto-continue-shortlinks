@@ -610,12 +610,6 @@ const domains = {
 
         commands.exec();
 
-        if (typeof handler === "function") {
-            handler();
-            if (config.useCache) bypass.exec(hostname, href, pathname, search);
-            return;
-        }
-
         if (config.useCache && handler.cache) handler.cache();
         else if (config.useCache) bypass.exec(hostname, href, pathname, search);
 
