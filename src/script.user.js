@@ -330,6 +330,16 @@ const tool = {
         });
     },
 
+    scroll(selector, options = {}) {
+        this.assertSelector("scroll", selector);
+        const { behavior = "smooth", block = "center", inline = "center" } = options;
+
+        return tool.each(selector, options, async (node, stop) => {
+            node.scrollIntoView({ behavior, block, inline });
+            stop();
+        });
+    },
+
     remove(selector, options = {}) {
         this.assertSelector("remove", selector);
         return tool.each(selector, options, (node) => node.remove());
@@ -784,7 +794,6 @@ domains.execute("intercelestial.com", {
     },
     continue() {
         tool.each(".myButton", {}, (node, stop) => {
-            console.log("node", node);
             win.LLpd = Date.now();
             stop();
         });
