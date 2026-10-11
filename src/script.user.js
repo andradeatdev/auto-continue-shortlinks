@@ -105,6 +105,9 @@ const config = {
     get useContinue() {
         return commands.cmds.useContinue.value;
     },
+    get usePatcher() {
+        return commands.cmds.usePatcher.value;
+    },
 };
 
 const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
@@ -113,13 +116,15 @@ const commands = {
     cmds: {
         useCache: {
             name: "Use cache",
-            desc: "Use cache to bypass shortlinks",
             value: GM_getValue("useCache", true),
         },
         useContinue: {
             name: "Use continue",
-            desc: "Use continue to continue links",
             value: GM_getValue("useContinue", true),
+        },
+        usePatcher: {
+            name: "Use patcher",
+            value: GM_getValue("usePatcher", true),
         },
     },
 
