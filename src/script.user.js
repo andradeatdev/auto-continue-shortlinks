@@ -310,13 +310,14 @@ const tool = {
     click(selector, options = {}) {
         this.assertSelector("click", selector);
         const { wait = 0, scroll = false, count = 1, bubbles = true } = options;
+        const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
         let remaining = count;
 
         return tool.each(selector, options, async (node, stop) => {
             if (wait > 0) await tool.wait(wait);
             if (!node.isConnected) return false;
 
-            if (scroll !== false) await tool.scroll(node, typeof scroll === "object" ? scroll : {});
+            if (scroll !== false) node.scrollIntoView({ behavior, block, inline });
 
             const event = new MouseEvent("click", {
                 bubbles,
