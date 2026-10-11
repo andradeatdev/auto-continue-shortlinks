@@ -795,6 +795,8 @@ domains.execute("intercelestial.com", {
         tool.click(".myButton", { count: 3, bubbles: false });
     },
     cache() {
+        bypass.cache(location.href);
+
         if (/^\?ht=[a-zA-Z0-9%]+$/.test(location.search)) {
             sessionStorage.setItem("acs-shortlink", location.href);
         };
