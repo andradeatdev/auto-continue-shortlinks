@@ -84,7 +84,7 @@
 // @grant              GM_setValue
 // @grant              GM_registerMenuCommand
 // 
-// @connect            shortlinks.fdyzen.workers.dev
+// @connect            shortlinks.zencore.fun
 // @connect            intercelestial.com
 //
 // @copyright          2024-2026 hdyzen (andradeatdev) — https://github.com/andradeatdev/auto-continue-shortlinks/
@@ -478,7 +478,7 @@ const patch = {
 };
 
 const bypass = {
-    cacheURL: "https://shortlinks.fdyzen.workers.dev",
+    cacheURL: "https://shortlinks.zencore.fun",
     shortenerPatterns: {
         "tpi.li": /^\/[A-Za-z0-9_-]{3,}$/,
         "oii.la": /^\/[A-Za-z0-9_-]{3,}$/,
