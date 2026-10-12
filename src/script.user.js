@@ -778,7 +778,7 @@ domains.execute("pahe.plus", {
     },
     continue() {
         tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled])");
-        tool.redirect(".get-link[href]:not(.disabled)");
+        tool.redirect(".get-link[href^='https://']:not(.disabled)");
     },
 });
 
