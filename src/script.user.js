@@ -673,45 +673,41 @@ const templates = {
     },
     pahe: {
         patcher() {
-            patch.apply(win.Element.prototype, "setAttribute", (target, thisArg, argArray) => {
-                const [name, value] = argArray;
-                if ((name === "src" || name === "href") && /\d+x\d+|pagead|ads/.test(value)) {
-                    const destMap = {
-                        IMG: "image",
-                        SCRIPT: "script",
-                        LINK: "style",
-                    };
-                    const dest = destMap[thisArg.tagName];
-
-                    tool.request(value, {
-                        headers: {
-                            "Referer": `${location.origin}/`,
-                            "Sec-Fetch-Dest": dest,
-                            "Sec-Fetch-Mode": "no-cors",
-                            "Sec-Fetch-Site": "same-origin",
-                        },
-                    }).then(() => {
-                        Reflect.apply(target, thisArg, [name, value]);
-                        if (thisArg.tagName === "IMG") {
-                            Object.defineProperty(thisArg, "naturalWidth", { get: () => 1, configurable: true });
-                        } else if (thisArg.tagName === "LINK") {
-                            Object.defineProperty(thisArg, "sheet", { get: () => ({}), configurable: true });
-                        }
-                        thisArg.onerror = () => { };
-                        thisArg.dispatchEvent(new Event("load"));
+            const mirror = (url, dest) => {
+                tool.request(url, {
+                    headers: {
+                        "Referer": `${location.origin}/`,
+                        "Sec-Fetch-Dest": dest,
+                        "Sec-Fetch-Mode": "no-cors",
+                        "Sec-Fetch-Site": "same-origin",
+                    },
+                }).catch(() => { });
+            };
+            patch.apply(win.Node.prototype, "appendChild", (target, thisArg, argArray) => {
+                const node = argArray[0];
+                if (node?.tagName === "SCRIPT" && /pagead\/conversion\.js/.test(node.src || node.getAttribute("src") || "")) {
+                    const real = node.src;
+                    Object.defineProperty(node, "src", {
+                        get: () => real,
+                        set: () => { },
+                        configurable: true,
                     });
-                    return;
+                    node.setAttribute("src", "data:text/javascript,");
+                    mirror(real, "script");
+                }
+                if (node?.tagName === "LINK" && node?.rel?.includes("stylesheet") && /120x600-[0-9a-f]{8}\.css/.test(node.href || "")) {
+                    const real = node.href;
+                    node.href = "data:text/css,";
+                    mirror(real, "style");
                 }
                 return Reflect.apply(target, thisArg, argArray);
-
             });
         },
     },
     antiAdbCore: {
         patcher() {
             const AD_REGEX = /pagead2.googlesyndication.com|securepubads.g.doubleclick.net|googletagservices.com|s.amazon-adsystem.com|googleadservices.com/;
-            patch.fetch({ url: AD_REGEX });
-            patch.apply(win.Promise, "all", () => Promise.resolve([]));
+            patch.fetch({ url: AD_REGEX, returnValue: Promise.resolve({}) });
         },
     },
 };
@@ -786,12 +782,11 @@ domains.execute("intercelestial.com", {
     patcher() {
         templates.antiAdbCore.patcher();
         templates.pahe.patcher();
+
+        patch.define(win, "LLct", { get: () => "1" });
+        patch.define(win, "LLpd", { get: () => Date.now() - 284 });
     },
     continue() {
-        tool.each(".myButton", {}, (node, stop) => {
-            win.LLpd = Date.now();
-            stop();
-        });
         tool.click(".myButton", { count: 3, bubbles: false });
     },
     cache() {
