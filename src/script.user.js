@@ -74,6 +74,12 @@
 // @match              https://exnion.com/*
 // @match              https://lnbz.la/*
 // @match              https://avnsgames.com/*
+// 
+// @match              https://invest.datapendidikan.com/*
+// @match              https://crm.urlwebsite.com/*
+// @match              https://go.fakta.id/*
+// @match              https://safelinkearn.com/*
+// @match              https://www.mirrored.to/*
 //
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
@@ -309,13 +315,17 @@ const tool = {
 
     click(selector, options = {}) {
         this.assertSelector("click", selector);
-        const { wait = 0, scroll = false, count = 1, bubbles = true } = options;
+        const { wait = 0, scroll = false, count = 1, bubbles = true, when } = options;
         const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
         let remaining = count;
 
         return tool.each(selector, options, async (node, stop) => {
+            if (when && !when(node)) return false;
+
             if (wait > 0) await tool.wait(wait);
             if (!node.isConnected) return false;
+
+            if (when && !when(node)) return false;
 
             if (scroll !== false) node.scrollIntoView({ behavior, block, inline });
 
@@ -328,6 +338,7 @@ const tool = {
             node.dispatchEvent(event);
 
             if (--remaining <= 0) stop();
+            else if (when) return false;
         });
     },
 
@@ -613,8 +624,8 @@ const domains = {
         if (config.useCache && handler.cache) handler.cache();
         else if (config.useCache) bypass.exec(hostname, href, pathname, search);
 
-        if (config.usePatcher) handler?.patcher();
-        if (config.useContinue) handler?.continue();
+        if (config.usePatcher) handler.patcher?.();
+        if (config.useContinue) handler.continue?.();
     },
 };
 
@@ -669,6 +680,14 @@ const templates = {
     boostink: {
         continue() {
             tool.redirect("script[src*='unlock.js']", { decodeB64: true, attr: /[a-z]{5,}/ });
+        },
+    },
+    pndk: {
+        continue() {
+            tool.remove("#sn-panel");
+            tool.click("#continue");
+            tool.click("#btget button", { text: /Next|bot|continue/, wait: 100, count: 2, when: (node) => !node.disabled });
+            tool.click("#next-btn button", { visible: true, count: 2 });
         },
     },
     pahe: {
@@ -744,6 +763,10 @@ domains.execute("exnion.com", templates.exeio);
 
 domains.execute("boost.ink", templates.boostink);
 domains.execute("bst.gg", templates.boostink);
+
+domains.execute("invest.datapendidikan.com", templates.pndk);
+domains.execute("crm.urlwebsite.com", templates.pndk);
+domains.execute("go.fakta.id", templates.pndk);
 
 domains.execute("linegee.net", {
     patcher() {
@@ -1026,5 +1049,18 @@ domains.execute("rekonise.com", {
     continue() {
         tool.click(".action-button:not([disabled])", { count: 10 });
         tool.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
+    },
+});
+
+domains.execute("safelinkearn.com", {
+    continue() {
+        tool.click(".open-btn");
+    },
+});
+
+domains.execute("www.mirrored.to", {
+    continue() {
+        tool.click(".get_btn");
+        tool.redirect(".highlight a[href]:has(.get_btn)");
     },
 });
