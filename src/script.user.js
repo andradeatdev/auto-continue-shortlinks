@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            1.2.1
+// @version            1.2.2
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -420,9 +420,15 @@ const tool = {
 
 const patch = {
     apply(owner, property, applyFn) {
-        owner[property] = new Proxy(owner[property], {
-            apply: applyFn,
-        });
+        const target = owner[property];
+        owner[property] = function (...argArray) {
+            // eslint-disable-next-line unicorn/no-this-assignment
+            const thisArg = this;
+            return applyFn(target, thisArg, argArray);
+        };
+        // owner[property] = new Proxy(owner[property], {
+        //     apply: applyFn,
+        // });
     },
 
     define(owner, property, { get, set }) {
@@ -746,7 +752,10 @@ const templates = {
                 return result;
             };
 
+            patchRealm(win);
             patch.apply(win.Element.prototype, "prepend", adopt);
+            patch.apply(win.Node.prototype, "insertBefore", adopt);
+            patch.apply(win.Node.prototype, "appendChild", adopt);
         },
     },
     antiAdbCore: {
@@ -756,7 +765,7 @@ const templates = {
             patch.apply(win, "fetch", async (target, thisArg, argArray) => {
                 const [url] = argArray;
 
-                if (!(typeof url === "string" && AD_REGEX.test(url))) return {};
+                if (!(typeof url === "string" && AD_REGEX.test(url))) return Reflect.apply(target, thisArg, argArray);
 
                 const response = await target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
                 console.log(response);
@@ -846,7 +855,6 @@ domains.execute("intercelestial.com", {
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
     },
     continue() {
-        console.log("continue");
         tool.click(".myButton", { count: 3, bubbles: false });
     },
     cache() {
