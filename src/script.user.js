@@ -420,15 +420,29 @@ const tool = {
 
 const patch = {
     apply(owner, property, applyFn) {
+        patch.fnToString ||= win.Function.prototype.toString;
+        patch.fnToStringMap ||= new WeakMap();
+
         const target = owner[property];
-        owner[property] = function (...argArray) {
-            // eslint-disable-next-line unicorn/no-this-assignment
-            const thisArg = this;
-            return applyFn(target, thisArg, argArray);
+        if (target === undefined) return;
+
+        const func = function (...argArray) {
+            return applyFn(target, this, argArray);
         };
-        // owner[property] = new Proxy(owner[property], {
-        //     apply: applyFn,
-        // });
+        patch.fnToStringMap.set(func, target);
+
+        Object.defineProperty(func, "toString", {
+            configurable: true,
+            value: Function.prototype.toString.bind(target),
+        });
+
+        win.Function.prototype.toString = function () {
+            const original = patch.fnToStringMap.get(this);
+            if (original) return patch.fnToString.call(original);
+            return patch.fnToString.call(this);
+        };
+
+        owner[property] = func;
     },
 
     define(owner, property, { get, set }) {
@@ -736,26 +750,67 @@ const templates = {
             const realms = new WeakSet();
             const patchRealm = (realm) => {
                 try {
-                    const proto = realm?.Element?.prototype;
+                    // Managers other than Tampermonkey expose page objects through Xray
+                    // wrappers: a plain assignment there never reaches the real prototype.
+                    const raw = realm?.wrappedJSObject || realm;
+                    const proto = raw?.Element?.prototype;
                     if (!proto || realms.has(proto)) return;
                     realms.add(proto);
                     patch.apply(proto, "setAttribute", hook);
                 } catch { }
             };
 
+            // The engine resolves a foreign realm (Ja reads its Element.prototype.setAttribute
+            // and calls it, only falling back to the element's own realm when that call throws)
+            // and builds it from an off-screen iframe. It inserts that iframe with
+            // `Node.prototype.insertBefore.call(parent, iframe, ref)`, so the node lands on
+            // argument #1 — never #0. Every argument counts, and multi-node inserts
+            // (append/prepend/replaceChildren) pass arrays of nodes.
+            const adoptNode = (node) => {
+                let tagName = null;
+                try { tagName = node?.tagName; } catch { }
+                if (String(tagName).toUpperCase() !== "IFRAME") return;
+                patchRealm(node.contentWindow || node.contentDocument?.defaultView);
+            };
+
             const adopt = (target, thisArg, argArray) => {
                 const result = Reflect.apply(target, thisArg, argArray);
-                try {
-                    const node = argArray[0];
-                    if (String(node?.tagName).toUpperCase() === "IFRAME") patchRealm(node.contentWindow);
-                } catch { }
+                for (const arg of argArray) {
+                    if (Array.isArray(arg)) arg.forEach(adoptNode);
+                    else adoptNode(arg);
+                }
                 return result;
             };
 
             patchRealm(win);
-            patch.apply(win.Element.prototype, "prepend", adopt);
-            patch.apply(win.Node.prototype, "insertBefore", adopt);
-            patch.apply(win.Node.prototype, "appendChild", adopt);
+            for (const [owner, property] of [
+                [win.Node?.prototype, "insertBefore"],
+                [win.Node?.prototype, "appendChild"],
+                [win.Node?.prototype, "replaceChild"],
+                [win.Element?.prototype, "prepend"],
+                [win.Element?.prototype, "append"],
+                [win.Element?.prototype, "after"],
+                [win.Element?.prototype, "before"],
+                [win.Element?.prototype, "replaceChildren"],
+                [win.Element?.prototype, "insertAdjacentElement"],
+                [win.Document?.prototype, "append"],
+                [win.Document?.prototype, "prepend"],
+            ]) {
+                if (owner) patch.apply(owner, property, adopt);
+            }
+
+            // Second chance for a realm created before these hooks went in: the engine
+            // re-reads the realm's setAttribute on every call, so a late patch still holds.
+            const sweep = () => {
+                try {
+                    for (let index = 0; index < win.length; index++) patchRealm(win[index]);
+                    for (const frame of document.querySelectorAll("iframe")) patchRealm(frame.contentWindow);
+                } catch { }
+            };
+
+            sweep();
+            win.addEventListener("DOMContentLoaded", sweep, { once: true });
+            win.addEventListener("load", sweep, { once: true });
         },
     },
     antiAdbCore: {
