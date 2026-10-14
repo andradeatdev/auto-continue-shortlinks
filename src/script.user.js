@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            1.2.0
+// @version            1.2.1
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -633,6 +633,7 @@ const templates = {
     tpi: {
         patcher() {
             templates.antiAdbCore.patcher();
+            templates.pahe.patcher();
         },
         continue() {
             tool.click("#continue:not([disabled])");
@@ -702,31 +703,66 @@ const templates = {
                     },
                 }).catch(() => { });
             };
-            patch.apply(win.Node.prototype, "appendChild", (target, thisArg, argArray) => {
-                const node = argArray[0];
-                if (node?.tagName === "SCRIPT" && /pagead\/conversion\.js/.test(node.src || node.getAttribute("src") || "")) {
-                    const real = node.src;
-                    Object.defineProperty(node, "src", {
-                        get: () => real,
-                        set: () => { },
-                        configurable: true,
-                    });
-                    node.setAttribute("src", "data:text/javascript,");
-                    mirror(real, "script");
+            const rewrite = (tag, name, value) => {
+                if (typeof value !== "string" || /^data:/i.test(value)) return null;
+
+                if (tag === "SCRIPT" && name === "src" && /pagead\/conversion\.js/.test(value)) {
+                    mirror(value, "script");
+                    return "data:text/javascript,//pagead/conversion.js";
                 }
-                if (node?.tagName === "LINK" && node?.rel?.includes("stylesheet") && /120x600-[0-9a-f]{8}\.css/.test(node.href || "")) {
-                    const real = node.href;
-                    node.href = "data:text/css,";
-                    mirror(real, "style");
+
+                if (tag === "LINK" && name === "href" && /120x600-[0-9a-f]{8}\.css/.test(value)) {
+                    const [, hash] = /120x600-([0-9a-f]{8})\.css/.exec(value);
+                    mirror(value, "style");
+                    return `data:text/css,/*/120x600-${hash}.css*/`;
                 }
+
+                return null;
+            };
+
+            const hook = (target, thisArg, argArray) => {
+                const [name, value] = argArray;
+                const rewritten = rewrite(thisArg?.tagName, String(name).toLowerCase(), value);
+                if (rewritten !== null) argArray[1] = rewritten;
                 return Reflect.apply(target, thisArg, argArray);
-            });
+            };
+
+            const realms = new WeakSet();
+            const patchRealm = (realm) => {
+                try {
+                    const proto = realm?.Element?.prototype;
+                    if (!proto || realms.has(proto)) return;
+                    realms.add(proto);
+                    patch.apply(proto, "setAttribute", hook);
+                } catch { }
+            };
+
+            const adopt = (target, thisArg, argArray) => {
+                const result = Reflect.apply(target, thisArg, argArray);
+                try {
+                    const node = argArray[0];
+                    if (String(node?.tagName).toUpperCase() === "IFRAME") patchRealm(node.contentWindow);
+                } catch { }
+                return result;
+            };
+
+            patch.apply(win.Element.prototype, "prepend", adopt);
         },
     },
     antiAdbCore: {
         patcher() {
             const AD_REGEX = /pagead2.googlesyndication.com|securepubads.g.doubleclick.net|googletagservices.com|s.amazon-adsystem.com|googleadservices.com/;
-            patch.fetch({ url: AD_REGEX, returnValue: Promise.resolve({}) });
+
+            patch.apply(win, "fetch", async (target, thisArg, argArray) => {
+                const [url] = argArray;
+
+                if (!(typeof url === "string" && AD_REGEX.test(url))) return {};
+
+                const response = await target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
+                console.log(response);
+
+                return response;
+            });
         },
     },
 };
@@ -810,6 +846,7 @@ domains.execute("intercelestial.com", {
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
     },
     continue() {
+        console.log("continue");
         tool.click(".myButton", { count: 3, bubbles: false });
     },
     cache() {
