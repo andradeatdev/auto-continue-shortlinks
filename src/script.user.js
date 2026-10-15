@@ -752,6 +752,11 @@ const templates = {
                     return `data:text/css,/*/120x600-${hash}.css*/`;
                 }
 
+                if (tag === "IMG" && name === "src" && /\/ads\/banners\/[0-9a-f]{6,16}\.gif/.test(value)) {
+                    mirror(value, "image");
+                    return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                }
+
                 return null;
             };
 
@@ -765,8 +770,6 @@ const templates = {
             const realms = new WeakSet();
             const patchRealm = (realm) => {
                 try {
-                    // Managers other than Tampermonkey expose page objects through Xray
-                    // wrappers: a plain assignment there never reaches the real prototype.
                     const raw = realm?.wrappedJSObject || realm;
                     const proto = raw?.Element?.prototype;
                     if (!proto || realms.has(proto)) return;
@@ -775,12 +778,6 @@ const templates = {
                 } catch { }
             };
 
-            // The engine resolves a foreign realm (Ja reads its Element.prototype.setAttribute
-            // and calls it, only falling back to the element's own realm when that call throws)
-            // and builds it from an off-screen iframe. It inserts that iframe with
-            // `Node.prototype.insertBefore.call(parent, iframe, ref)`, so the node lands on
-            // argument #1 — never #0. Every argument counts, and multi-node inserts
-            // (append/prepend/replaceChildren) pass arrays of nodes.
             const adoptNode = (node) => {
                 let tagName = null;
                 try { tagName = node?.tagName; } catch { }
@@ -814,8 +811,6 @@ const templates = {
                 if (owner) patch.apply(owner, property, adopt);
             }
 
-            // Second chance for a realm created before these hooks went in: the engine
-            // re-reads the realm's setAttribute on every call, so a late patch still holds.
             const sweep = () => {
                 try {
                     for (let index = 0; index < win.length; index++) patchRealm(win[index]);
@@ -836,11 +831,39 @@ const templates = {
                 const [url] = argArray;
 
                 if (!(typeof url === "string" && AD_REGEX.test(url))) return Reflect.apply(target, thisArg, argArray);
-
                 const response = await target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
-                console.log(response);
 
                 return response;
+            });
+
+            patch.apply(win.performance, "getEntriesByName", (target, thisArg, argArray) => {
+                const [name] = argArray;
+                if (typeof name === "string" && AD_REGEX.test(name)) {
+                    return [{
+                        name,
+                        entryType: "resource",
+                        startTime: 0,
+                        duration: 100,
+                        initiatorType: "fetch",
+                        nextHopProtocol: "h2",
+                        workerStart: 0,
+                        redirectStart: 0,
+                        redirectEnd: 0,
+                        fetchStart: 0,
+                        domainLookupStart: 0,
+                        domainLookupEnd: 0,
+                        connectStart: 0,
+                        connectEnd: 0,
+                        secureConnectionStart: 0,
+                        requestStart: 1,
+                        responseStart: 10,
+                        responseEnd: 100,
+                        transferSize: 145_000,
+                        encodedBodySize: 145_000,
+                        decodedBodySize: 145_000,
+                    }];
+                }
+                return Reflect.apply(target, thisArg, argArray);
             });
 
             tool.wrap("html > div[style]");
