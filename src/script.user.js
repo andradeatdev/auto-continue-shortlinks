@@ -811,29 +811,35 @@ const templates = {
                 if (owner) patch.apply(owner, property, adopt);
             }
 
-            const sweep = () => {
-                try {
-                    for (let index = 0; index < win.length; index++) patchRealm(win[index]);
-                    for (const frame of document.querySelectorAll("iframe")) patchRealm(frame.contentWindow);
-                } catch { }
+            win.Promise = class ModPromise extends Promise {
+                constructor(executor) {
+                    const wrapper = (resolve, reject) => {
+                        const resolveMod = (value) => {
+                            if (Array.isArray(value) && value.length === 1 && typeof value[0] === "string") {
+                                resolve([]);
+                            }
+                            resolve(value);
+                        };
+                        const rejectMod = (reason) => {
+                            reject(reason);
+                        };
+                        executor(resolveMod, rejectMod);
+                    };
+                    super(wrapper);
+                }
             };
-
-            sweep();
-            win.addEventListener("DOMContentLoaded", sweep, { once: true });
-            win.addEventListener("load", sweep, { once: true });
         },
     },
     antiAdbCore: {
         patcher() {
             const AD_REGEX = /pagead2.googlesyndication.com|securepubads.g.doubleclick.net|googletagservices.com|s.amazon-adsystem.com|googleadservices.com/;
 
-            patch.apply(win, "fetch", async (target, thisArg, argArray) => {
+            patch.apply(win, "fetch", (target, thisArg, argArray) => {
                 const [url] = argArray;
 
                 if (!(typeof url === "string" && AD_REGEX.test(url))) return Reflect.apply(target, thisArg, argArray);
-                const response = await target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
 
-                return response;
+                return target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
             });
 
             patch.apply(win.performance, "getEntriesByName", (target, thisArg, argArray) => {
