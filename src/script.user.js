@@ -357,6 +357,21 @@ const tool = {
         return tool.each(selector, options, (node) => node.remove());
     },
 
+    wrap(selector, options = {}) {
+        this.assertSelector("wrap", selector);
+        return tool.each(selector, options, (node) => {
+            console.log(node);
+            const wrapper = document.createElement("div");
+            wrapper.style.cssText = `
+                visibility: hidden !important;
+                pointer-events: none !important;
+                opacity: 0 !important;
+            `;
+            document.body.append(wrapper);
+            wrapper.append(node);
+        });
+    },
+
     redirect(selector, options = {}) {
         this.assertSelector("redirect", selector);
         const { attr = "href", decodeB64 = false } = options;
@@ -827,6 +842,8 @@ const templates = {
 
                 return response;
             });
+
+            tool.wrap("html > div[style]");
         },
     },
 };
