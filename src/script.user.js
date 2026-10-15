@@ -911,22 +911,10 @@ domains.execute("go.fakta.id", templates.pndk);
 domains.execute("linegee.net", {
     patcher() {
         templates.antiAdbCore.patcher();
+        templates.pahe.patcher();
     },
-    async continue() {
-        const script = await tool.element("script:not([src])", { text: "atob(" });
-        const q = atob(script.getHTML().match(/atob\('([^']+)'\)/)[1]);
-        let xxc;
-        while (!xxc) {
-            const request = await fetch(location.href + q);
-            const response = await request.text();
-            const doc = new DOMParser().parseFromString(response, "text/html");
-            xxc = doc.querySelector("#xxc[href]");
-            if (xxc) {
-                location.assign(xxc.href);
-            } else {
-                await tool.wait(500);
-            }
-        }
+    continue() {
+        tool.click(".btn-primary", { wait: 4000 });
     },
 });
 
