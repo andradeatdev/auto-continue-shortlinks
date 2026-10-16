@@ -63,15 +63,17 @@
 // @match              https://rekonise.com/*
 // 
 // @match              https://exeygo.com/*
+// @match              https://exe-links.com/*
+// @match              https://exe-urls.com/*
+// @match              https://exego.app/*
+// @match              https://exnion.com/*
+// 
 // @match              https://cuttty.com/*
 // @match              https://cety.app/*
 // @match              https://cutlink.net/*
 // @match              https://cutnet.net/*
 // @match              https://cuttlinks.com/*
-// @match              https://exe-links.com/*
-// @match              https://exe-urls.com/*
-// @match              https://exego.app/*
-// @match              https://exnion.com/*
+// 
 // @match              https://lnbz.la/*
 // @match              https://avnsgames.com/*
 // 
@@ -706,11 +708,14 @@ const templates = {
         },
     },
     exeio: {
-        patcher() {
-            tool.click(".link-button:not(.disabled)");
-        },
         continue() {
+            tool.click(".link-button:not(.disabled)");
             tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+        },
+    },
+    cuttty: {
+        continue() {
+            tool.click("#submit-button:not([disabled])");
         },
     },
     boostink: {
@@ -897,15 +902,16 @@ domains.execute("gujjukhabar.in", templates.devuploads);
 domains.execute("pdfhindibook.com", templates.devuploads);
 
 domains.execute("exeygo.com", templates.exeio);
-domains.execute("cuttty.com", templates.exeio);
-domains.execute("cety.app", templates.exeio);
-domains.execute("cutlink.net", templates.exeio);
-domains.execute("cutnet.net", templates.exeio);
-domains.execute("cuttlinks.com", templates.exeio);
 domains.execute("exe-links.com", templates.exeio);
 domains.execute("exe-urls.com", templates.exeio);
 domains.execute("exego.app", templates.exeio);
 domains.execute("exnion.com", templates.exeio);
+
+domains.execute("cuttty.com", templates.cuttty);
+domains.execute("cety.app", templates.cuttty);
+domains.execute("cutlink.net", templates.cuttty);
+domains.execute("cutnet.net", templates.cuttty);
+domains.execute("cuttlinks.com", templates.cuttty);
 
 domains.execute("boost.ink", templates.boostink);
 domains.execute("bst.gg", templates.boostink);
