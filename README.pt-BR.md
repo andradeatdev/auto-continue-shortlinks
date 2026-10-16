@@ -36,12 +36,13 @@ O script ainda consegue automatizar outras partes do processo nesses sites, mas 
 
 #### Opções do Menu
 
-O cache e o auto-continue podem ser ativados/desativados individualmente, se seu gerenciador de scripts suportar registro de menu comandos.
+O cache, auto-continue e o patcher podem ser ativados/desativados individualmente, se seu gerenciador de scripts suportar registro de menu comandos.
 
-- **Use cache** — alterna o bypass do cache. Padrão: **ligado**.
-- **Use continue** — alterna a automação de continuação/cliques nos links. Padrão: **ligado**.
+- **Use cache** — alterna o bypass do cache. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
+- **Use continue** — alterna a automação de continuação/cliques nos links. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
+- **Use patcher** — alterna a correção/aceleração. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
 
-Clique no comando para alternar: ele mostra **✔** quando ativo e **✘** quando desativado. A página atual recarrega após a alteração.
+Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando desativado e **–** quando aquela opção estiver desativada globalmente. A página atual recarrega após a alteração.
 
 #### Notas
 

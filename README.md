@@ -36,12 +36,13 @@ The script can still automate other parts of the process on these sites, but the
 
 #### Menu Options
 
-Cache and auto-continue can be enabled/disabled individually, if your userscript manager supports command menu registration.
+Cache, auto-continue and patcher can be enabled/disabled individually, if your userscript manager supports command menu registration.
 
-- **Use cache** — toggles the cache bypass. Default: **on**.
-- **Use continue** — toggles the continue/click automation on links. Default: **on**.
+- **Use cache** — toggles the cache bypass. Has a per-domain override (`This domain`). Default: **on**.
+- **Use continue** — toggles the continue/click automation on links. Has a per-domain override (`This domain`). Default: **on**.
+- **Use patcher** — toggles the patcher fix/speedup. Has a per-domain override (`This domain`). Default: **on**.
 
-Click a command to toggle it: it's shown with a check (**✔**) when active and a cross (**✘**) when off. The current page reloads after the change.
+Click a command to toggle it: it's shown with a check (**✔**) when active, a cross (**✘**) when off and a dash (**–**) when disabled globally. The current page reloads after the change.
 
 #### Notes
 
