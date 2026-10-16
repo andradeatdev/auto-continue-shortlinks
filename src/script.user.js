@@ -57,6 +57,10 @@
 // @match              https://toolskitpro.net/*
 // @match              https://icutlink.com/*
 // @match              https://uiil.ink/*
+// @match              https://coinclix.co/*
+// @match              https://toolkit.inshorturl.com/*
+// @match              https://mahitimanch.in/*
+// @match              https://inshorturl.in/*
 // 
 // @match              https://boost.ink/*
 // @match              https://bst.gg/*
@@ -82,8 +86,6 @@
 // @match              https://go.fakta.id/*
 // @match              https://safelinkearn.com/*
 // @match              https://www.mirrored.to/*
-//
-// @match              https://coinclix.co/*
 // 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
@@ -1181,6 +1183,33 @@ domains.execute("uiil.ink", {
     },
 });
 
+domains.execute("coinclix.co", {
+    continue() {
+        tool.click("#link-card > #btnVerification");
+        tool.redirect("#link-card > .btn-primary[href]");
+    },
+});
+
+domains.execute("toolkit.inshorturl.com", {
+    continue() {
+        tool.redirect("#lkActions a[href]");
+    },
+});
+
+domains.execute("mahitimanch.in", {
+    continue() {
+        tool.click("#link");
+        tool.click("#linkx");
+        tool.redirect("#gtelinkbtn");
+    },
+});
+
+domains.execute("inshorturl.in", {
+    continue() {
+        tool.redirect("#ts-get-link[href^='https']");
+    },
+});
+
 domains.execute("rekonise.com", {
     patcher() {
         patch.apply(win, "open", (target, thisArg, argArray) => {
@@ -1204,12 +1233,5 @@ domains.execute("www.mirrored.to", {
     continue() {
         tool.click(".get_btn");
         tool.redirect(".highlight a[href]:has(.get_btn)");
-    },
-});
-
-domains.execute("coinclix.co", {
-    continue() {
-        tool.click("#link-card > #btnVerification");
-        tool.redirect("#link-card > .btn-primary[href]");
     },
 });
