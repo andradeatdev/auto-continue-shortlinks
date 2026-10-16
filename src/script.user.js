@@ -83,6 +83,8 @@
 // @match              https://safelinkearn.com/*
 // @match              https://www.mirrored.to/*
 //
+// @match              https://coinclix.co/*
+// 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // 
@@ -1202,5 +1204,12 @@ domains.execute("www.mirrored.to", {
     continue() {
         tool.click(".get_btn");
         tool.redirect(".highlight a[href]:has(.get_btn)");
+    },
+});
+
+domains.execute("coinclix.co", {
+    continue() {
+        tool.click("#link-card > #btnVerification");
+        tool.redirect("#link-card > .btn-primary[href]");
     },
 });
