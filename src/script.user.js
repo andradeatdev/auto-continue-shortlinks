@@ -111,14 +111,21 @@
 const config = {
     defaultTimerFactor: 0.05,
 
+    isEnabled(name) {
+        const cmd = commands.cmds[name];
+        if (!cmd?.value) return false;
+        const blacklist = Object.values(cmd.cmds)[0].value;
+        return !blacklist.includes(location.hostname);
+    },
+
     get useCache() {
-        return commands.cmds.useCache.value;
+        return config.isEnabled("useCache");
     },
     get useContinue() {
-        return commands.cmds.useContinue.value;
+        return config.isEnabled("useContinue");
     },
     get usePatcher() {
-        return commands.cmds.usePatcher.value;
+        return config.isEnabled("usePatcher");
     },
 };
 
@@ -127,28 +134,66 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 const commands = {
     cmds: {
         useCache: {
-            name: "Use cache",
+            name: "Use cache - all domains",
             value: GM_getValue("useCache", true),
+
+            cmds: {
+                useCacheBlacklist: {
+                    name: "This domain",
+                    value: GM_getValue("useCacheBlacklist", []),
+                },
+            },
         },
         useContinue: {
-            name: "Use continue",
+            name: "Use continue - all domains",
             value: GM_getValue("useContinue", true),
+
+            cmds: {
+                useContinueBlacklist: {
+                    name: "This domain",
+                    value: GM_getValue("useContinueBlacklist", []),
+                },
+            },
         },
         usePatcher: {
-            name: "Use patcher",
+            name: "Use patcher - all domains",
             value: GM_getValue("usePatcher", true),
+
+            cmds: {
+                usePatcherBlacklist: {
+                    name: "This domain",
+                    value: GM_getValue("usePatcherBlacklist", []),
+                },
+            },
         },
     },
 
     exec() {
         for (const [name, cmd] of Object.entries(this.cmds)) {
-            GM_registerMenuCommand(`[${cmd.value ? "✔" : "✘"}] ${cmd.name}`, () => this.toggleCommand(name, cmd));
+            GM_registerMenuCommand(`[${cmd.value ? "✔" : "✖"}] ${cmd.name}`, () => this.toggleCommand(name, cmd));
+
+            if (!cmd.cmds) continue;
+
+            for (const [n, c] of Object.entries(cmd.cmds)) {
+                const isDomainAllowed = !c.value.includes(location.hostname);
+                const domainIcon = isDomainAllowed ? "✔" : "✖";
+                const icon = cmd.value ? domainIcon : "–";
+                GM_registerMenuCommand(`\u{2003}└ [${icon}] ${c.name}`, () => this.toggleCommandForNot(n, c, isDomainAllowed));
+            }
         }
     },
 
     toggleCommand(name, cmd) {
         const value = GM_getValue(name, cmd.value);
         GM_setValue(name, !value);
+        location.reload();
+    },
+
+    toggleCommandForNot(name, cmd, isDomainAllowed) {
+        if (isDomainAllowed) cmd.value.push(location.hostname);
+        else cmd.value = cmd.value.filter(v => v !== location.hostname);
+
+        GM_setValue(name, cmd.value);
         location.reload();
     },
 };
