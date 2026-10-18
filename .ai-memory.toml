@@ -1,0 +1,10 @@
+# ai-memory repository marker.
+#
+# Capture-only marker: transparent to workspace/project routing
+# (scope stays default; remote-derived project name applies).
+#
+# Keeps raw intercelestial analysis artifacts out of ai-memory capture:
+# HAR captures, deobfuscated chunks, and decoded string pools may contain
+# sensitive session data. See AGENTS.md for the debug/ tooling layout.
+[capture]
+ignore_paths = ["debug/**"]
