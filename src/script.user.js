@@ -756,11 +756,11 @@ const bypass = {
 };
 
 const domains = {
-    execute(domain, handler) {
+    add(hosts, handler) {
         if (!handler) return;
+        if (![hosts].flat().includes(location.hostname)) return;
 
         const { hostname, href, pathname, search } = location;
-        if (hostname !== domain) return;
 
         commands.exec();
 
@@ -994,50 +994,17 @@ const templates = {
     },
 };
 
-domains.execute("tpi.li", templates.tpi);
-domains.execute("oii.la", templates.tpi);
-domains.execute("srnky.com", templates.tpi);
-domains.execute("clksz.com", templates.tpi);
+domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], templates.tpi);
+domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], templates.host);
+domains.add(["ouo.io", "ouo.press"], templates.ouo);
+domains.add(["djxmaza.in", "smartfeecalculator.com", "gujjukhabar.in", "pdfhindibook.com"], templates.devuploads);
+domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], templates.exeio);
+domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.com"], templates.cuttty);
+domains.add(["boost.ink", "bst.gg"], templates.boostink);
+domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], templates.pndk);
+domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], templates.xutio);
 
-domains.execute("financeehelp.com", templates.host);
-domains.execute("cloudhostt.com", templates.host);
-domains.execute("financeguidz.com", templates.host);
-domains.execute("techbixby.com", templates.host);
-domains.execute("loanbixby.com", templates.host);
-
-domains.execute("ouo.io", templates.ouo);
-domains.execute("ouo.press", templates.ouo);
-
-domains.execute("djxmaza.in", templates.devuploads);
-domains.execute("smartfeecalculator.com", templates.devuploads);
-domains.execute("gujjukhabar.in", templates.devuploads);
-domains.execute("pdfhindibook.com", templates.devuploads);
-
-domains.execute("exeygo.com", templates.exeio);
-domains.execute("exe-links.com", templates.exeio);
-domains.execute("exe-urls.com", templates.exeio);
-domains.execute("exego.app", templates.exeio);
-domains.execute("exnion.com", templates.exeio);
-
-domains.execute("cuttty.com", templates.cuttty);
-domains.execute("cety.app", templates.cuttty);
-domains.execute("cutlink.net", templates.cuttty);
-domains.execute("cutnet.net", templates.cuttty);
-domains.execute("cuttlinks.com", templates.cuttty);
-
-domains.execute("boost.ink", templates.boostink);
-domains.execute("bst.gg", templates.boostink);
-
-domains.execute("invest.datapendidikan.com", templates.pndk);
-domains.execute("crm.urlwebsite.com", templates.pndk);
-domains.execute("go.fakta.id", templates.pndk);
-
-domains.execute("xut.io", templates.xutio);
-domains.execute("textfrog.com", templates.xutio);
-domains.execute("eduify.app", templates.xutio);
-domains.execute("gamescrate.app", templates.xutio);
-
-domains.execute("linegee.net", {
+domains.add("linegee.net", {
     patcher() {
         templates.antiAdbCore.patcher();
         templates.pahe.patcher();
@@ -1047,7 +1014,7 @@ domains.execute("linegee.net", {
     },
 });
 
-domains.execute("pahe.plus", {
+domains.add("pahe.plus", {
     patcher() {
         templates.antiAdbCore.patcher();
         templates.pahe.patcher();
@@ -1058,7 +1025,7 @@ domains.execute("pahe.plus", {
     },
 });
 
-domains.execute("intercelestial.com", {
+domains.add("intercelestial.com", {
     patcher() {
         templates.antiAdbCore.patcher();
         templates.pahe.patcher();
@@ -1085,13 +1052,13 @@ domains.execute("intercelestial.com", {
     },
 });
 
-domains.execute("vexfile.com", {
+domains.add("vexfile.com", {
     continue() {
         tool.click(".generate-link:not(.blocked)");
     },
 });
 
-domains.execute("filespayouts.com", {
+domains.add("filespayouts.com", {
     patcher() {
         patch.timer({ text: "tick" });
     },
@@ -1100,7 +1067,7 @@ domains.execute("filespayouts.com", {
     },
 });
 
-domains.execute("modsfire.com", {
+domains.add("modsfire.com", {
     patcher() {
         patch.timer();
     },
@@ -1109,21 +1076,21 @@ domains.execute("modsfire.com", {
     },
 });
 
-domains.execute("www.file-upload.org", {
+domains.add("www.file-upload.org", {
     continue() {
         tool.click("button[name='method_free']");
         tool.click(":has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
     },
 });
 
-domains.execute("upfilesgo.com", {
+domains.add("upfilesgo.com", {
     continue() {
         tool.click("#link-button-free:not([disabled])");
         tool.click("#file-captcha #link-button:not([disabled])");
     },
 });
 
-domains.execute("safefileku.com", {
+domains.add("safefileku.com", {
     patcher() {
         patch.timer();
     },
@@ -1132,46 +1099,46 @@ domains.execute("safefileku.com", {
     },
 });
 
-domains.execute("uploadrar.com", {
+domains.add("uploadrar.com", {
     continue() {
         tool.click("button[name='method_free']");
         tool.click("#downloadbtn:not([disabled])");
     },
 });
 
-domains.execute("shrinkme.click", {
+domains.add("shrinkme.click", {
     continue() {
         tool.click(".btn-primary:not([disabled])");
     },
 });
 
-domains.execute("themezon.net", {
+domains.add("themezon.net", {
     continue() {
         tool.click("#btn2");
         tool.click("#tp-snp2");
     },
 });
 
-domains.execute("en.mrproblogger.com", {
+domains.add("en.mrproblogger.com", {
     continue() {
         tool.click(".get-link:not(.disabled)");
     },
 });
 
-domains.execute("uploady.io", {
+domains.add("uploady.io", {
     continue() {
         tool.click("#free_dwn");
         tool.click("#downloadbtn");
     },
 });
 
-domains.execute("apkadmin.com", {
+domains.add("apkadmin.com", {
     continue() {
         tool.click("#downloadbtn");
     },
 });
 
-domains.execute("www.up-4ever.net", {
+domains.add("www.up-4ever.net", {
     continue() {
         tool.remove("#u4ab_modal");
         tool.click(`button[name="method_free"]`);
@@ -1183,17 +1150,17 @@ domains.execute("www.up-4ever.net", {
     },
 });
 
-domains.execute("cloud.unblockedgames.world", {
+domains.add("cloud.unblockedgames.world", {
     continue() {
         tool.click("a[onclick]", { text: "Start Verification" });
         tool.click("#verify_button2");
-        tool.click("##verify_button");
+        tool.click("#verify_button");
 
         tool.redirect("#two_steps_btn[href]");
     },
 });
 
-domains.execute("fc-lc.xyz", {
+domains.add("fc-lc.xyz", {
     patcher() {
         patch.define(win, "AdscoreInit", { get: () => () => { } });
     },
@@ -1208,7 +1175,7 @@ domains.execute("fc-lc.xyz", {
     },
 });
 
-domains.execute("jobzhub.store", {
+domains.add("jobzhub.store", {
     continue() {
         tool.click("#next", { visible: true });
         tool.click("#scroll", { visible: true });
@@ -1217,14 +1184,14 @@ domains.execute("jobzhub.store", {
     },
 });
 
-domains.execute("aii.sh", {
+domains.add("aii.sh", {
     continue() {
         tool.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
         tool.click(".btn-primary[href]:not(.disabled)");
     },
 });
 
-domains.execute("oii.io", {
+domains.add("oii.io", {
     patcher() {
         patch.define(win, "AdscoreInit", { get: () => () => { } });
     },
@@ -1239,7 +1206,7 @@ domains.execute("oii.io", {
     },
 });
 
-domains.execute("aknewz.xyz", {
+domains.add("aknewz.xyz", {
     continue() {
         tool.click("#next");
         tool.click("#scroll:not(.hidden)", { count: 2 });
@@ -1247,7 +1214,7 @@ domains.execute("aknewz.xyz", {
     },
 });
 
-domains.execute("toolskitpro.net", {
+domains.add("toolskitpro.net", {
     continue() {
         tool.remove("div", { css: { position: "fixed" } });
         tool.click(".show #afterBtn");
@@ -1256,13 +1223,13 @@ domains.execute("toolskitpro.net", {
     },
 });
 
-domains.execute("icutlink.com", {
+domains.add("icutlink.com", {
     continue() {
         tool.click(".get-link:not(.disabled)");
     },
 });
 
-domains.execute("lnbz.la", {
+domains.add("lnbz.la", {
     patcher() {
         templates.antiAdbCore.patcher();
     },
@@ -1272,13 +1239,13 @@ domains.execute("lnbz.la", {
     },
 });
 
-domains.execute("avnsgames.com", {
+domains.add("avnsgames.com", {
     continue() {
         tool.click("#getnewlink");
     },
 });
 
-domains.execute("zdrive.to", {
+domains.add("zdrive.to", {
     continue() {
         tool.click("#freeBtn", { wait: 500 });
         tool.click("#down_1Form button", { visible: true });
@@ -1287,7 +1254,7 @@ domains.execute("zdrive.to", {
     },
 });
 
-domains.execute("cloudfam.io", {
+domains.add("cloudfam.io", {
     continue() {
         tool.redirect("#btn-clean-continue[href]");
         tool.redirect("#cf-btn-free[href]");
@@ -1296,7 +1263,7 @@ domains.execute("cloudfam.io", {
     },
 });
 
-domains.execute("uiil.ink", {
+domains.add("uiil.ink", {
     continue() {
         tool.click("#form-continue [type='submit']");
         tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
@@ -1304,7 +1271,7 @@ domains.execute("uiil.ink", {
     },
 });
 
-domains.execute("coinclix.co", {
+domains.add("coinclix.co", {
     async continue() {
         tool.click("#link-card > #btnVerification");
         tool.redirect("#link-card > .btn-primary[href]");
@@ -1326,7 +1293,7 @@ domains.execute("coinclix.co", {
     },
 });
 
-domains.execute("geekgrove.net", {
+domains.add("geekgrove.net", {
     patcher() {
         patch.define(win.document, "activeElement", { get: () => ({ tagName: "IFRAME" }) });
         patch.apply(win.Document.prototype, "hasFocus", () => false);
@@ -1360,19 +1327,19 @@ domains.execute("geekgrove.net", {
     },
 });
 
-domains.execute("www.google.com", {
+domains.add("www.google.com", {
     continue() {
         tool.redirect("a[href^='https://']");
     },
 });
 
-domains.execute("toolkit.inshorturl.com", {
+domains.add("toolkit.inshorturl.com", {
     continue() {
         tool.redirect("#lkActions a[href]");
     },
 });
 
-domains.execute("mahitimanch.in", {
+domains.add("mahitimanch.in", {
     continue() {
         tool.click("#link");
         tool.click("#linkx");
@@ -1380,13 +1347,13 @@ domains.execute("mahitimanch.in", {
     },
 });
 
-domains.execute("inshorturl.in", {
+domains.add("inshorturl.in", {
     continue() {
         tool.redirect("#ts-get-link[href^='https']");
     },
 });
 
-domains.execute("rekonise.com", {
+domains.add("rekonise.com", {
     patcher() {
         patch.apply(win, "open", (target, thisArg, argArray) => {
             if (!document.querySelector(".all-done-row")) return;
@@ -1399,13 +1366,13 @@ domains.execute("rekonise.com", {
     },
 });
 
-domains.execute("safelinkearn.com", {
+domains.add("safelinkearn.com", {
     continue() {
         tool.click(".open-btn");
     },
 });
 
-domains.execute("www.mirrored.to", {
+domains.add("www.mirrored.to", {
     continue() {
         tool.click(".get_btn");
         tool.redirect(".highlight a[href]:has(.get_btn)");
