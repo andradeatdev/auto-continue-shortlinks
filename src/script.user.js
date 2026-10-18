@@ -800,6 +800,12 @@ const templates = {
             tool.click("#next-btn button", { visible: true, count: 2 });
         },
     },
+    xutio: {
+        continue() {
+            tool.click("#sl-primary:not([disabled])", { visible: true });
+            tool.click(".get-link:not(.disabled)");
+        },
+    },
     pahe: {
         patcher() {
             const mirror = (url, dest) => {
@@ -988,6 +994,11 @@ domains.execute("bst.gg", templates.boostink);
 domains.execute("invest.datapendidikan.com", templates.pndk);
 domains.execute("crm.urlwebsite.com", templates.pndk);
 domains.execute("go.fakta.id", templates.pndk);
+
+domains.execute("xut.io", templates.xutio);
+domains.execute("textfrog.com", templates.xutio);
+domains.execute("eduify.app", templates.xutio);
+domains.execute("gamescrate.app", templates.xutio);
 
 domains.execute("linegee.net", {
     patcher() {
@@ -1271,8 +1282,7 @@ domains.execute("coinclix.co", {
             insert: true,
         });
 
-        GM_addValueChangeListener("geekgrove-keys", async (key, oldValue, newValue) => {
-            console.log(key);
+        GM_addValueChangeListener("geekgrove-keys", async (_key, oldValue, newValue) => {
             tool.input("#link-card input#verificationCode", { value: newValue });
             tool.click("#link-card button#btnVerification");
         });
