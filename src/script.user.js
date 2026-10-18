@@ -1146,9 +1146,17 @@ domains.execute("cloud.unblockedgames.world", {
 });
 
 domains.execute("fc-lc.xyz", {
-    continue() {
+    patcher() {
+        patch.define(win, "AdscoreInit", { get: () => () => { } });
+    },
+    async continue() {
         tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
         tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
+
+        while (true) {
+            document.dispatchEvent(new MouseEvent("mousemove"));
+            await tool.wait(100);
+        }
     },
 });
 
