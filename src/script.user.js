@@ -403,6 +403,16 @@ const tool = {
         });
     },
 
+    input(selector, options = {}) {
+        this.assertSelector("input", selector);
+        const { value = "" } = options;
+
+        return tool.each(selector, options, (node, stop) => {
+            node.value = value;
+            stop();
+        });
+    },
+
     remove(selector, options = {}) {
         this.assertSelector("remove", selector);
         return tool.each(selector, options, (node) => node.remove());
