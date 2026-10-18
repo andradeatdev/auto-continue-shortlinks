@@ -176,20 +176,40 @@ const commands = {
                 },
             },
         },
+        reportUrl: {
+            name: "Report URL",
+            when: () => bypass.shortenerPatterns[location.hostname]?.test(location.pathname + location.search),
+            action() {
+                // eslint-disable-next-line no-alert -- TODO: implement prompt on site UI
+                const reason = prompt("Report reason (1-500 chars):")?.trim();
+                if (reason) bypass.report(reason);
+            },
+        },
     },
 
     exec() {
         for (const [name, cmd] of Object.entries(this.cmds)) {
-            GM_registerMenuCommand(`[${cmd.value ? "✔" : "✖"}] ${cmd.name}`, () => this.toggleCommand(name, cmd));
+            if (cmd.when && !cmd.when()) continue;
 
-            if (!cmd.cmds) continue;
+            this.registerMenuCommand(name, cmd);
+        }
+    },
 
-            for (const [n, c] of Object.entries(cmd.cmds)) {
-                const isDomainAllowed = !c.value.includes(location.hostname);
-                const domainIcon = isDomainAllowed ? "✔" : "✖";
-                const icon = cmd.value ? domainIcon : "–";
-                GM_registerMenuCommand(`\u{2003}└ [${icon}] ${c.name} (${name.replace("use", "").toLowerCase()})`, () => this.toggleCommandForNot(n, c, isDomainAllowed));
-            }
+    registerMenuCommand(name, cmd) {
+        if (cmd.action) {
+            GM_registerMenuCommand(`▶  ${cmd.name}`, () => cmd.action());
+            return;
+        }
+
+        GM_registerMenuCommand(`[${cmd.value ? "✔" : "✖"}] ${cmd.name}`, () => this.toggleCommand(name, cmd));
+
+        if (!cmd.cmds) return;
+
+        for (const [n, c] of Object.entries(cmd.cmds)) {
+            const isDomainAllowed = !c.value.includes(location.hostname);
+            const domainIcon = isDomainAllowed ? "✔" : "✖";
+            const icon = cmd.value ? domainIcon : "–";
+            GM_registerMenuCommand(`\u{2003}└ [${icon}] ${c.name} (${name.replace("use", "").toLowerCase()})`, () => this.toggleCommandForNot(n, c, isDomainAllowed));
         }
     },
 
@@ -707,6 +727,22 @@ const bypass = {
                 const { response } = data;
                 if (response.status !== "ok") { console.error(response); }
                 navigation.navigate(destination, { info: "bypass_link" });
+            },
+        });
+    },
+
+    report(reason) {
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: `${this.cacheURL}/api/report`,
+            headers: { "Content-Type": "application/json" },
+            responseType: "json",
+            data: JSON.stringify({
+                url: location.href,
+                reason,
+            }),
+            onload: ({ response }) => {
+                if (response?.status !== "ok") console.error(response);
             },
         });
     },
