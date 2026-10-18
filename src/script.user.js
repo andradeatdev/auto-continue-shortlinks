@@ -410,8 +410,7 @@ const tool = {
 
     wrap(selector, options = {}) {
         this.assertSelector("wrap", selector);
-        return tool.each(selector, options, (node) => {
-            console.log(node);
+        return tool.each(selector, options, (node, stop) => {
             const wrapper = document.createElement("div");
             wrapper.style.cssText = `
                 visibility: hidden !important;
@@ -420,6 +419,7 @@ const tool = {
             `;
             document.body.append(wrapper);
             wrapper.append(node);
+            stop();
         });
     },
 
