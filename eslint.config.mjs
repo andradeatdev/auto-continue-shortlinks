@@ -83,6 +83,7 @@ export default defineConfig([
       "unicorn/consistent-function-scoping": "off",
       "unicorn/prefer-await": "off",
       "unicorn/prefer-add-event-listener": "off",
+      'unicorn/prefer-at': "off",
 
       "sonarjs/pseudo-random": "off",
       "sonarjs/super-linear-regex": "off",
