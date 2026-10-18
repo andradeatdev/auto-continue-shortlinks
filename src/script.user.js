@@ -188,7 +188,7 @@ const commands = {
                 const isDomainAllowed = !c.value.includes(location.hostname);
                 const domainIcon = isDomainAllowed ? "✔" : "✖";
                 const icon = cmd.value ? domainIcon : "–";
-                GM_registerMenuCommand(`\u{2003}└ [${icon}] ${c.name}`, () => this.toggleCommandForNot(n, c, isDomainAllowed));
+                GM_registerMenuCommand(`\u{2003}└ [${icon}] ${c.name} (${name.replace("use", "").toLowerCase()})`, () => this.toggleCommandForNot(n, c, isDomainAllowed));
             }
         }
     },
