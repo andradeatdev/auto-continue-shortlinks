@@ -669,10 +669,11 @@ const bypass = {
             url: `${this.cacheURL}/api/check?url=${encodeURIComponent(href)}`,
             headers: { "Content-Type": "application/json" },
             responseType: "json",
-            onload: (data) => {
-                const { response } = data;
-                if (response.status !== "ok" || !response.destination) return;
-                navigation.navigate(response.destination, { info: "bypass_link" });
+            onload: ({ response }) => {
+                if (response?.status !== "ok" || !response.destination) return;
+                const url = new URL(response.destination);
+                if (url.protocol !== "https:" || !this.isFinalHost(url.hostname)) return;
+                navigation.navigate(url.href, { info: "bypass_link" });
             },
         });
     },
