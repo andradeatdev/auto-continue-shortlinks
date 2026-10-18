@@ -58,6 +58,8 @@
 // @match              https://icutlink.com/*
 // @match              https://uiil.ink/*
 // @match              https://coinclix.co/*
+// @match              https://geekgrove.net/*
+// @match              https://www.google.com/url?*
 // @match              https://toolkit.inshorturl.com/*
 // @match              https://mahitimanch.in/*
 // @match              https://inshorturl.in/*
@@ -87,14 +89,22 @@
 // @match              https://safelinkearn.com/*
 // @match              https://www.mirrored.to/*
 // 
+// @match              https://xut.io/*
+// @match              https://textfrog.com/*
+// @match              https://eduify.app/*
+// @match              https://gamescrate.app/*
+// 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // 
 // @grant              GM_xmlhttpRequest
-// @grant              unsafeWindow
 // @grant              GM_getValue
 // @grant              GM_setValue
+// @grant              GM_addValueChangeListener
 // @grant              GM_registerMenuCommand
+// @grant              GM_openInTab
+// @grant              unsafeWindow
+// @grant              window.close
 // 
 // @connect            shortlinks.zencore.fun
 // @connect            intercelestial.com
@@ -1239,9 +1249,65 @@ domains.execute("uiil.ink", {
 });
 
 domains.execute("coinclix.co", {
-    continue() {
+    async continue() {
         tool.click("#link-card > #btnVerification");
         tool.redirect("#link-card > .btn-primary[href]");
+
+        const linkInstructions = await tool.element("#link-instructions-body");
+        const keys = linkInstructions.querySelectorAll("kbd");
+        const key = keys[keys.length - 1];
+        const url = `https://geekgrove.net/?key=${key.textContent}`;
+
+        GM_openInTab(`https://www.google.com/url?sa=t&source=web&rct=j&url=${encodeURIComponent(url)}&ved=2ahUKEwjS8I_fjaDdAhXqKsAKHQLeD3cQFjAAegQIABAB`, {
+            active: true,
+            insert: true,
+        });
+
+        GM_addValueChangeListener("geekgrove-keys", async (key, oldValue, newValue) => {
+            console.log(key);
+            tool.input("#link-card input#verificationCode", { value: newValue });
+            tool.click("#link-card button#btnVerification");
+        });
+    },
+});
+
+domains.execute("geekgrove.net", {
+    patcher() {
+        patch.define(win.document, "activeElement", { get: () => ({ tagName: "IFRAME" }) });
+        patch.apply(win.Document.prototype, "hasFocus", () => false);
+
+        tool.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭");
+    },
+    async continue() {
+        const key = new URLSearchParams(location.search).get("key");
+        if (key) {
+            const resp = await fetch("/link/process/", {
+                "method": "POST",
+                "credentials": "include",
+                "headers": { "Content-Type": "application/json" },
+                "referrer": "https://geekgrove.net/",
+                "body": `{"linkInit":"${key}"}`,
+            });
+            const text = await resp.text();
+            const match = text.match(/href=\\"([^\\]+)/)?.[1];
+            if (!match) return;
+            location.assign(match);
+        };
+
+        tool.click("#btnLinkStart", { text: "Start" });
+        tool.click("#btnLinkContinue", { text: "Verify", wait: 1000 });
+        tool.click("#btnLinkContinue", { text: "Verify" });
+        tool.click("#btnLpcont", { text: "Continue" });
+
+        const returnKey = await tool.element("#linkResHeader kbd");
+        GM_setValue("geekgrove-keys", returnKey.textContent);
+        window.close();
+    },
+});
+
+domains.execute("www.google.com", {
+    continue() {
+        tool.redirect("a[href^='https://']");
     },
 });
 
