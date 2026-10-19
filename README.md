@@ -42,6 +42,7 @@ Cache, auto-continue and patcher can be enabled/disabled individually, if your u
 - **Use continue** — toggles the continue/click automation on links. Has a per-domain override (`This domain`). Default: **on**.
 - **Use patcher** — toggles the patcher fix/speedup. Has a per-domain override (`This domain`). Default: **on**.
 - **Report URL issue** — opens the GitHub **site broken** report form in a new tab (listed with **▶**).
+- **Support a new shortlink/host** — opens the GitHub **site request** issue form in a new tab (listed with **▶**).
 
 Click a command to toggle it: it's shown with a check (**✔**) when active, a cross (**✘**) when off and a dash (**–**) when disabled globally. The current page reloads after the change. The ✔ / ✖ / – icons and the reload apply only to the three toggles — **Report URL issue** just opens the form.
 

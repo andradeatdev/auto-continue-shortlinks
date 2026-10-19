@@ -42,6 +42,7 @@ O cache, auto-continue e o patcher podem ser ativados/desativados individualment
 - **Use continue** — alterna a automação de continuação/cliques nos links. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
 - **Use patcher** — alterna a correção/aceleração. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
 - **Report URL issue** — abre o formulário de reporte **site broken** do GitHub em uma nova aba (exibido com **▶**).
+- **Support a new shortlink/host** — abre o formulário de issue de pedido de site/host do GitHub em uma nova aba (exibido com **▶**).
 
 Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando desativado e **–** quando aquela opção estiver desativada globalmente. A página atual recarrega após a alteração. Os ícones ✔ / ✖ / – e a recarga valem apenas para os três toggles — **Report URL issue** apenas abre o formulário.
 
