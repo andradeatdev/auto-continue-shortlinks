@@ -41,8 +41,9 @@ Cache, auto-continue and patcher can be enabled/disabled individually, if your u
 - **Use cache** — toggles the cache bypass. Has a per-domain override (`This domain`). Default: **on**.
 - **Use continue** — toggles the continue/click automation on links. Has a per-domain override (`This domain`). Default: **on**.
 - **Use patcher** — toggles the patcher fix/speedup. Has a per-domain override (`This domain`). Default: **on**.
+- **Report URL issue** — opens the GitHub **site broken** report form in a new tab (listed with **▶**).
 
-Click a command to toggle it: it's shown with a check (**✔**) when active, a cross (**✘**) when off and a dash (**–**) when disabled globally. The current page reloads after the change.
+Click a command to toggle it: it's shown with a check (**✔**) when active, a cross (**✘**) when off and a dash (**–**) when disabled globally. The current page reloads after the change. The ✔ / ✖ / – icons and the reload apply only to the three toggles — **Report URL issue** just opens the form.
 
 #### Notes
 
@@ -53,6 +54,11 @@ Click a command to toggle it: it's shown with a check (**✔**) when active, a c
 - Somes sites **can't be timer accelerated**, the timer validation is done on the server side, to see what sites have `tuner-timer`, see [HOSTS.md](HOSTS.md).
 - Pahe.ink add news domains sometimes, so the script may not work on some new sites, you can try to **add them manually or wait for the next update**.
 - Interestial.com return invalid session if you open multiple tabs, **this issue is not related to this script**.
+
+#### Reporting
+
+- **A site stopped working** — use the **Report URL issue** command in the script menu; it opens the [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml) issue form.
+- **A new site should be supported** — open a [Support a new site](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-request.yml) issue.
 
 #### License
 

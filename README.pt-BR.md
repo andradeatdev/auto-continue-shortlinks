@@ -41,8 +41,9 @@ O cache, auto-continue e o patcher podem ser ativados/desativados individualment
 - **Use cache** — alterna o bypass do cache. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
 - **Use continue** — alterna a automação de continuação/cliques nos links. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
 - **Use patcher** — alterna a correção/aceleração. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
+- **Report URL issue** — abre o formulário de reporte **site broken** do GitHub em uma nova aba (exibido com **▶**).
 
-Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando desativado e **–** quando aquela opção estiver desativada globalmente. A página atual recarrega após a alteração.
+Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando desativado e **–** quando aquela opção estiver desativada globalmente. A página atual recarrega após a alteração. Os ícones ✔ / ✖ / – e a recarga valem apenas para os três toggles — **Report URL issue** apenas abre o formulário.
 
 #### Notas
 
@@ -53,6 +54,11 @@ Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando
 - Alguns sites **não podem ter o timer acelerado** — a validação do timer é feita no servidor; para ver quais sites têm `tuner-timer`, consulte [HOSTS.md](HOSTS.md).
 - O pahe.ink adiciona novos domínios às vezes, então o script pode não funcionar em alguns sites novos — você pode tentar **adicioná-los manualmente ou esperar a próxima atualização**.
 - O Interestial.com retorna "sessão inválida" se você abrir múltiplas abas, **esse problema não é relacionado a este script**.
+
+#### Reportes
+
+- **Um site parou de funcionar** — use o comando **Report URL issue** no menu do script; ele abre o formulário de issue [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml).
+- **Um novo site deve ser suportado** — abra uma issue [Support a new site](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-request.yml).
 
 #### Licença
 
