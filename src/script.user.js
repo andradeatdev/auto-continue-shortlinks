@@ -63,6 +63,8 @@
 // @match              https://toolkit.inshorturl.com/*
 // @match              https://mahitimanch.in/*
 // @match              https://inshorturl.in/*
+// @match              https://diudemy.com/*
+// @match              https://blog.adlink.click/*
 // 
 // @match              https://boost.ink/*
 // @match              https://bst.gg/*
@@ -1376,6 +1378,18 @@ domains.add("mahitimanch.in", {
 domains.add("inshorturl.in", {
     continue() {
         tool.redirect("#ts-get-link[href^='https']");
+    },
+});
+
+domains.add("diudemy.com", {
+    continue() {
+        tool.click("#skip-btn:not(.disabled)");
+    },
+});
+
+domains.add("blog.adlink.click", {
+    continue() {
+        tool.click(".btn.get-link:not(.disabled)");
     },
 });
 
