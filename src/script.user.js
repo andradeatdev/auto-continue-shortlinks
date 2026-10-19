@@ -1325,8 +1325,9 @@ domains.add("geekgrove.net", {
     patcher() {
         patch.define(win.document, "activeElement", { get: () => ({ tagName: "IFRAME" }) });
         patch.apply(win.Document.prototype, "hasFocus", () => false);
+        patch.listener({ type: "click", excludeTarget: "button" });
 
-        tool.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭");
+        tool.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭, body > div:has(#accept-btn), div[style*='z-index']");
     },
     async continue() {
         const key = new URLSearchParams(location.search).get("key");
