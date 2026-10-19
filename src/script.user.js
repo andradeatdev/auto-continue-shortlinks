@@ -1355,7 +1355,7 @@ domains.add("geekgrove.net", {
 
 domains.add("www.google.com", {
     continue() {
-        tool.redirect("a[href^='https://']");
+        tool.redirect("a[href^='https://'], a[href^='/goto?url=']");
     },
 });
 
