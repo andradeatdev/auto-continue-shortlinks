@@ -178,7 +178,7 @@ const commands = {
         },
         reportUrl: {
             name: "Report URL issue",
-            when: () => bypass.shortenerPatterns[location.hostname]?.test(location.pathname + location.search),
+            // when: () => bypass.shortenerPatterns[location.hostname]?.test(location.pathname + location.search),
             action() {
                 GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml");
                 // const reason = prompt("Report reason (1-500 chars):")?.trim();
