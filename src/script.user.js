@@ -177,12 +177,12 @@ const commands = {
             },
         },
         reportUrl: {
-            name: "Report URL",
+            name: "Report URL issue",
             when: () => bypass.shortenerPatterns[location.hostname]?.test(location.pathname + location.search),
             action() {
-                // eslint-disable-next-line no-alert -- TODO: implement prompt on site UI
-                const reason = prompt("Report reason (1-500 chars):")?.trim();
-                if (reason) bypass.report(reason);
+                GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml");
+                // const reason = prompt("Report reason (1-500 chars):")?.trim();
+                // if (reason) bypass.report(reason);
             },
         },
     },
