@@ -1,0 +1,47 @@
+name: Suggest a feature
+description: Propose a new capability or an improvement to the script
+title: "[feature] "
+labels: ["feature-request", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please check the existing issues first and add a 👍 or a comment instead of opening a duplicate.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What should the script do?
+      description: Describe the feature in a few sentences.
+      placeholder: Skip the countdown when the timer runs on the client side.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why do you need it?
+      description: What problem does it solve, or what do you do manually today?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the script does it touch?
+      options:
+        - Cache
+        - Continue
+        - Patcher
+        - Menu commands
+        - Host support
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: site
+    attributes:
+      label: Site or host (if it applies)
+      placeholder: https://tpi.li/abc123
