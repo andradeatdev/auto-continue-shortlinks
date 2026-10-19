@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Which report should I open?
+    url: https://github.com/andradeatdev/auto-continue-shortlinks#reporting
+    about: Broken site or new site request — read the reporting guide first.

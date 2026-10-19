@@ -1,0 +1,43 @@
+name: Support a new site
+description: Ask for a new shortlink or file host to be added
+title: "[site-request] <host>"
+labels: ["site-request", "needs-triage"]
+body:
+  - type: input
+    id: host
+    attributes:
+      label: Hostname
+      placeholder: example.com
+    validations:
+      required: true
+
+  - type: input
+    id: sample
+    attributes:
+      label: Example URL
+      placeholder: https://example.com/abc123
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps you take manually
+      description: Each click, wait or captcha, in order.
+      placeholder: |
+        1. Click "Start"
+        2. Wait for the timer
+        3. Click "Get link"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: captcha
+    attributes:
+      label: Does it use a captcha? (captcha need to be solved manually)
+      options:
+        - No
+        - Turnstile (Cloudflare)
+        - hCaptcha
+        - reCAPTCHA
+        - Other
