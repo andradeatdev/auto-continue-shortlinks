@@ -652,6 +652,27 @@ const patch = {
             return Reflect.apply(target, thisArg, argArray);
         });
     },
+
+    listener(options = {}) {
+        const { type, mode = "prevent", excludeTarget } = options;
+
+        patch.apply(win.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
+            const [name, listener, options] = argArray;
+            const isMatchType = type === undefined || type === name;
+
+            if (!isMatchType) {
+                return Reflect.apply(target, thisArg, argArray);
+            }
+
+            if (excludeTarget !== undefined && thisArg instanceof Element && thisArg.matches(excludeTarget)) {
+                return Reflect.apply(target, thisArg, argArray);
+            }
+
+            if (mode !== "prevent") {
+                return Reflect.apply(target, thisArg, argArray);
+            }
+        });
+    },
 };
 
 const bypass = {
