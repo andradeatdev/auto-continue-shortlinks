@@ -1,0 +1,93 @@
+name: Site stopped working
+description: A supported site no longer continues automatically
+title: "[site-broken] <host>: "
+labels: ["site-broken", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check the existing issues for the same site first and add a 👍 or a comment instead of opening a duplicate.
+
+  - type: dropdown
+    id: site
+    attributes:
+      label: Site
+      description: Which host is the problem on?
+      options:
+        - tpi.li
+        - oii.la
+        - srnky.com
+        - clksz.com
+        - pahe.plus
+        - intercelestial.com
+        - linegee.net
+        - ouo.io
+        - fc-lc.xyz
+        - boost.ink
+        - exeygo.com
+        - cuttty.com
+        - Other (write it below)
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: Page URL (without query string)
+      placeholder: https://tpi.li/abc123
+    validations:
+      required: true
+
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: What happens?
+      options:
+        - Stuck on a button or captcha
+        - Asks to disable adblock
+        - Redirects to the wrong page
+        - Final download does not start
+        - Script does nothing
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Script version
+      placeholder: "1.6.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: toggles
+    attributes:
+      label: Menu toggles for this domain
+      description: Violentmonkey menu → this script
+      multiple: true
+      options:
+        - cache enabled
+        - patcher enabled
+        - continue enabled
+        - I disabled one of them
+
+  - type: input
+    id: env
+    attributes:
+      label: Browser and userscript manager
+      placeholder: Firefox 158 + Violentmonkey 2.49
+
+  - type: textarea
+    id: other-extensions
+    attributes:
+      label: Other extensions active on the page
+      description: uBlock Origin, AdGuard, Privacy Badger, etc. Many "disable adblock" warnings come from these.
