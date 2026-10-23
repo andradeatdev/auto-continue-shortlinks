@@ -1108,7 +1108,7 @@ domains.add("modsfire.com", {
         patch.timer();
     },
     continue() {
-        tool.click(".download-button:not([href])");
+        tool.click(".download-button");
     },
 });
 
