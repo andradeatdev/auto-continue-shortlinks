@@ -66,6 +66,10 @@
 // @match              https://inshorturl.in/*
 // @match              https://diudemy.com/*
 // @match              https://blog.adlink.click/*
+// @match              https://bit.ly/*
+// @match              https://adfoc.us/*
+// @match              https://speedy-links.com/*
+// @match              https://nerventualken.com/captcha?urid=*
 // 
 // @match              https://boost.ink/*
 // @match              https://bst.gg/*
@@ -1395,6 +1399,59 @@ domains.add("diudemy.com", {
 domains.add("blog.adlink.click", {
     continue() {
         tool.click(".btn.get-link:not(.disabled)");
+    },
+});
+
+domains.add("bit.ly", {
+    continue() {
+        tool.click(`#${CSS.escape("action:continue")}`);
+    },
+});
+
+domains.add("adfoc.us", {
+    continue() {
+        tool.click(".nv-skip");
+    },
+});
+
+domains.add("speedy-links.com", {
+    patcher() {
+        patch.apply(win, "fetch", async (target, thisArg, argArray) => {
+            const [, init] = argArray;
+            if (init?.method === "POST" && typeof init.body === "string") {
+                const body = init.body.replaceAll(/(?<="num_of_tasks":|"max_tasks":)\d+/g, "1");
+                init.body = body;
+            }
+
+            const response = await Reflect.apply(target, thisArg, argArray);
+            const clone = response.clone();
+            const isJson = response.headers.get("content-type")?.includes("application/json");
+
+            if (isJson) {
+                const json = await clone.json();
+                if (!Array.isArray(json)) return response;
+
+                const tasks = json.filter(t => t.title === "Confirm you are human");
+
+                return Response.json(tasks, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers,
+                });
+            }
+
+            return response;
+        });
+    },
+    continue() {
+        tool.click("[data-task]");
+        tool.click(".d31-unlock-btn.enabled");
+    },
+});
+
+domains.add("nerventualken.com", {
+    continue() {
+        tool.click(`:has([name="cf-turnstile-response"][value]) #go`);
     },
 });
 
