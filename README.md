@@ -56,6 +56,12 @@ Click a command to toggle it: it's shown with a check (**✔**) when active, a c
 - Pahe.ink add news domains sometimes, so the script may not work on some new sites, you can try to **add them manually or wait for the next update**.
 - Interestial.com return invalid session if you open multiple tabs, **this issue is not related to this script**.
 
+#### Troubleshooting
+
+Host-specific issues and their fixes are documented outside this README:
+
+- **intercelestial.com** — [INTERCELESTIAL_ISSUES.md](INTERCELESTIAL_ISSUES.md): the "Tap Continue to go on" page and the Waterfox "Ad blocker or auto-click script detected" warning.
+
 #### Reporting
 
 - **A site stopped working** — use the **Report URL issue** command in the script menu; it opens the [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml) issue form.

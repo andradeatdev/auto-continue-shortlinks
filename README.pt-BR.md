@@ -56,6 +56,12 @@ Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando
 - O pahe.ink adiciona novos domínios às vezes, então o script pode não funcionar em alguns sites novos — você pode tentar **adicioná-los manualmente ou esperar a próxima atualização**.
 - O Interestial.com retorna "sessão inválida" se você abrir múltiplas abas, **esse problema não é relacionado a este script**.
 
+#### Solução de problemas
+
+Problemas específicos por host e suas correções ficam documentados fora deste README:
+
+- **intercelestial.com** — [INTERCELESTIAL_ISSUES.pt-BR.md](INTERCELESTIAL_ISSUES.pt-BR.md): a página "Tap Continue to go on" e o aviso "Ad blocker or auto-click script detected" no Waterfox.
+
 #### Reportes
 
 - **Um site parou de funcionar** — use o comando **Report URL issue** no menu do script; ele abre o formulário de issue [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml).
