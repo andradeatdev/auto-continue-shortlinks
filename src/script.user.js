@@ -657,23 +657,22 @@ const patch = {
     },
 
     listener(options = {}) {
-        const { type, mode = "prevent", excludeTarget } = options;
+        const { type, mode = "prevent", excludeTarget, includesText, excludeText } = options;
 
         patch.apply(win.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
-            const [name, listener, options] = argArray;
-            const isMatchType = type === undefined || type === name;
+            const [name, listener] = argArray;
+            const listenerSource = typeof listener === "function" ? listener.toString() : "";
 
-            if (!isMatchType) {
-                return Reflect.apply(target, thisArg, argArray);
-            }
+            const shouldBlock =
+                mode === "prevent" &&
+                (type === undefined || type === name) &&
+                !(excludeTarget !== undefined && thisArg instanceof Element && thisArg.matches(excludeTarget)) &&
+                (includesText === undefined || listenerSource.includes(includesText)) &&
+                (excludeText === undefined || !listenerSource.includes(excludeText));
 
-            if (excludeTarget !== undefined && thisArg instanceof Element && thisArg.matches(excludeTarget)) {
-                return Reflect.apply(target, thisArg, argArray);
-            }
+            if (shouldBlock) return;
 
-            if (mode !== "prevent") {
-                return Reflect.apply(target, thisArg, argArray);
-            }
+            return Reflect.apply(target, thisArg, argArray);
         });
     },
 };
