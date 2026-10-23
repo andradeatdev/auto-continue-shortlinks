@@ -8,7 +8,7 @@
 [![Instalações](https://img.shields.io/greasyfork/dt/593212?style=flat-square&label=instala%C3%A7%C3%B5es)](https://greasyfork.org/scripts/593212)
 [![Avaliação](https://img.shields.io/greasyfork/rating-count/593212?style=flat-square&label=avalia%C3%A7%C3%A3o)](https://greasyfork.org/scripts/593212)
 [![Gerenciadores](https://img.shields.io/badge/gerenciadores-Violentmonkey%20%7C%20Tampermonkey-00485B?style=flat-square)](https://violentmonkey.github.io/)
-[![Hosts suportados](https://img.shields.io/badge/hosts-57%20suportados-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.md)
+[![Hosts suportados](https://img.shields.io/badge/hosts-78%20suportados-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.pt-BR.md)
 
 Este script automatiza shortlinks no pahe.ink e em outros sites que usam os mesmos hosts. Mais hosts serão adicionados com o tempo.
 
@@ -26,11 +26,11 @@ Para isso funcionar, os seguintes dados são compartilhados com o Worker:
 
 #### Hosts Suportados
 
-Veja [HOSTS.md](HOSTS.md) para a lista completa de hosts suportados.
+Veja [HOSTS.pt-BR.md](HOSTS.pt-BR.md) para a lista completa de hosts suportados.
 
 #### Aceleração de Timer
 
-Alguns hosts fazem validação de timer no lado do servidor. Nesses sites, o timer **não pode ser acelerado** pelo script — veja [HOSTS.md](HOSTS.md) para detalhes.
+Alguns hosts fazem validação de timer no lado do servidor. Nesses sites, o timer **não pode ser acelerado** pelo script — veja [HOSTS.pt-BR.md](HOSTS.pt-BR.md) para detalhes.
 
 O script ainda consegue automatizar outras partes do processo nesses sites, mas o timer precisa rodar pelo tempo exigido.
 
@@ -52,7 +52,7 @@ Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando
 
 - **Recomendo usar um bloqueador de anúncios, como uBlock Origin ou Adguard.**
 - Este script **não** resolve **CAPTCHAs**. Ele só automatiza cliques, remove elementos desnecessários e faz outras ações simples quando possível. **Você ainda precisa resolver o CAPTCHA manualmente**.
-- Alguns sites **não podem ter o timer acelerado** — a validação do timer é feita no servidor; para ver quais sites têm `tuner-timer`, consulte [HOSTS.md](HOSTS.md).
+- Alguns sites **não podem ter o timer acelerado** — a validação do timer é feita no servidor; para ver quais sites têm `tuner-timer`, consulte [HOSTS.pt-BR.md](HOSTS.pt-BR.md).
 - O pahe.ink adiciona novos domínios às vezes, então o script pode não funcionar em alguns sites novos — você pode tentar **adicioná-los manualmente ou esperar a próxima atualização**.
 - O Interestial.com retorna "sessão inválida" se você abrir múltiplas abas, **esse problema não é relacionado a este script**.
 
