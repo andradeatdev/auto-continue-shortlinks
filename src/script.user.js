@@ -1060,6 +1060,8 @@ domains.add("intercelestial.com", {
         templates.antiAdbCore.patcher();
         templates.pahe.patcher();
 
+        patch.listener({ type: "click", excludeTarget: ".myButton" });
+        patch.apply(win, "open", () => { });
         patch.define(win, "LLct", { get: () => "1" });
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
     },
