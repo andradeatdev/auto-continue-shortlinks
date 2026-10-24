@@ -716,6 +716,13 @@ const bypass = {
     },
 
     cache(href) {
+        const cacheLocal = GM_getValue("bypass-local", {});
+        const destCached = cacheLocal[href];
+        if (destCached) {
+            navigation.navigate(destCached, { info: "bypass_link" });
+            return;
+        }
+
         GM_xmlhttpRequest({
             method: "GET",
             url: `${this.cacheURL}/api/check?url=${encodeURIComponent(href)}`,
@@ -746,6 +753,10 @@ const bypass = {
     },
 
     save(href, destination) {
+        const cacheLocal = GM_getValue("bypass-local", {});
+        cacheLocal[href] = destination;
+        GM_setValue("bypass-local", cacheLocal);
+
         GM_xmlhttpRequest({
             method: "POST",
             url: `${this.cacheURL}/api/save`,
