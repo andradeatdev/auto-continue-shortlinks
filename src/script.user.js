@@ -360,7 +360,7 @@ const tool = {
         }
     },
 
-    each(selector, options = {}, handler) {
+    each(selector, options, handler) {
         this.assertSelector("each", selector);
 
         const seen = new WeakSet();
@@ -401,7 +401,7 @@ const tool = {
             unwatch();
         };
 
-        run();
+        run().catch(error => console.error(error));
         return stop;
     },
 
@@ -499,7 +499,7 @@ const tool = {
             let timer;
             let isDone = false;
 
-            const stop = tool.each(selector, options, (node, stop) => {
+            const done = tool.each(selector, options, (node, stop) => {
                 isDone = true;
                 clearTimeout(timer);
                 stop();
@@ -508,7 +508,7 @@ const tool = {
 
             if (!isDone && timeout > 0) {
                 timer = setTimeout(() => {
-                    stop();
+                    done();
                     resolve();
                 }, timeout);
             }
@@ -653,8 +653,8 @@ const patch = {
         };
 
         patch.apply(win, "fetch", (target, thisArg, argArray) => {
-            const [url] = argArray;
-            if (isValidUrl(url)) return returnValue;
+            const [urlArg] = argArray;
+            if (isValidUrl(urlArg)) return returnValue;
             return Reflect.apply(target, thisArg, argArray);
         });
     },
@@ -698,6 +698,7 @@ const bypass = {
         /^(\w+\.)?gdflix\.(io|dev)$/,
         "mega.nz",
         "vik1ngfile.site",
+        "vikingfile.com",
         "pahe.plus",
         "filecrypt.cc",
         "ouo.io",
