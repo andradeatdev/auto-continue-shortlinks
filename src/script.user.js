@@ -1155,14 +1155,23 @@ domains.add("uploadrar.com", {
 
 domains.add("shrinkme.click", {
     continue() {
-        tool.click(".btn-primary:not([disabled])");
+        tool.click(":has([name='cf-turnstile-response'][value]) .btn-primary:not([disabled])");
+        tool.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("themezon.net", {
+    patcher() {
+        patch.define(win, "SMG", {
+            set(value, setter) {
+                value.adblock = false;
+                setter(value);
+            },
+        });
+    },
     continue() {
-        tool.click("#btn2");
-        tool.click("#tp-snp2");
+        tool.click("button#smg-arm:not([disabled])", { wait: 2000 });
+        tool.click("form:not([hidden]) .smg-go:not([disabled])", { text: "Continue", visible: true });
     },
 });
 
