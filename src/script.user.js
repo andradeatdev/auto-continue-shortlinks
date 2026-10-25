@@ -922,6 +922,17 @@ const templates = {
             tool.click(".get-link:not(.disabled)");
         },
     },
+    fclc_oii: {
+        patcher() {
+            patch.define(win, "AdscoreInit", { get: () => () => { } });
+        },
+        async continue() {
+            tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
+            tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
+
+            setInterval(() => document.dispatchEvent(new MouseEvent("mousemove")), 100);
+        },
+    },
     pahe: {
         patcher() {
             const mirror = (url, dest) => {
@@ -1082,7 +1093,7 @@ domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.c
 domains.add(["boost.ink", "bst.gg"], templates.boostink);
 domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], templates.pndk);
 domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], templates.xutio);
-
+domains.add(["fc-lc.xyz", "oii.io"], templates.fclc_oii);
 domains.add("pahe.ink", templates.antiAdbCore);
 
 domains.add("linegee.net", {
@@ -1252,21 +1263,6 @@ domains.add("cloud.unblockedgames.world", {
     },
 });
 
-domains.add("fc-lc.xyz", {
-    patcher() {
-        patch.define(win, "AdscoreInit", { get: () => () => { } });
-    },
-    async continue() {
-        tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
-        tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
-
-        while (true) {
-            document.dispatchEvent(new MouseEvent("mousemove"));
-            await tool.wait(100);
-        }
-    },
-});
-
 domains.add("jobzhub.store", {
     continue() {
         tool.click("#next", { visible: true });
@@ -1280,21 +1276,6 @@ domains.add("aii.sh", {
     continue() {
         tool.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
         tool.click(".btn-primary[href]:not(.disabled)");
-    },
-});
-
-domains.add("oii.io", {
-    patcher() {
-        patch.define(win, "AdscoreInit", { get: () => () => { } });
-    },
-    async continue() {
-        tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
-        tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
-
-        while (true) {
-            document.dispatchEvent(new MouseEvent("mousemove"));
-            await tool.wait(100);
-        }
     },
 });
 
