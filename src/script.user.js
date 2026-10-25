@@ -251,8 +251,6 @@ const commands = {
             name: "Report URL issue",
             action() {
                 GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml");
-                // const reason = prompt("Report reason (1-500 chars):")?.trim();
-                // if (reason) bypass.report(reason);
             },
         },
     },
@@ -260,7 +258,6 @@ const commands = {
     exec() {
         for (const [name, cmd] of Object.entries(this.cmds)) {
             if (cmd.when && !cmd.when()) continue;
-
             this.registerMenuCommand(name, cmd);
         }
     },
@@ -825,22 +822,6 @@ const bypass = {
                 const { response } = data;
                 if (response.status !== "ok") { console.error(response); }
                 navigation.navigate(destination, { info: "bypass_link" });
-            },
-        });
-    },
-
-    report(reason) {
-        GM_xmlhttpRequest({
-            method: "POST",
-            url: `${this.cacheURL}/api/report`,
-            headers: { "Content-Type": "application/json" },
-            responseType: "json",
-            data: JSON.stringify({
-                url: location.href,
-                reason,
-            }),
-            onload: ({ response }) => {
-                if (response?.status !== "ok") console.error(response);
             },
         });
     },
