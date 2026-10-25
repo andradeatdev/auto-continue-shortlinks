@@ -210,34 +210,34 @@ const commands = {
     cmds: {
         useCache: {
             name: "Use cache - all domains",
-            value: GM_getValue("useCache", true),
+            value: storage.get("useCache", true),
 
             cmds: {
-                useCacheBlacklist: {
+                useCache: {
                     name: "This domain",
-                    value: GM_getValue("useCacheBlacklist", []),
+                    value: storage.local().get("useCache", true),
                 },
             },
         },
         useContinue: {
             name: "Use continue - all domains",
-            value: GM_getValue("useContinue", true),
+            value: storage.get("useContinue", true),
 
             cmds: {
-                useContinueBlacklist: {
+                useContinue: {
                     name: "This domain",
-                    value: GM_getValue("useContinueBlacklist", []),
+                    value: storage.local().get("useContinue", true),
                 },
             },
         },
         usePatcher: {
             name: "Use patcher - all domains",
-            value: GM_getValue("usePatcher", true),
+            value: storage.get("usePatcher", true),
 
             cmds: {
-                usePatcherBlacklist: {
+                usePatcher: {
                     name: "This domain",
-                    value: GM_getValue("usePatcherBlacklist", []),
+                    value: storage.local().get("usePatcher", true),
                 },
             },
         },
