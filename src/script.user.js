@@ -69,6 +69,9 @@
 // @match              https://adfoc.us/*
 // @match              https://speedy-links.com/*
 // @match              https://nerventualken.com/captcha?urid=*
+// @match              https://datanodes.to/*
+// @match              https://fuckingfast.co/*
+// @match              https://filekeeper.net/*
 // 
 // @match              https://boost.ink/*
 // @match              https://bst.gg/*
@@ -1503,6 +1506,26 @@ domains.add("speedy-links.com", {
 domains.add("nerventualken.com", {
     continue() {
         tool.click(tool.turnstile("#go"));
+    },
+});
+
+domains.add("datanodes.to", {
+    continue() {
+        tool.click("#method_free:not([disabled])");
+        tool.click("button.py-3", { text: "Free Download" });
+        tool.click("button.py-3", { text: "Start Download" });
+    },
+});
+
+domains.add("fuckingfast.co", {
+    continue() {
+        tool.click(".link-button", { wait: 500 });
+    },
+});
+
+domains.add("filekeeper.net", {
+    continue() {
+        tool.click("#download-button");
     },
 });
 
