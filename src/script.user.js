@@ -276,24 +276,22 @@ const commands = {
         if (!cmd.cmds) return;
 
         for (const [n, c] of Object.entries(cmd.cmds)) {
-            const isDomainAllowed = !c.value.includes(location.hostname);
-            const domainIcon = isDomainAllowed ? "✔" : "✖";
+            const isLocalEnabled = c.value;
+            const domainIcon = isLocalEnabled ? "✔" : "✖";
             const icon = cmd.value ? domainIcon : "–";
-            GM_registerMenuCommand(`\u{2003}└ [${icon}] ${c.name} (${name.replace("use", "").toLowerCase()})`, () => this.toggleCommandForNot(n, c, isDomainAllowed));
+            GM_registerMenuCommand(`\u{2003}└ [${icon}] ${c.name} (${name.replace("use", "").toLowerCase()})`, () => this.toggleCommandLocal(n, c));
         }
     },
 
     toggleCommand(name, cmd) {
-        const value = GM_getValue(name, cmd.value);
-        GM_setValue(name, !value);
+        const value = storage.get(name, cmd.value);
+        storage.set(name, !value);
         location.reload();
     },
 
-    toggleCommandForNot(name, cmd, isDomainAllowed) {
-        if (isDomainAllowed) cmd.value.push(location.hostname);
-        else cmd.value = cmd.value.filter(v => v !== location.hostname);
-
-        GM_setValue(name, cmd.value);
+    toggleCommandLocal(name, cmd) {
+        const value = storage.local().get(name, cmd.value);
+        storage.local().set(name, !value);
         location.reload();
     },
 };
@@ -775,7 +773,7 @@ const bypass = {
     },
 
     cache(href) {
-        const cacheLocal = GM_getValue("bypass-local", {});
+        const cacheLocal = storage.global().get("bypass-local", {});
         const destCached = cacheLocal[href];
         if (destCached) {
             navigation.navigate(destCached, { info: "bypass_link" });
@@ -812,9 +810,7 @@ const bypass = {
     },
 
     save(href, destination) {
-        const cacheLocal = GM_getValue("bypass-local", {});
-        cacheLocal[href] = destination;
-        GM_setValue("bypass-local", cacheLocal);
+        storage.global().merge("bypass-local", { [href]: destination });
 
         GM_xmlhttpRequest({
             method: "POST",
