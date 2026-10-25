@@ -1359,7 +1359,7 @@ domains.add("coinclix.co", {
             insert: true,
         });
 
-        GM_addValueChangeListener("geekgrove-keys", async (_key, oldValue, newValue) => {
+        storage.global().watch("geekgrove-return-key", async (newValue) => {
             tool.input("#link-card input#verificationCode", { value: newValue });
             tool.click("#link-card button#btnVerification");
         });
@@ -1396,7 +1396,7 @@ domains.add("geekgrove.net", {
         tool.click("#btnLpcont", { text: "Continue" });
 
         const returnKey = await tool.element("#linkResHeader kbd");
-        GM_setValue("geekgrove-keys", returnKey.textContent);
+        storage.global().set("geekgrove-return-key", returnKey.textContent);
         window.close();
     },
 });
