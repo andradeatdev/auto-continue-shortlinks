@@ -130,7 +130,7 @@ const config = {
     defaultTimerFactor: 0.05,
 
     isEnabled(name) {
-        const global = storage.global().get(name, true);
+        const global = storage.get(name, true);
         const local = storage.local().get(name, true);
         return global && local;
     },
