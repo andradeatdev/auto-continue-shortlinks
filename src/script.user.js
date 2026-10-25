@@ -1385,9 +1385,10 @@ domains.add("geekgrove.net", {
                 "body": `{"linkInit":"${key}"}`,
             });
             const text = await resp.text();
-            const match = text.match(/href=\\"([^\\]+)/)?.[1];
+            const match = /href=\\"([^\\]+)/.exec(text);
             if (!match) return;
-            location.assign(match);
+
+            location.assign(match[1]);
         };
 
         tool.click("#btnLinkStart", { text: "Start" });
