@@ -130,10 +130,9 @@ const config = {
     defaultTimerFactor: 0.05,
 
     isEnabled(name) {
-        const cmd = commands.cmds[name];
-        if (!cmd?.value) return false;
-        const blacklist = Object.values(cmd.cmds)[0].value;
-        return !blacklist.includes(location.hostname);
+        const global = storage.global().get(name, true);
+        const local = storage.local().get(name, true);
+        return global && local;
     },
 
     get useCache() {
