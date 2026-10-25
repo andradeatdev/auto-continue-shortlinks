@@ -744,6 +744,7 @@ const patch = {
 
 const bypass = {
     cacheURL: "https://shortlinks.zencore.fun",
+    cacheMaxEntries: 50,
     shortenerPatterns: {
         "tpi.li": /^\/[A-Za-z0-9_-]{3,}$/,
         "oii.la": /^\/[A-Za-z0-9_-]{3,}$/,
@@ -775,6 +776,7 @@ const bypass = {
 
         this.cache(href);
         this.listener(href);
+        this.prune();
     },
 
     cache(href) {
@@ -832,6 +834,14 @@ const bypass = {
                 navigation.navigate(destination, { info: "bypass_link" });
             },
         });
+    },
+
+    prune() {
+        const cacheLocal = storage.global().get("bypass-local", {});
+        const entries = Object.entries(cacheLocal);
+        if (entries.length <= this.cacheMaxEntries) return;
+
+        storage.global().set("bypass-local", {});
     },
 
     isFinalHost(hostname) {
