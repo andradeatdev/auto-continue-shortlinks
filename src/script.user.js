@@ -47,7 +47,10 @@
 // @match              https://shrinkme.click/*
 // @match              https://themezon.net/*
 // @match              https://en.mrproblogger.com/*
-// 
+//
+// @match              https://aradmag.online/*
+// @match              https://horrorpay.online/*
+//
 // From: Others
 // @match              https://cloud.unblockedgames.world/*
 // @match              https://fc-lc.xyz/*
@@ -1245,6 +1248,24 @@ domains.add("themezon.net", {
 });
 
 domains.add("en.mrproblogger.com", {
+    continue() {
+        tool.click(".get-link:not(.disabled)");
+    },
+});
+
+domains.add("aradmag.online", {
+    patcher() {
+        patch.timer();
+        patch.apply(win, "open", () => { });
+    },
+    continue() {
+        tool.click("[id^='ow_step']:last-of-type button");
+        tool.click("#offerContinueBtn");
+        tool.click("#continueBtn:not([disabled])");
+    },
+});
+
+domains.add("horrorpay.online", {
     continue() {
         tool.click(".get-link:not(.disabled)");
     },
