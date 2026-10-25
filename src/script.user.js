@@ -587,6 +587,14 @@ const tool = {
             });
         });
     },
+
+    turnstile(selector) {
+        return `:has([name="cf-turnstile-response"][value]) ${selector}`;
+    },
+
+    hcaptcha(selector) {
+        return `:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) ${selector}`;
+    },
 };
 
 const patch = {
@@ -879,7 +887,7 @@ const templates = {
         },
         continue() {
             tool.click("#btn-main:not(.disabled)");
-            tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+            tool.click(tool.turnstile("#invisibleCaptchaShortlink"));
         },
     },
     devuploads: {
@@ -895,7 +903,7 @@ const templates = {
     exeio: {
         continue() {
             tool.click(".link-button:not(.disabled)");
-            tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+            tool.click(tool.turnstile("#invisibleCaptchaShortlink"));
         },
     },
     cuttty: {
@@ -927,8 +935,8 @@ const templates = {
             patch.define(win, "AdscoreInit", { get: () => () => { } });
         },
         async continue() {
-            tool.click(`:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) button#hCaptchaShortlink`);
-            tool.click(`:has([name="cf-turnstile-response"][value]) button#submitBtn`);
+            tool.click(tool.hcaptcha("button#hCaptchaShortlink"));
+            tool.click(tool.turnstile("button#submitBtn"));
 
             setInterval(() => document.dispatchEvent(new MouseEvent("mousemove")), 100);
         },
@@ -1112,7 +1120,7 @@ domains.add("pahe.plus", {
         templates.pahe.patcher();
     },
     continue() {
-        tool.click(":has([data-hcaptcha-response]) #invisibleCaptchaShortlink:not([disabled])");
+        tool.click(tool.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"));
         tool.redirect(".get-link[href^='https://']:not(.disabled)");
     },
 });
@@ -1173,7 +1181,7 @@ domains.add("modsfire.com", {
 domains.add("www.file-upload.org", {
     continue() {
         tool.click("button[name='method_free']");
-        tool.click(":has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) #downloadbtn:not([disabled])");
+        tool.click(tool.hcaptcha("#downloadbtn:not([disabled])"));
     },
 });
 
@@ -1189,7 +1197,7 @@ domains.add("safefileku.com", {
         patch.timer();
     },
     continue() {
-        tool.click(":has([name='cf-turnstile-response'][value]) button[type='submit']");
+        tool.click(tool.turnstile("button[type='submit']"));
     },
 });
 
@@ -1202,7 +1210,8 @@ domains.add("uploadrar.com", {
 
 domains.add("shrinkme.click", {
     continue() {
-        tool.click(":has([name='cf-turnstile-response'][value]) .btn-primary:not([disabled])");
+        tool.click(tool.turnstile(".btn-primary:not([disabled])"));
+
         tool.click(".get-link:not(.disabled)");
     },
 });
@@ -1248,7 +1257,7 @@ domains.add("www.up-4ever.net", {
 
         tool.click("#downloadbtn");
 
-        tool.click(":has([name='cf-turnstile-response'][value]) [type='submit']:not([disabled])");
+        tool.click(tool.turnstile("[type='submit']:not([disabled])"));
         tool.click("#dl2btn");
     },
 });
@@ -1268,13 +1277,13 @@ domains.add("jobzhub.store", {
         tool.click("#next", { visible: true });
         tool.click("#scroll", { visible: true });
         tool.click("#glink", { visible: true });
-        tool.click(`:has([name="cf-turnstile-response"][value]) #surl:not(.disabled)`);
+        tool.click(tool.turnstile("#surl:not(.disabled)"));
     },
 });
 
 domains.add("aii.sh", {
     continue() {
-        tool.click(`:has([name="cf-turnstile-response"][value]) button#continue`);
+        tool.click(tool.turnstile("button#continue"));
         tool.click(".btn-primary[href]:not(.disabled)");
     },
 });
@@ -1283,7 +1292,7 @@ domains.add("aknewz.xyz", {
     continue() {
         tool.click("#next");
         tool.click("#scroll:not(.hidden)", { count: 2 });
-        tool.click(`:has([name="cf-turnstile-response"][value]) #surl`);
+        tool.click(tool.turnstile("#surl"));
     },
 });
 
@@ -1307,7 +1316,7 @@ domains.add("lnbz.la", {
         templates.antiAdbCore.patcher();
     },
     continue() {
-        tool.click(`:has([name="cf-turnstile-response"][value]) #continue`);
+        tool.click(tool.turnstile("#continue"));
         tool.click(".get-link:not(.disabled)");
     },
 });
@@ -1339,7 +1348,7 @@ domains.add("cloudfam.io", {
 domains.add("uiil.ink", {
     continue() {
         tool.click("#form-continue [type='submit']");
-        tool.click(`:has([name="cf-turnstile-response"][value]) #invisibleCaptchaShortlink`);
+        tool.click(tool.turnstile("#invisibleCaptchaShortlink"));
         tool.click(`#multiLinkBtn:not(.disabled)`);
     },
 });
@@ -1483,7 +1492,7 @@ domains.add("speedy-links.com", {
 
 domains.add("nerventualken.com", {
     continue() {
-        tool.click(`:has([name="cf-turnstile-response"][value]) #go`);
+        tool.click(tool.turnstile("#go"));
     },
 });
 
