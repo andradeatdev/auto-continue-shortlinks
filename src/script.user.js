@@ -124,6 +124,8 @@
 // you may copy, modify and redistribute it only under the GNU General Public
 // License v3. Source and this notice must be kept intact (GPL-3.0, §4–§5).
 
+const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
+
 const config = {
     defaultTimerFactor: 0.05,
 
@@ -145,7 +147,65 @@ const config = {
     },
 };
 
-const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
+const storage = {
+    set(key, value) {
+        GM_setValue(key, value);
+    },
+
+    get(key, defaultValue) {
+        return GM_getValue(key, defaultValue);
+    },
+
+    local() {
+        return this.scope("@local", location.hostname);
+    },
+    global() {
+        return this.scope("@global");
+    },
+
+    scope(ns, bucket) {
+        const read = () => {
+            const root = storage.get(ns, {});
+            return bucket === undefined ? root : root[bucket] || {};
+        };
+
+        const scope = {
+            get(key, defaultValue) {
+                const value = read()[key];
+                return value === undefined ? defaultValue : value;
+            },
+            set(key, value) {
+                const root = storage.get(ns, {});
+
+                if (bucket === undefined) {
+                    root[key] = value;
+                } else {
+                    root[bucket] ||= {};
+                    root[bucket][key] = value;
+                }
+
+                storage.set(ns, root);
+            },
+            merge(key, value) {
+                scope.set(key, { ...scope.get(key, {}), ...value });
+            },
+            watch(key, callback) {
+                const pick = (root) => (bucket === undefined ? root : root?.[bucket])?.[key];
+
+                return GM_addValueChangeListener(ns, (name, oldRoot, newRoot, remote) => {
+                    const before = pick(oldRoot);
+                    const after = pick(newRoot);
+
+                    if (JSON.stringify(before) === JSON.stringify(after)) return;
+
+                    callback(after, before, remote);
+                });
+            },
+        };
+
+        return scope;
+    },
+};
 
 const commands = {
     cmds: {
