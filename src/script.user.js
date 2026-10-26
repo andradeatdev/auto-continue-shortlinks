@@ -1102,8 +1102,6 @@ const templates = {
                 }
                 return Reflect.apply(target, thisArg, argArray);
             });
-
-            tool.wrap("html > div[style]");
         },
     },
 };
@@ -1118,7 +1116,12 @@ domains.add(["boost.ink", "bst.gg"], templates.boostink);
 domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], templates.pndk);
 domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], templates.xutio);
 domains.add(["fc-lc.xyz", "oii.io"], templates.fclc_oii);
-domains.add("pahe.ink", templates.antiAdbCore);
+domains.add("pahe.ink", {
+    patcher() {
+        templates.antiAdbCore.patcher();
+        templates.pahe.patcher();
+    },
+});
 
 domains.add("linegee.net", {
     patcher() {
