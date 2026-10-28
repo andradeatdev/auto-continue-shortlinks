@@ -802,6 +802,7 @@ const bypass = {
         "pahe.plus": /^\/[A-Za-z0-9_-]{3,}$/,
         "en.mrproblogger.com": /^\/[A-Za-z0-9_-]{3,}$/,
         "intercelestial.com": /^\/\?ht=[a-zA-Z0-9%]+$/,
+        "speedy-links.com": /^\/s\?[A-Za-z0-9_-]{3,}$/,
     },
     finalDomains: [
         "send.now",
@@ -815,6 +816,7 @@ const bypass = {
         "filecrypt.cc",
         "ouo.io",
         "ouo.press",
+        "rentry.org",
     ],
 
     exec(hostname, href, pathname, search) {
