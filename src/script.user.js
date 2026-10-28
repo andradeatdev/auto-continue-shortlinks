@@ -604,30 +604,73 @@ const tool = {
 };
 
 const patch = {
-    apply(owner, property, applyFn) {
-        patch.fnToString ||= win.Function.prototype.toString;
-        patch.fnToStringMap ||= new WeakMap();
+    installToString() {
+        if (patch.toStringPatched) return;
+        patch.toStringPatched = true;
 
-        const target = owner[property];
-        if (target === undefined) return;
+        patch.fnToString = win.Function.prototype.toString;
+        patch.fnToStringMap = new WeakMap();
 
-        const func = function (...argArray) {
-            return applyFn(target, this, argArray);
+        const newToString = function () {
+            const original = patch.fnToStringMap.get(this);
+            return patch.fnToString.call(original || this);
         };
-        patch.fnToStringMap.set(func, target);
 
-        Object.defineProperty(func, "toString", {
-            configurable: true,
-            value: Function.prototype.toString.bind(target),
+        patch.fnToStringMap.set(newToString, patch.fnToString);
+
+        Object.defineProperties(newToString, {
+            name: { value: "toString", configurable: true },
+            length: { value: 0, configurable: true },
         });
 
-        win.Function.prototype.toString = function () {
-            const original = patch.fnToStringMap.get(this);
-            if (original) return patch.fnToString.call(original);
-            return patch.fnToString.call(this);
-        };
+        const desc = Object.getOwnPropertyDescriptor(win.Function.prototype, "toString");
+        Object.defineProperty(win.Function.prototype, "toString", { ...desc, value: newToString });
+    },
 
-        owner[property] = func;
+    hook(owner, property, handler) {
+        const target = owner[property];
+        if (typeof target !== "function") return false;
+
+        patch.installToString();
+
+        const traps = {};
+
+        if (handler.apply) {
+            traps.apply = (t, thisArg, argArray) => handler.apply(t, thisArg, argArray);
+        }
+        if (handler.construct) {
+            traps.construct = (t, argArray, newTarget) => handler.construct(t, argArray, newTarget);
+        }
+
+        const proxy = new Proxy(target, traps);
+        patch.fnToStringMap.set(proxy, target);
+
+        const proto = target.prototype;
+        if (proto && proto.constructor === target) {
+            Object.defineProperty(proto, "constructor", {
+                value: proxy,
+                writable: true,
+                configurable: true,
+                enumerable: false,
+            });
+        }
+
+        const desc = Object.getOwnPropertyDescriptor(owner, target);
+        if (desc && "value" in desc) {
+            Object.defineProperty(owner, property, { ...desc, value: proxy });
+        } else {
+            owner[property] = proxy;
+        }
+
+        return true;
+    },
+
+    apply(owner, property, applyFn) {
+        return this.hook(owner, property, { apply: applyFn });
+    },
+
+    construct(owner, property, constructFn) {
+        return this.hook(owner, property, { construct: constructFn });
     },
 
     define(owner, property, { get, set }) {
@@ -1042,23 +1085,24 @@ const templates = {
                 if (owner) patch.apply(owner, property, adopt);
             }
 
-            win.Promise = class ModPromise extends Promise {
-                constructor(executor) {
-                    const wrapper = (resolve, reject) => {
-                        const resolveMod = (value) => {
-                            if (Array.isArray(value) && value.length === 1 && typeof value[0] === "string") {
-                                resolve([]);
-                            }
-                            resolve(value);
-                        };
-                        const rejectMod = (reason) => {
-                            reject(reason);
-                        };
-                        executor(resolveMod, rejectMod);
+            patch.construct(win, "Promise", (Target, argArray, newTarget) => {
+                const [executor, ...rest] = argArray;
+
+                if (typeof executor !== "function") return Reflect.construct(Target, argArray, newTarget);
+
+                const wrapper = (resolve, reject) => {
+                    const resolveMod = (value) => {
+                        if (Array.isArray(value) && value.length === 1 && typeof value[0] === "string") {
+                            return resolve([]);
+                        }
+                        return resolve(value);
                     };
-                    super(wrapper);
-                }
-            };
+                    return executor(resolveMod, reject);
+                };
+
+                return Reflect.construct(Target, [wrapper, ...rest], newTarget);
+
+            });
         },
     },
     antiAdbCore: {
