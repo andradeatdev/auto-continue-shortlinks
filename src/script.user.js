@@ -75,6 +75,7 @@
 // @match              https://datanodes.to/*
 // @match              https://fuckingfast.co/*
 // @match              https://filekeeper.net/*
+// @match              https://linkvertise.com/*
 // 
 // @match              https://boost.ink/*
 // @match              https://bst.gg/*
@@ -1768,6 +1769,24 @@ domains.add("fuckingfast.co", {
 domains.add("filekeeper.net", {
     continue() {
         tool.click("#download-button");
+    },
+});
+
+domains.add("linkvertise.com", {
+    patcher() {
+        patch.timer({ factor: 0.05 });
+
+        patch.apply(win.HTMLElement.prototype, "click", (target, thisArg, argArray) => {
+            if (thisArg.nodeName === "A" && thisArg.href) location.assign(thisArg.href);
+            return Reflect.apply(target, thisArg, argArray);
+        });
+    },
+    continue() {
+        tool.redirect("a[href]:has(> button)", { text: "Get access" });
+        tool.click("ui-divider + lv-membership-plan-option");
+        tool.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
+        tool.click(".skip-button > *", { count: 4 });
+        tool.click(".success-card button");
     },
 });
 
