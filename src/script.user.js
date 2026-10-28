@@ -1185,10 +1185,11 @@ const templates = {
                         "Sec-Fetch-Mode": "no-cors",
                         "Sec-Fetch-Site": "same-origin",
                     },
-                }).catch(() => { });
+                })
+                    .catch((error) => console.log("Error", error));
             };
             const rewrite = (tag, name, value) => {
-                if (typeof value !== "string" || /^data:/i.test(value)) return null;
+                if (typeof value !== "string" || /^data:/i.test(value)) return;
 
                 if (tag === "SCRIPT" && name === "src" && /pagead\/conversion\.js/.test(value)) {
                     mirror(value, "script");
@@ -1205,64 +1206,31 @@ const templates = {
                     mirror(value, "image");
                     return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
                 }
-
-                return null;
             };
 
-            const hook = (target, thisArg, argArray) => {
-                const [name, value] = argArray;
-                const rewritten = rewrite(thisArg?.tagName, String(name).toLowerCase(), value);
-                if (rewritten !== null) argArray[1] = rewritten;
-                return Reflect.apply(target, thisArg, argArray);
-            };
+            patch.define(win.HTMLScriptElement.prototype, "src", {
+                set(v, setter) {
+                    if (v.includes("conversion.js")) console.log(this, v);
+                    setter(v);
+                },
+            });
 
-            const realms = new WeakSet();
-            const patchRealm = (realm) => {
-                try {
-                    const raw = realm?.wrappedJSObject || realm;
-                    const proto = raw?.Element?.prototype;
-                    if (!proto || realms.has(proto)) return;
-                    realms.add(proto);
-                    patch.apply(proto, "setAttribute", hook);
-                } catch { }
-            };
+            patch.define(win.HTMLImageElement.prototype, "src", {
+                set(v, setter) {
+                    if (v.includes(".gif")) console.log(this, v);
+                    setter(v);
+                },
+            });
 
-            const adoptNode = (node) => {
-                let tagName = null;
-                try { tagName = node?.tagName; } catch { }
-                if (String(tagName).toUpperCase() !== "IFRAME") return;
-                patchRealm(node.contentWindow || node.contentDocument?.defaultView);
-            };
-
-            const adopt = (target, thisArg, argArray) => {
-                const result = Reflect.apply(target, thisArg, argArray);
-                for (const arg of argArray) {
-                    if (Array.isArray(arg)) arg.forEach(adoptNode);
-                    else adoptNode(arg);
-                }
-                return result;
-            };
-
-            patchRealm(win);
-            for (const [owner, property] of [
-                [win.Node?.prototype, "insertBefore"],
-                [win.Node?.prototype, "appendChild"],
-                [win.Node?.prototype, "replaceChild"],
-                [win.Element?.prototype, "prepend"],
-                [win.Element?.prototype, "append"],
-                [win.Element?.prototype, "after"],
-                [win.Element?.prototype, "before"],
-                [win.Element?.prototype, "replaceChildren"],
-                [win.Element?.prototype, "insertAdjacentElement"],
-                [win.Document?.prototype, "append"],
-                [win.Document?.prototype, "prepend"],
-            ]) {
-                if (owner) patch.apply(owner, property, adopt);
-            }
+            patch.define(win.HTMLLinkElement.prototype, "href", {
+                set(v, setter) {
+                    if (v.includes("120x600")) console.log(this, v);
+                    setter(v);
+                },
+            });
 
             patch.construct(win, "Promise", (Target, argArray, newTarget) => {
                 const [executor, ...rest] = argArray;
-
                 if (typeof executor !== "function") return Reflect.construct(Target, argArray, newTarget);
 
                 const wrapper = (resolve, reject) => {
@@ -1274,9 +1242,7 @@ const templates = {
                     };
                     return executor(resolveMod, reject);
                 };
-
                 return Reflect.construct(Target, [wrapper, ...rest], newTarget);
-
             });
         },
     },
