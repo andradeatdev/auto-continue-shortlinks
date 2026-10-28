@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@types/node": "^26.4.0",
+    "brace-expansion": "5.0.12",
     "eslint-plugin-sonarjs": "^4.2.0",
     "eslint-plugin-unicorn": "^74.0.0",
     "isolated-vm": "^7.0.1",
