@@ -1178,6 +1178,8 @@ const templates = {
     pahe: {
         patcher() {
             const mirror = (url, dest) => {
+                // console.log("url", url, "| dest", dest);
+
                 tool.request(url, {
                     headers: {
                         "Referer": `${location.origin}/`,
@@ -1186,47 +1188,27 @@ const templates = {
                         "Sec-Fetch-Site": "same-origin",
                     },
                 })
+                    .then((res) => console.log("Res", res))
                     .catch((error) => console.log("Error", error));
             };
-            const rewrite = (tag, name, value) => {
-                if (typeof value !== "string" || /^data:/i.test(value)) return;
 
-                if (tag === "SCRIPT" && name === "src" && /pagead\/conversion\.js/.test(value)) {
-                    mirror(value, "script");
-                    return "data:text/javascript,//pagead/conversion.js";
+            document.addEventListener("error", event => {
+                const el = event.target;
+
+                if (el instanceof HTMLScriptElement && el.src.includes("pagead/conversion.js")) {
+                    mirror(el.src, "script");
+                } else if (el instanceof HTMLLinkElement && el.href.includes("120x600")) {
+                    mirror(el.href, "style");
                 }
+            }, { capture: true });
 
-                if (tag === "LINK" && name === "href" && /120x600-[0-9a-f]{8}\.css/.test(value)) {
-                    const [, hash] = /120x600-([0-9a-f]{8})\.css/.exec(value);
-                    mirror(value, "style");
-                    return `data:text/css,/*/120x600-${hash}.css*/`;
-                }
-
-                if (tag === "IMG" && name === "src" && /\/ads\/banners\/[0-9a-f]{6,16}\.gif/.test(value)) {
-                    mirror(value, "image");
-                    return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-                }
-            };
-
-            patch.define(win.HTMLScriptElement.prototype, "src", {
-                set(v, setter) {
-                    if (v.includes("conversion.js")) console.log(this, v);
-                    setter(v);
-                },
-            });
-
-            patch.define(win.HTMLImageElement.prototype, "src", {
-                set(v, setter) {
-                    if (v.includes(".gif")) console.log(this, v);
-                    setter(v);
-                },
-            });
-
-            patch.define(win.HTMLLinkElement.prototype, "href", {
-                set(v, setter) {
-                    if (v.includes("120x600")) console.log(this, v);
-                    setter(v);
-                },
+            patch.construct(win, "Image", (target, argArray, newTarget) => {
+                const img = Reflect.construct(target, argArray, newTarget);
+                img.addEventListener("error", () => {
+                    if (!img.src.includes("ads/banner")) return;
+                    mirror(img.src, "image");
+                });
+                return img;
             });
 
             patch.construct(win, "Promise", (Target, argArray, newTarget) => {
