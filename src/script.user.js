@@ -78,6 +78,10 @@
 // @match              https://linkvertise.com/*
 // @match              https://app.khaddavi.net/*
 // @match              https://sfl.gl/*
+// @match              https://link4m.net/*
+// 
+// @match              https://gplinks.co/*
+// @match              https://skrresults.com/*
 // 
 // @match              https://boost.ink/*
 // @match              https://bst.gg/*
@@ -1767,6 +1771,32 @@ domains.add("app.khaddavi.net", {
 domains.add("sfl.gl", {
     continue() {
         tool.click("button", { text: "OPEN LINK" });
+    },
+});
+
+domains.add("link4m.net", {
+    patcher() {
+        tool.remove("body > div", { text: "Adblock" });
+    },
+    continue() {
+        tool.click(".get-link:not(.disabled)");
+    },
+});
+
+domains.add("gplinks.co", {
+    continue() {
+        tool.redirect(".gate-btn-skip");
+        tool.redirect(tool.turnstile("#captchaButton:not(.disabled)"));
+    },
+});
+
+domains.add("skrresults.com", {
+    patcher() {
+        patch.timer({ factor: 0.01 });
+    },
+    continue() {
+        tool.click("#VerifyBtn", { visible: true });
+        tool.click("#NextBtn", { visible: true });
     },
 });
 
