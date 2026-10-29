@@ -1271,6 +1271,23 @@ const templates = {
                 }
                 return Reflect.apply(target, thisArg, argArray);
             });
+
+            patch.apply(win.Node.prototype, "appendChild", (target, thisArg, argArray) => {
+                const [node] = argArray;
+                const result = Reflect.apply(target, thisArg, argArray);
+                if (node.nodeName === "SLOT") {
+                    const sheet = new CSSStyleSheet();
+                    sheet.replaceSync("div:has([role='dialog']) { display: none !important; }");
+                    thisArg.adoptedStyleSheets.push(sheet);
+                }
+                return result;
+            });
+
+            patch.apply(win.Document.prototype, "createElementNS", (target, thisArg, argArray) => {
+                return argArray[1].includes("-") ? undefined : Reflect.apply(target, thisArg, argArray);
+            });
+
+            tool.wrap("body > div:has([role='dialog'])");
         },
     },
 };
