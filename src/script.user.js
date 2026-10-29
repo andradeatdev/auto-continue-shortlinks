@@ -503,18 +503,16 @@ const watch = {
 };
 
 const tool = {
-    assertSelector(name, selector) {
-        if (typeof selector !== "string") {
-            throw new TypeError(`[tools.${name}] 'selector' must be a string`);
-        }
+    guard(name, selector) {
+        if (typeof selector !== "string") throw new TypeError(`[tool.${name}] 'selector' must be a string`);
     },
 
-    isVisible(node, isVisible) {
+    shown(node, isVisible) {
         if (typeof isVisible !== "boolean") return true;
         return node.checkVisibility({ visibilityProperty: true }) === isVisible;
     },
 
-    hasText(node, text) {
+    reads(node, text) {
         if (text === undefined || text === null) return true;
         const content = node.textContent;
         if (typeof text === "string") return content.includes(text);
@@ -525,14 +523,14 @@ const tool = {
         return false;
     },
 
-    hasCSS(node, css) {
+    styled(node, css) {
         if (!css) return true;
 
         const style = getComputedStyle(node);
         return Object.entries(css).every(([key, value]) => style[key] === value);
     },
 
-    getAttr(node, attr) {
+    attr(node, attr) {
         if (typeof attr === "string") return node.getAttribute(attr);
         if (attr instanceof RegExp) {
             attr.lastIndex = 0;
@@ -546,7 +544,7 @@ const tool = {
     },
 
     *select(selector, options = {}) {
-        this.assertSelector("select", selector);
+        this.guard("select", selector);
 
         const nodes = document.querySelectorAll(selector);
         for (const node of nodes) {
@@ -557,15 +555,15 @@ const tool = {
     match(node, options = {}) {
         const { visible, text, css } = options;
 
-        if (!tool.isVisible(node, visible)) return false;
-        if (!tool.hasText(node, text)) return false;
-        if (!tool.hasCSS(node, css)) return false;
+        if (!tool.shown(node, visible)) return false;
+        if (!tool.reads(node, text)) return false;
+        if (!tool.styled(node, css)) return false;
 
         return true;
     },
 
-    each(selector, options, handler) {
-        this.assertSelector("each", selector);
+    stalk(selector, options, handler) {
+        this.guard("each", selector);
 
         const seen = new WeakSet();
         let isStopped = false;
@@ -610,12 +608,12 @@ const tool = {
     },
 
     click(selector, options = {}) {
-        this.assertSelector("click", selector);
+        this.guard("click", selector);
         const { wait = 0, scroll = false, count = 1, bubbles = true, when } = options;
         const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
         let remaining = count;
 
-        return tool.each(selector, options, async (node, stop) => {
+        return tool.stalk(selector, options, async (node, stop) => {
             if (when && !when(node)) return false;
 
             if (wait > 0) await tool.wait(wait);
@@ -640,33 +638,33 @@ const tool = {
     },
 
     scroll(selector, options = {}) {
-        this.assertSelector("scroll", selector);
+        this.guard("scroll", selector);
         const { behavior = "smooth", block = "center", inline = "center" } = options;
 
-        return tool.each(selector, options, async (node, stop) => {
+        return tool.stalk(selector, options, async (node, stop) => {
             node.scrollIntoView({ behavior, block, inline });
             stop();
         });
     },
 
     input(selector, options = {}) {
-        this.assertSelector("input", selector);
+        this.guard("input", selector);
         const { value = "" } = options;
 
-        return tool.each(selector, options, (node, stop) => {
+        return tool.stalk(selector, options, (node, stop) => {
             node.value = value;
             stop();
         });
     },
 
     remove(selector, options = {}) {
-        this.assertSelector("remove", selector);
-        return tool.each(selector, options, (node) => node.remove());
+        this.guard("remove", selector);
+        return tool.stalk(selector, options, (node) => node.remove());
     },
 
     wrap(selector, options = {}) {
-        this.assertSelector("wrap", selector);
-        return tool.each(selector, options, (node, stop) => {
+        this.guard("wrap", selector);
+        return tool.stalk(selector, options, (node, stop) => {
             const wrapper = document.createElement("div");
             wrapper.style.cssText = `
                 visibility: hidden !important;
@@ -680,11 +678,11 @@ const tool = {
     },
 
     redirect(selector, options = {}) {
-        this.assertSelector("redirect", selector);
+        this.guard("redirect", selector);
         const { attr = "href", decodeB64 = false } = options;
 
-        return tool.each(selector, options, async (node, stop) => {
-            let url = tool.getAttr(node, attr);
+        return tool.stalk(selector, options, async (node, stop) => {
+            let url = tool.attr(node, attr);
             if (!url) return false;
 
             if (decodeB64 === true) {
@@ -697,14 +695,14 @@ const tool = {
     },
 
     element(selector, options = {}) {
-        this.assertSelector("element", selector);
+        this.guard("element", selector);
         const { timeout } = options;
 
         return new Promise((resolve) => {
             let timer;
             let isDone = false;
 
-            const done = tool.each(selector, options, (node, stop) => {
+            const done = tool.stalk(selector, options, (node, stop) => {
                 isDone = true;
                 clearTimeout(timer);
                 stop();
@@ -721,7 +719,7 @@ const tool = {
     },
 
     request(url, options = {}) {
-        if (typeof url !== "string") throw new TypeError("[tools.request] Missing `url` argument");
+        if (typeof url !== "string") throw new TypeError("[tool.request] Missing `url` argument");
 
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
@@ -848,7 +846,7 @@ const patch = {
         });
     },
 
-    timer(options = {}) {
+    haste(options = {}) {
         const { factor = config.defaultTimerFactor, text, ms } = options;
 
         const startTime = Date.now();
@@ -1146,7 +1144,7 @@ const templates = {
     },
     host: {
         patcher() {
-            patch.timer();
+            patch.haste();
         },
         continue() {
             tool.remove("div", { css: { position: "fixed" }, text: "detected" });
@@ -1157,7 +1155,7 @@ const templates = {
     },
     ouo: {
         patcher() {
-            patch.timer();
+            patch.haste();
         },
         continue() {
             tool.click("#btn-main:not(.disabled)");
@@ -1166,7 +1164,7 @@ const templates = {
     },
     devuploads: {
         patcher() {
-            patch.timer();
+            patch.haste();
         },
         continue() {
             tool.click("#gdl[style*='block']");
@@ -1405,7 +1403,7 @@ domains.add("vexfile.com", {
 
 domains.add("filespayouts.com", {
     patcher() {
-        patch.timer({ text: "tick" });
+        patch.haste({ text: "tick" });
     },
     continue() {
         tool.click("#method_free");
@@ -1415,7 +1413,7 @@ domains.add("filespayouts.com", {
 
 domains.add("modsfire.com", {
     patcher() {
-        patch.timer();
+        patch.haste();
     },
     continue() {
         tool.click(".download-button");
@@ -1438,7 +1436,7 @@ domains.add("upfilesgo.com", {
 
 domains.add("safefileku.com", {
     patcher() {
-        patch.timer();
+        patch.haste();
     },
     continue() {
         tool.click(tool.turnstile("button[type='submit']"));
@@ -1483,7 +1481,7 @@ domains.add("en.mrproblogger.com", {
 
 domains.add("aradmag.online", {
     patcher() {
-        patch.timer();
+        patch.haste();
         patch.apply(win, "open", () => { });
     },
     continue() {
@@ -1780,7 +1778,7 @@ domains.add("filekeeper.net", {
 
 domains.add("linkvertise.com", {
     patcher() {
-        patch.timer({ factor: 0.05 });
+        patch.haste({ factor: 0.05 });
 
         patch.apply(win.HTMLElement.prototype, "click", (target, thisArg, argArray) => {
             if (thisArg.nodeName === "A" && thisArg.href) location.assign(thisArg.href);
@@ -1826,7 +1824,7 @@ domains.add("gplinks.co", {
 
 domains.add("skrresults.com", {
     patcher() {
-        patch.timer({ factor: 0.01 });
+        patch.haste({ factor: 0.01 });
     },
     continue() {
         tool.click("#VerifyBtn", { visible: true });
