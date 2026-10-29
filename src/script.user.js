@@ -76,6 +76,8 @@
 // @match              https://fuckingfast.co/*
 // @match              https://filekeeper.net/*
 // @match              https://linkvertise.com/*
+// @match              https://app.khaddavi.net/*
+// @match              https://sfl.gl/*
 // 
 // @match              https://boost.ink/*
 // @match              https://bst.gg/*
@@ -1735,6 +1737,18 @@ domains.add("linkvertise.com", {
         tool.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
         tool.click(".skip-button > *", { count: 4 });
         tool.click(".success-card button");
+    },
+});
+
+domains.add("app.khaddavi.net", {
+    continue() {
+        tool.click("button.ready", { count: 4 });
+    },
+});
+
+domains.add("sfl.gl", {
+    continue() {
+        tool.click("button", { text: "OPEN LINK" });
     },
 });
 
