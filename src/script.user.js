@@ -547,15 +547,21 @@ const tool = {
 
     *select(selector, options = {}) {
         this.assertSelector("select", selector);
-        const { visible, text, css } = options;
 
         const nodes = document.querySelectorAll(selector);
         for (const node of nodes) {
-            if (!tool.isVisible(node, visible)) continue;
-            if (!tool.hasText(node, text)) continue;
-            if (!tool.hasCSS(node, css)) continue;
-            yield node;
+            if (this.match(node, options)) yield node;
         }
+    },
+
+    match(node, options = {}) {
+        const { visible, text, css } = options;
+
+        if (!tool.isVisible(node, visible)) return false;
+        if (!tool.hasText(node, text)) return false;
+        if (!tool.hasCSS(node, css)) return false;
+
+        return true;
     },
 
     each(selector, options, handler) {
