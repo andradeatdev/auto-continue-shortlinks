@@ -934,6 +934,34 @@ const patch = {
             return Reflect.apply(target, thisArg, argArray);
         });
     },
+
+    mask(selector, styles, options) {
+        this.computedStyleMap ||= new Map();
+        this.computedStyleMap.set(selector, { styles, options });
+
+        if (this.computedStylePatched) return;
+        this.computedStylePatched = true;
+
+        patch.apply(win, "getComputedStyle", (target, thisArg, argArray) => {
+            const [node] = argArray;
+            const result = Reflect.apply(target, thisArg, argArray);
+
+            if (!node || typeof node.matches !== "function") return result;
+
+            for (const [sel, conf] of this.computedStyleMap) {
+                if (!node.matches(sel)) continue;
+                if (!tool.match(node, conf.options)) continue;
+
+                return new Proxy(result, {
+                    get(t, prop, receiver) {
+                        return Object.hasOwn(conf.styles, prop) ? conf.styles[prop] : Reflect.get(t, prop, receiver);
+                    },
+                });
+            }
+
+            return result;
+        });
+    },
 };
 
 const bypass = {
