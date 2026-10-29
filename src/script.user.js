@@ -625,7 +625,7 @@ const tool = {
             bus.emit("tool:click", { selector, remaining: remaining - 1 });
 
             if (--remaining <= 0) stop();
-            else if (when) return false;
+            else return false;
         });
     },
 
