@@ -677,6 +677,14 @@ const tool = {
         });
     },
 
+    hide(selector) {
+        this.guard("hide", selector);
+        const style = document.createElement("style");
+        style.textContent = `${selector} { display: none !important; }`;
+        document.documentElement.append(style);
+        return () => style.remove();
+    },
+
     redirect(selector, options = {}) {
         this.guard("redirect", selector);
         const { attr = "href", decodeB64 = false } = options;
@@ -1375,6 +1383,8 @@ domains.add("intercelestial.com", {
         patch.apply(win, "open", () => { });
         patch.define(win, "LLct", { get: () => "1" });
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
+
+        tool.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
     },
     continue() {
         tool.click(".myButton", { count: 3, bubbles: false });
