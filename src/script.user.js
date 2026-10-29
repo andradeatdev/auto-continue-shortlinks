@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            1.14.2
+// @version            1.15.0
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -1361,7 +1361,7 @@ domains.add("intercelestial.com", {
 
 domains.add("vexfile.com", {
     continue() {
-        tool.click(".generate-link:not(.blocked)");
+        tool.redirect(".generate-link:not(.blocked)");
     },
 });
 
@@ -1371,6 +1371,7 @@ domains.add("filespayouts.com", {
     },
     continue() {
         tool.click("#method_free");
+        tool.click(tool.turnstile("#downloadbtn"));
     },
 });
 
@@ -1431,7 +1432,7 @@ domains.add("themezon.net", {
         });
     },
     continue() {
-        tool.click("button#smg-arm:not([disabled])", { wait: 2000 });
+        tool.click("button#smg-arm:not([disabled])", { wait: 1000 });
         tool.click("form:not([hidden]) .smg-go:not([disabled])", { text: "Continue", visible: true });
     },
 });
