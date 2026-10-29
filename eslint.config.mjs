@@ -104,7 +104,7 @@ export default defineConfig([
 
       // "eqeqeq": ["error", "always"],
       "no-eval": "error",
-      "no-alert": "warn",
+      "no-alert": "off",
       "no-shadow": "warn",
       "no-lonely-if": "warn",
       "object-shorthand": ["warn", "always"],
