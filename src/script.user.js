@@ -443,6 +443,7 @@ const watch = {
     observer: undefined,
     queue: [],
     isScheduled: false,
+    pending: new Set(),
 
     drain() {
         for (const record of this.observer.takeRecords()) this.queue.push(record);
@@ -480,6 +481,19 @@ const watch = {
             this.schedule();
         });
         this.observer.observe(document.documentElement, this.OPTIONS);
+
+        for (const root of this.pending) this.observer.observe(root, this.OPTIONS);
+        this.pending.clear();
+    },
+
+    attach(root) {
+        if (!this.observer) {
+            this.pending.add(root);
+            return;
+        }
+
+        this.observer.observe(root, this.OPTIONS);
+        this.schedule();
     },
 
     change(callback) {
@@ -499,6 +513,36 @@ const watch = {
         } finally {
             this.observer.takeRecords();
         }
+    },
+};
+
+const shadow = {
+    roots: new WeakMap(),
+
+    of(host) {
+        return host.shadowRoot || this.roots.get(host) || undefined;
+    },
+
+    track(host, root) {
+        this.roots.set(host, root);
+        watch.attach(root);
+    },
+
+    queryAll(selector, root = document) {
+        const [head, ...tail] = selector.split(">>>").map(part => part.trim());
+        let nodes = [...root.querySelectorAll(head)];
+
+        for (const part of tail) {
+            nodes = nodes.flatMap((host) => {
+                const inner = this.of(host);
+                if (!inner) return [];
+
+                watch.attach(inner);
+                return [...inner.querySelectorAll(part)];
+            });
+        }
+
+        return nodes;
     },
 };
 
@@ -546,7 +590,7 @@ const tool = {
     *select(selector, options = {}) {
         this.guard("select", selector);
 
-        const nodes = document.querySelectorAll(selector);
+        const nodes = shadow.queryAll(selector);
         for (const node of nodes) {
             if (this.match(node, options)) yield node;
         }
@@ -626,6 +670,7 @@ const tool = {
             const event = new MouseEvent("click", {
                 bubbles,
                 cancelable: true,
+                composed: true,
                 view: win,
             });
 
