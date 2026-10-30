@@ -79,6 +79,7 @@
 // @match              https://app.khaddavi.net/*
 // @match              https://sfl.gl/*
 // @match              https://link4m.net/*
+// @match              https://www.nexusmods.com/*
 // 
 // @match              https://gplinks.co/*
 // @match              https://skrresults.com/*
@@ -1910,5 +1911,11 @@ domains.add("www.mirrored.to", {
     continue() {
         tool.click(".get_btn");
         tool.redirect(".highlight a[href]:has(.get_btn)");
+    },
+});
+
+domains.add("www.nexusmods.com", {
+    async continue() {
+        tool.click("mod-file-download >>> .nxm-button-secondary-filled-weak");
     },
 });
