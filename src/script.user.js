@@ -1273,11 +1273,13 @@ const templates = {
         },
     },
     pndk: {
+        patcher() {
+            tool.hide(".crumb, .post-title, .post-meta, .share, figure, .toc, .site-footer, .side, .section-title, h1");
+        },
         continue() {
-            tool.remove("#sn-panel");
-            tool.click("#continue");
-            tool.click("#btget button", { text: /Next|bot|continue/, wait: 100, count: 2, when: (node) => !node.disabled });
-            tool.click("#next-btn button", { visible: true, count: 2 });
+            tool.click(tool.turnstile("#go-btn"));
+            tool.click("#step-top .step-btn:not([disabled])");
+            tool.click("#step-bottom .step-btn:not([disabled])", { count: 2 });
         },
     },
     xutio: {
