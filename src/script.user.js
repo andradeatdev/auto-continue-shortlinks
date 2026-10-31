@@ -1044,6 +1044,10 @@ const bypass = {
         "ouo.io",
         "ouo.press",
         /^rentry.(org|co)$/,
+        "bzzhr.to",
+        "pixeldrain.com",
+        "workupload.com",
+        "datanodes.to",
     ],
 
     exec(hostname, href, pathname, search) {
