@@ -80,6 +80,7 @@
 // @match              https://sfl.gl/*
 // @match              https://link4m.net/*
 // @match              https://www.nexusmods.com/*
+// @match              https://f95zone.to/*
 // 
 // @match              https://gplinks.co/*
 // @match              https://skrresults.com/*
@@ -1028,6 +1029,7 @@ const bypass = {
         "en.mrproblogger.com": /^\/[A-Za-z0-9_-]{3,}$/,
         "intercelestial.com": /^\/\?ht=[a-zA-Z0-9%]+$/,
         "speedy-links.com": /^\/s\?[A-Za-z0-9_-]{3,}$/,
+        "f95zone.to": /^\/dl\/\d{4,}\/\?.*$/,
     },
     finalDomains: [
         "send.now",
@@ -1917,5 +1919,11 @@ domains.add("www.mirrored.to", {
 domains.add("www.nexusmods.com", {
     async continue() {
         tool.click("mod-file-download >>> .nxm-button-secondary-filled-weak");
+    },
+});
+
+domains.add("f95zone.to", {
+    async continue() {
+        tool.click(tool.hcaptcha(".f95dl-go button"));
     },
 });
