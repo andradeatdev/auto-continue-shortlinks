@@ -1048,6 +1048,9 @@ const bypass = {
         "pixeldrain.com",
         "workupload.com",
         "datanodes.to",
+        "gofile.io",
+        "mxdrop.click",
+        "uploadhaven.com",
     ],
 
     exec(hostname, href, pathname, search) {
