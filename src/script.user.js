@@ -1041,7 +1041,7 @@ const bypass = {
         "filecrypt.cc",
         "ouo.io",
         "ouo.press",
-        "rentry.org",
+        /^rentry.(org|co)$/,
     ],
 
     exec(hostname, href, pathname, search) {
