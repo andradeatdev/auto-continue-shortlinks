@@ -1,72 +1,87 @@
 # Pahe - Auto Continue Links
 
-**Português (BR)** · [English](README.md)
+[English](README.md) · **Português (BR)**
 
 [![Instalar no Greasy Fork](https://img.shields.io/badge/Instalar-Greasy_Fork-670000?style=flat-square)](https://greasyfork.org/scripts/593212)
+[![Versão no Greasy Fork](https://img.shields.io/greasyfork/v/593212?style=flat-square&label=vers%C3%A3o)](https://greasyfork.org/scripts/593212)
+[![Instalações no Greasy Fork](https://img.shields.io/greasyfork/dt/593212?style=flat-square&label=instala%C3%A7%C3%B5es)](https://greasyfork.org/scripts/593212)
+[![Feedbacks no Greasy Fork](https://img.shields.io/greasyfork/rating-count/593212?style=flat-square&label=rating)](https://greasyfork.org/scripts/593212)
 [![Licença](https://img.shields.io/github/license/andradeatdev/auto-continue-shortlinks?style=flat-square&logo=gnu)](LICENSE)
-[![Versão](https://img.shields.io/greasyfork/v/593212?style=flat-square&label=vers%C3%A3o)](https://greasyfork.org/scripts/593212)
-[![Instalações](https://img.shields.io/greasyfork/dt/593212?style=flat-square&label=instala%C3%A7%C3%B5es)](https://greasyfork.org/scripts/593212)
-[![Avaliação](https://img.shields.io/greasyfork/rating-count/593212?style=flat-square&label=avalia%C3%A7%C3%A3o)](https://greasyfork.org/scripts/593212)
-[![Gerenciadores](https://img.shields.io/badge/gerenciadores-Violentmonkey%20%7C%20Tampermonkey-00485B?style=flat-square)](https://violentmonkey.github.io/)
-[![Hosts suportados](https://img.shields.io/badge/hosts-78%20suportados-2EA44F?style=flat-square)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/HOSTS.pt-BR.md)
+[![Hosts suportados](https://img.shields.io/badge/hosts-78%20suportados-2EA44F?style=flat-square)](HOSTS.md)
 
-Este script automatiza shortlinks no pahe.ink e em outros sites que usam os mesmos hosts. Mais hosts serão adicionados com o tempo.
+## Índice
 
-#### Cache de Bypass Instantâneo
+- [Pahe - Auto Continue Links](#pahe---auto-continue-links)
+- [Hosts suportados](#hosts-suportados)
+- [Cache de bypass](#cache-de-bypass)
+- [Aceleração de timer](#aceleração-de-timer)
+- [Privacidade](#privacidade)
+- [Menu do script](#menu-do-script)
+- [Limitações](#limitações)
+- [Solução de problemas](#solução-de-problemas)
+- [Reportar problemas / Pedir novo host](#reportar-problemas--pedir-novo-host)
+- [Licença](#licença)
 
-O script usa um Cloudflare Worker (`https://shortlinks.fdyzen.workers.dev`) como cache compartilhado, para que o bypass vá direto para a URL final quando o shortlink já foi resolvido por outros usuários:
+---
 
-- Quando você abre um shortlink suportado (`tpi.li`, `oii.la`, `intercelestial.com`, `pahe.plus`), o script pergunta ao Worker se o destino final daquele shortlink já é conhecido. Se sim, navega direto para lá, pulando o timer/espera.
-- Quando a sua navegação chega a um host de arquivos final (`send.now`, `mega.nz`, ...), o script envia a URL do shortlink visitado e a URL de destino alcançada para o Worker, para que as visitas de outros usuários ao mesmo shortlink vão direto ao destino.
+Este userscript automatiza shortlinks no pahe.ink e em outros sites que usam os mesmos hosts. Funciona com [Violentmonkey](https://violentmonkey.github.io/) e Tampermonkey, e mais hosts serão adicionados com o tempo.
 
-Para isso funcionar, os seguintes dados são compartilhados com o Worker:
+## Hosts suportados
+
+Veja o [HOSTS.md](/docs/HOSTS.md) para a lista completa de hosts suportados.
+
+## Cache de bypass
+
+O script usa um Cloudflare Worker (`https://shortlinks.zencore.fun`) como cache compartilhado. Quando um shortlink já foi burlado por outro usuário, você vai direto para a URL final.
+
+- **Leitura:** ao abrir um shortlink suportado (`tpi.li`, `oii.la`, `intercelestial.com`, `pahe.plus`), o script pergunta ao Worker se o destino final já é conhecido. Se for, navega direto para ele e pula o timer.
+- **Escrita:** quando sua navegação chega a um host final de arquivos (`send.now`, `mega.nz`, ...), o script envia ao Worker o shortlink visitado e o destino alcançado, para que visitas futuras ao mesmo shortlink vão direto ao destino.
+
+## Aceleração de timer
+
+Sempre que possível, o script acelera o timer de espera nas páginas de shortlink.
+
+Alguns hosts validam o timer no servidor. Nesses sites o timer **não pode ser acelerado**: o script ainda pode automatizar outras etapas (cliques, remoção de elementos desnecessários), mas o timer precisa correr pelo tempo completo. Os hosts marcados com `tuner-timer` no [HOSTS.md](/docs/HOSTS.md) são os que se enquadram nesse caso.
+
+## Privacidade
+
+Os únicos dados compartilhados com o Worker (veja [Cache de bypass](#cache-de-bypass)) são:
 
 - A URL do shortlink que você está visitando.
-- A URL de destino que a sua navegação alcançou.
+- A URL de destino que sua navegação alcançou.
 
-#### Hosts Suportados
+Nenhum outro dado é enviado. Para desativar, desligue **Use cache** no [menu do script](#menu-do-script), globalmente ou apenas para um domínio.
 
-Veja [HOSTS.pt-BR.md](HOSTS.pt-BR.md) para a lista completa de hosts suportados.
+## Menu do script
 
-#### Aceleração de Timer
+Se o seu gerenciador de userscripts suportar comandos de menu, as seguintes opções ficam disponíveis:
 
-Alguns hosts fazem validação de timer no lado do servidor. Nesses sites, o timer **não pode ser acelerado** pelo script — veja [HOSTS.pt-BR.md](HOSTS.pt-BR.md) para detalhes.
+| Comando | O que faz | Padrão |
+|---|---|---|
+| **Use cache** | Liga/desliga o [cache de bypass](#cache-de-bypass). Tem substituição por domínio (`This domain`). | Ligado |
+| **Use continue** | Liga/desliga a automação de continuar/clicar nos links. Tem substituição por domínio (`This domain`). | Ligado |
+| **Use patcher** | Liga/desliga as correções e acelerações do patcher. Tem substituição por domínio (`This domain`). | Ligado |
+| **▶ Report URL issue** | Abre o formulário **site broken** do GitHub em uma nova aba. | – |
+| **▶ Support a new shortlink/host** | Abre o formulário **site request** do GitHub em uma nova aba. | – |
 
-O script ainda consegue automatizar outras partes do processo nesses sites, mas o timer precisa rodar pelo tempo exigido.
+Os três toggles mostram o estado com um ícone: **✔** ativo, **✘** desligado, **–** desativado globalmente. Clicar em um toggle altera o estado e recarrega a página atual. Os dois comandos **▶** apenas abrem um formulário: não têm estado e não recarregam a página.
 
-#### Opções do Menu
+## Limitações
 
-O cache, auto-continue e o patcher podem ser ativados/desativados individualmente, se seu gerenciador de scripts suportar registro de menu comandos.
+- Este script **não resolve CAPTCHAs**. Ele apenas automatiza cliques, remove elementos desnecessários e realiza outras ações simples. **Você ainda precisa resolver o CAPTCHA manualmente.** Veja o [CAPTCHAS.pt-BR.md](/docs/CAPTCHAS.pt-BR.md), incluindo como usar o cookie de acessibilidade do hCaptcha.
+- Alguns sites validam o timer no servidor e **não podem ser acelerados** (veja [Aceleração de timer](#aceleração-de-timer)).
+- O pahe.ink às vezes adiciona novos domínios, então o script pode não funcionar em sites muito novos. Você pode tentar adicioná-los manualmente ou aguardar a próxima atualização.
+- Recomenda-se usar um bloqueador de anúncios, como uBlock Origin ou AdGuard.
 
-- **Use cache** — alterna o bypass do cache. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
-- **Use continue** — alterna a automação de continuação/cliques nos links. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
-- **Use patcher** — alterna a correção/aceleração. Pode ser alternado por domínio (`This domain`). Padrão: **ligado**.
-- **Report URL issue** — abre o formulário de reporte **site broken** do GitHub em uma nova aba (exibido com **▶**).
-- **Support a new shortlink/host** — abre o formulário de issue de pedido de site/host do GitHub em uma nova aba (exibido com **▶**).
+## Solução de problemas
 
-Clique no comando para alternar: ele mostra **✔** quando ativo, **✘** quando desativado e **–** quando aquela opção estiver desativada globalmente. A página atual recarrega após a alteração. Os ícones ✔ / ✖ / – e a recarga valem apenas para os três toggles — **Report URL issue** apenas abre o formulário.
+Os problemas mais comuns e suas soluções (script sem efeito, CAPTCHAs, timers, cache e questões específicas de hosts, como o intercelestial.com) estão no [TROUBLESHOOTING.pt-BR.md](/docs/TROUBLESHOOTING.pt-BR.md).
 
-#### Notas
+## Reportar problemas / Pedir novo host
 
-> O Intercelestial.com atualiza o código de detecção com frequência. Recomendo procurar outras formas de encontrar o filme/série que você procura, já que só consigo corrigir quando tenho tempo.
+- **Um site parou de funcionar:** use o comando **Report URL issue** no menu do script, ou abra o formulário [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml).
+- **Um novo site deveria ser suportado:** abra uma issue [Support a new site](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-request.yml).
 
-- **Recomendo usar um bloqueador de anúncios, como uBlock Origin ou Adguard.**
-- Este script **não** resolve **CAPTCHAs**. Ele só automatiza cliques, remove elementos desnecessários e faz outras ações simples quando possível. **Você ainda precisa resolver o CAPTCHA manualmente**.
-- Alguns sites **não podem ter o timer acelerado** — a validação do timer é feita no servidor; para ver quais sites têm `tuner-timer`, consulte [HOSTS.pt-BR.md](HOSTS.pt-BR.md).
-- O pahe.ink adiciona novos domínios às vezes, então o script pode não funcionar em alguns sites novos — você pode tentar **adicioná-los manualmente ou esperar a próxima atualização**.
-- O Interestial.com retorna "sessão inválida" se você abrir múltiplas abas, **esse problema não é relacionado a este script**.
+## Licença
 
-#### Solução de problemas
-
-Problemas específicos por host e suas correções ficam documentados fora deste README:
-
-- **intercelestial.com** — [INTERCELESTIAL_ISSUES.pt-BR.md](INTERCELESTIAL_ISSUES.pt-BR.md): a página "Tap Continue to go on" e o aviso "Ad blocker or auto-click script detected" no Waterfox.
-
-#### Reportes
-
-- **Um site parou de funcionar** — use o comando **Report URL issue** no menu do script; ele abre o formulário de issue [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml).
-- **Um novo site deve ser suportado** — abra uma issue [Support a new site](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-request.yml).
-
-#### Licença
-
-**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). Se você copiar, modificar ou redistribuir este script, deve manter o aviso de copyright e o código-fonte sob GPL-3.0. Veja [LICENSE](LICENSE).
+**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). Se você copiar, modificar ou redistribuir este script, deve manter o aviso de copyright e o código-fonte sob a GPL-3.0. Veja [LICENSE](/docs/LICENSE).
