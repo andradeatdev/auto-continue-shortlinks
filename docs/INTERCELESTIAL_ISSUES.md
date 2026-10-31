@@ -1,8 +1,8 @@
 # intercelestial.com Issues
 
-**English** · [Português (BR)](/docs/INTERCELESTIAL_ISSUES.pt-BR.md)
+**English** · [Português (BR)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/INTERCELESTIAL_ISSUES.pt-BR.md)
 
-Host-specific problems and fixes for intercelestial.com. For general problems, see [TROUBLESHOOTING.md](/docs/TROUBLESHOOTING.md).
+Host-specific problems and fixes for intercelestial.com. For general problems, see [TROUBLESHOOTING.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/TROUBLESHOOTING.md).
 
 ## Table of Contents
 

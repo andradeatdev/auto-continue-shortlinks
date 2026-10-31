@@ -28,7 +28,7 @@ Este userscript automatiza shortlinks no pahe.ink e em outros sites que usam os 
 
 ## Hosts suportados
 
-Veja o [HOSTS.md](/docs/HOSTS.md) para a lista completa de hosts suportados.
+Veja o [HOSTS.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/HOSTS.md) para a lista completa de hosts suportados.
 
 ## Cache de bypass
 
@@ -41,7 +41,7 @@ O script usa um Cloudflare Worker (`https://shortlinks.zencore.fun`) como cache 
 
 Sempre que possível, o script acelera o timer de espera nas páginas de shortlink.
 
-Alguns hosts validam o timer no servidor. Nesses sites o timer **não pode ser acelerado**: o script ainda pode automatizar outras etapas (cliques, remoção de elementos desnecessários), mas o timer precisa correr pelo tempo completo. Os hosts marcados com `tuner-timer` no [HOSTS.md](/docs/HOSTS.md) são os que se enquadram nesse caso.
+Alguns hosts validam o timer no servidor. Nesses sites o timer **não pode ser acelerado**: o script ainda pode automatizar outras etapas (cliques, remoção de elementos desnecessários), mas o timer precisa correr pelo tempo completo. Os hosts marcados com `tuner-timer` no [HOSTS.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/HOSTS.md) são os que se enquadram nesse caso.
 
 ## Privacidade
 
@@ -68,14 +68,14 @@ Os três toggles mostram o estado com um ícone: **✔** ativo, **✘** desligad
 
 ## Limitações
 
-- Este script **não resolve CAPTCHAs**. Ele apenas automatiza cliques, remove elementos desnecessários e realiza outras ações simples. **Você ainda precisa resolver o CAPTCHA manualmente.** Veja o [CAPTCHAS.pt-BR.md](/docs/CAPTCHAS.pt-BR.md), incluindo como usar o cookie de acessibilidade do hCaptcha.
+- Este script **não resolve CAPTCHAs**. Ele apenas automatiza cliques, remove elementos desnecessários e realiza outras ações simples. **Você ainda precisa resolver o CAPTCHA manualmente.** Veja o [CAPTCHAS.pt-BR.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/CAPTCHAS.pt-BR.md), incluindo como usar o cookie de acessibilidade do hCaptcha.
 - Alguns sites validam o timer no servidor e **não podem ser acelerados** (veja [Aceleração de timer](#aceleração-de-timer)).
 - O pahe.ink às vezes adiciona novos domínios, então o script pode não funcionar em sites muito novos. Você pode tentar adicioná-los manualmente ou aguardar a próxima atualização.
 - Recomenda-se usar um bloqueador de anúncios, como uBlock Origin ou AdGuard.
 
 ## Solução de problemas
 
-Os problemas mais comuns e suas soluções (script sem efeito, CAPTCHAs, timers, cache e questões específicas de hosts, como o intercelestial.com) estão no [TROUBLESHOOTING.pt-BR.md](/docs/TROUBLESHOOTING.pt-BR.md).
+Os problemas mais comuns e suas soluções (script sem efeito, CAPTCHAs, timers, cache e questões específicas de hosts, como o intercelestial.com) estão no [TROUBLESHOOTING.pt-BR.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/TROUBLESHOOTING.pt-BR.md).
 
 ## Reportar problemas / Pedir novo host
 
@@ -84,4 +84,4 @@ Os problemas mais comuns e suas soluções (script sem efeito, CAPTCHAs, timers,
 
 ## Licença
 
-**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). Se você copiar, modificar ou redistribuir este script, deve manter o aviso de copyright e o código-fonte sob a GPL-3.0. Veja [LICENSE](/docs/LICENSE).
+**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). Se você copiar, modificar ou redistribuir este script, deve manter o aviso de copyright e o código-fonte sob a GPL-3.0. Veja [LICENSE](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/LICENSE).

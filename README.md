@@ -27,7 +27,7 @@ This userscript automates shortlinks on pahe.ink and other sites that use the sa
  
 ## Supported Hosts
  
-See [HOSTS.md](/docs/HOSTS.md) for the full list of supported hosts.
+See [HOSTS.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/HOSTS.md) for the full list of supported hosts.
  
 ## Bypass Cache
  
@@ -39,7 +39,7 @@ The script uses a Cloudflare Worker (`https://shortlinks.zencore.fun`) as a shar
  
 Where possible, the script speeds up the wait timer on shortlink pages.
  
-Some hosts validate the timer on the server side. On those sites the timer **cannot be accelerated**: the script can still automate other steps (clicks, removing unnecessary elements), but the timer has to run for its full duration. Hosts marked with `tuner-timer` in [HOSTS.md](/docs/HOSTS.md) are the ones where this applies.
+Some hosts validate the timer on the server side. On those sites the timer **cannot be accelerated**: the script can still automate other steps (clicks, removing unnecessary elements), but the timer has to run for its full duration. Hosts marked with `tuner-timer` in [HOSTS.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/HOSTS.md) are the ones where this applies.
  
 ## Privacy
  
@@ -65,14 +65,14 @@ The three toggles show their state with an icon: **✔** active, **✘** off, **
  
 ## Limitations
  
-- This script **does not solve CAPTCHAs**. It only automates clicks, removes unnecessary elements and performs other simple actions. **You still need to solve the CAPTCHA manually.** See [CAPTCHAS.md](/docs/CAPTCHAS.md), including how to use the hCaptcha accessibility cookie.
+- This script **does not solve CAPTCHAs**. It only automates clicks, removes unnecessary elements and performs other simple actions. **You still need to solve the CAPTCHA manually.** See [CAPTCHAS.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/CAPTCHAS.md), including how to use the hCaptcha accessibility cookie.
 - Some sites validate the timer on the server and **can't be accelerated** (see [Timer Acceleration](#timer-acceleration)).
 - pahe.ink sometimes adds new domains, so the script may not work on very new sites. You can try adding them manually or wait for the next update.
 - Using an ad blocker such as uBlock Origin or AdGuard is recommended.
 
 ## Troubleshooting
  
-Common problems and their fixes (script not doing anything, CAPTCHAs, timers, the cache and host-specific issues such as intercelestial.com) are in [TROUBLESHOOTING.md](/docs/TROUBLESHOOTING.md).
+Common problems and their fixes (script not doing anything, CAPTCHAs, timers, the cache and host-specific issues such as intercelestial.com) are in [TROUBLESHOOTING.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/TROUBLESHOOTING.md).
 
 ## Report an Issue / Request a New Host
  
@@ -81,4 +81,4 @@ Common problems and their fixes (script not doing anything, CAPTCHAs, timers, th
 
 ## License
  
-**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). If you copy, modify or redistribute this script, you must keep the copyright notice and the source code under GPL-3.0. See [LICENSE](/docs/LICENSE).
+**GPL-3.0** — © 2024-2026 hdyzen (andradeatdev). If you copy, modify or redistribute this script, you must keep the copyright notice and the source code under GPL-3.0. See [LICENSE](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/LICENSE).

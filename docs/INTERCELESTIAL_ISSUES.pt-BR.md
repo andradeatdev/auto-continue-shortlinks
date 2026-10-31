@@ -1,8 +1,8 @@
 # Problemas do intercelestial.com
 
-[English](/docs/INTERCELESTIAL_ISSUES.md) · **Português (BR)**
+[English](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/INTERCELESTIAL_ISSUES.md) · **Português (BR)**
 
-Problemas e correções específicos do intercelestial.com. Para problemas gerais, veja o [TROUBLESHOOTING.pt-BR.md](/docs/TROUBLESHOOTING.pt-BR.md).
+Problemas e correções específicos do intercelestial.com. Para problemas gerais, veja o [TROUBLESHOOTING.pt-BR.md](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/TROUBLESHOOTING.pt-BR.md).
 
 ## Índice
 

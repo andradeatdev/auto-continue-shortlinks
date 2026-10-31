@@ -1,6 +1,6 @@
 # Hosts suportados
 
-[English](/docs/HOSTS.md) · **Português (BR)**
+[English](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/HOSTS.md) · **Português (BR)**
 
 A lista completa de hosts suportados.
 

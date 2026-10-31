@@ -1,6 +1,6 @@
 # CAPTCHAs
 
-**English** · [Português (BR)](/docs/CAPTCHAS.pt-BR.md)
+**English** · [Português (BR)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/CAPTCHAS.pt-BR.md)
 
 ## Table of Contents
 
@@ -33,7 +33,7 @@ This feature is intended as an accommodation for people who have difficulty comp
 3. On the **Set Cookie** page, click the **Set Cookie** button.
 4. Visit a page that shows hCaptcha. You should now pass automatically or get an accessibility challenge.
 
-![hCaptcha accessibility page](/docs/images/hcaptcha-accessibility.png)
+![hCaptcha accessibility page](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/images/hcaptcha-accessibility.png)
 
 Things to know:
 

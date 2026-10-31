@@ -1,6 +1,6 @@
 # CAPTCHAs
 
-[English](/docs/CAPTCHAS.md) · **Português (BR)**
+[English](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/CAPTCHAS.md) · **Português (BR)**
 
 ## Índice
 
@@ -33,7 +33,7 @@ Esse recurso foi pensado como acomodação para pessoas que têm dificuldade com
 3. Na página **Set Cookie**, clique no botão **Set Cookie**.
 4. Visite uma página que exiba o hCaptcha. Você deve passar automaticamente ou receber um desafio de acessibilidade.
 
-![Página de acessibilidade do hCaptcha](/docs/images/hcaptcha-accessibility.png)
+![Página de acessibilidade do hCaptcha](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/docs/images/hcaptcha-accessibility.png)
 
 O que vale saber:
 
