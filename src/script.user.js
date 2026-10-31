@@ -81,6 +81,8 @@
 // @match              https://link4m.net/*
 // @match              https://www.nexusmods.com/*
 // @match              https://f95zone.to/*
+// @match              https://online-fix.me/*
+// @match              https://anon.to/*
 // 
 // @match              https://gplinks.co/*
 // @match              https://skrresults.com/*
@@ -1048,6 +1050,7 @@ const bypass = {
         "intercelestial.com": /^\/\?ht=[a-zA-Z0-9%]+$/,
         "speedy-links.com": /^\/s\?[A-Za-z0-9_-]{3,}$/,
         "f95zone.to": /^\/dl\/\d{4,}\/\?.*$/,
+        "online-fix.me": /^\/ext\/.+$/,
     },
     finalDomains: [
         "send.now",
@@ -1950,5 +1953,20 @@ domains.add("www.nexusmods.com", {
 domains.add("f95zone.to", {
     async continue() {
         tool.click(tool.hcaptcha(".f95dl-go button"));
+    },
+});
+
+domains.add("online-fix.me", {
+    patcher() {
+        patch.haste();
+    },
+    async continue() {
+        tool.click(".dl_content button[onclick]");
+    },
+});
+
+domains.add("anon.to", {
+    async continue() {
+        tool.redirect("a#continue[href]");
     },
 });
