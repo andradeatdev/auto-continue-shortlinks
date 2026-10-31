@@ -902,51 +902,69 @@ const patch = {
     },
 
     haste(options = {}) {
-        const { factor = config.defaultTimerFactor, text, ms } = options;
+        const { factor = config.defaultTimerFactor, text, ms, when } = options;
 
-        const startTime = Date.now();
-        const now = () => {
-            const realElapsed = Date.now() - startTime;
-            const divisor = factor === 0 ? 0.001 : factor;
-            const virtualElapsed = realElapsed / divisor;
-            return startTime + virtualElapsed;
-        };
+        const speed = 1 / (factor || 0.001);
+        const realDate = win.Date.now.bind(win.Date);
+        const realPerf = win.performance.now.bind(win.performance);
 
-        const callback = (target, thisArg, argArray) => {
-            const isDelayValid = typeof argArray[1] === "number";
-            const isTextMatch = !text || argArray[0]?.toString().includes(text);
-            const isMsMatch = ms === undefined || ms === argArray[1];
-
-            if (isDelayValid && isTextMatch && isMsMatch) {
-                argArray[1] *= factor;
+        let isChecking = false;
+        const isFast = () => {
+            if (!when) return true;
+            if (isChecking) return false;
+            isChecking = true;
+            try {
+                return Boolean(when());
+            } catch {
+                return false;
+            } finally {
+                isChecking = false;
             }
-
-            return Reflect.apply(target, thisArg, argArray);
         };
 
-        patch.apply(win, "setInterval", callback);
-        patch.apply(win, "setTimeout", callback);
+        const clock = (read) => {
+            let realAt = read();
+            let virtualAt = realAt;
+            let isCurrentFast = false;
 
-        win.Date = new Proxy(win.Date, {
-            construct(target, argArray) {
-                if (argArray.length === 0) {
-                    return new target(now());
+            return (nextFast) => {
+                const real = read();
+
+                if (nextFast !== isCurrentFast) {
+                    virtualAt += (real - realAt) * (isCurrentFast ? speed : 1);
+                    realAt = real;
+                    isCurrentFast = nextFast;
                 }
-                return new target(...argArray);
-            },
-            apply(target, thisArgument, argArray) {
-                if (argArray.length === 0) {
-                    return new target(now()).toString();
-                }
-                return new target(...argArray).toString();
-            },
-            get(target, property, receiver) {
-                if (property === "now") {
-                    return () => now();
-                }
-                return Reflect.get(target, property, receiver);
-            },
+
+                return virtualAt + (real - realAt) * (isCurrentFast ? speed : 1);
+            };
+        };
+
+        const dateNow = clock(realDate);
+        const perfNow = clock(realPerf);
+
+        const shouldScale = (fn, delay) =>
+            typeof delay === "number" &&
+            (ms === undefined || ms === delay) &&
+            (!text || String(fn).includes(text));
+
+        const scale = (target, thisArg, args) => {
+            if (shouldScale(args[0], args[1]) && isFast()) args[1] *= factor;
+            return Reflect.apply(target, thisArg, args);
+        };
+
+        patch.apply(win, "setTimeout", scale);
+        patch.apply(win, "setInterval", scale);
+
+        patch.apply(win.Date, "now", () => dateNow(isFast()));
+
+        patch.hook(win, "Date", {
+            construct: (target, args, newTarget) =>
+                Reflect.construct(target, args.length > 0 ? args : [dateNow(isFast())], newTarget),
+            apply: target => new target(dateNow(isFast())).toString(),
         });
+
+        patch.apply(win.performance, "now", () => perfNow(isFast()));
     },
 
     fetch(options = {}) {
