@@ -30,7 +30,6 @@
 // @match              https://filespayouts.com/*
 // @match              https://modsfire.com/*
 // @match              https://www.file-upload.org/*
-// 
 // @match              https://upfilesgo.com/*
 // @match              https://safefileku.com/*
 // @match              https://uploadrar.com/*
@@ -1282,7 +1281,31 @@ const templates = {
     },
     pndk: {
         patcher() {
+            const adsSelectors = ".adsbox, .pub_300x250, .ad-banner, .ad-unit, .text-ad, .adsbygoogle, .ad-placement, .textads, .banner-ads, #adsense";
+
             tool.hide(".crumb, .post-title, .post-meta, .share, figure, .toc, .site-footer, .side, .section-title, h1");
+            patch.mask(adsSelectors, { display: "block", visibility: "visible" });
+            patch.define(win.HTMLElement.prototype, "offsetParent", {
+                get(getter) {
+                    return this.matches(adsSelectors) ? document.body : getter();
+                },
+            });
+            patch.define(win.HTMLElement.prototype, "offsetHeight", {
+                get(getter) {
+                    return this.matches(adsSelectors) ? 1 : getter();
+                },
+            });
+            patch.define(win.HTMLElement.prototype, "offsetWidth", {
+                get(getter) {
+                    return this.matches(adsSelectors) ? 1 : getter();
+                },
+            });
+            patch.define(win.HTMLImageElement.prototype, "src", {
+                set() {
+                    this.onerror = () => { };
+                    this.onload();
+                },
+            });
         },
         continue() {
             tool.click(tool.turnstile("#go-btn"));
@@ -1527,6 +1550,7 @@ domains.add("upfilesgo.com", {
     continue() {
         tool.click("#link-button-free:not([disabled])");
         tool.click("#file-captcha #link-button:not([disabled])");
+        tool.click(".get-link:not(.disabled)");
     },
 });
 
@@ -1543,13 +1567,13 @@ domains.add("uploadrar.com", {
     continue() {
         tool.click("button[name='method_free']");
         tool.click("#downloadbtn:not([disabled])");
+        tool.click("a.btn-primary.active[href]");
     },
 });
 
 domains.add("shrinkme.click", {
     continue() {
         tool.click(tool.turnstile(".btn-primary:not([disabled])"));
-
         tool.click(".get-link:not(.disabled)");
     },
 });
@@ -1955,13 +1979,13 @@ domains.add("www.mirrored.to", {
 });
 
 domains.add("www.nexusmods.com", {
-    async continue() {
+    continue() {
         tool.click("mod-file-download >>> .nxm-button-secondary-filled-weak");
     },
 });
 
 domains.add("f95zone.to", {
-    async continue() {
+    continue() {
         tool.click(tool.hcaptcha(".f95dl-go button"));
     },
 });
