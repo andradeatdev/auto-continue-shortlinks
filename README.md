@@ -1,6 +1,6 @@
 # Pahe - Auto Continue Links
 
-**English** · [Português (BR)](README.pt-BR.md)
+**English** · [Português (BR)](https://github.com/andradeatdev/auto-continue-shortlinks/blob/main/README.pt-BR.md)
 
 [![Install on Greasy Fork](https://img.shields.io/badge/Install-Greasy_Fork-670000?style=flat-square)](https://greasyfork.org/scripts/593212)
 [![Greasy Fork version](https://img.shields.io/greasyfork/v/593212?style=flat-square&label=version)](https://greasyfork.org/scripts/593212)
