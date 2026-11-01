@@ -801,6 +801,19 @@ const tool = {
     hcaptcha(selector) {
         return `:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) ${selector}`;
     },
+
+    recaptcha(selector) {
+        const poll = (node) => {
+            if (node.value === "") return setTimeout(() => poll(node), 500);
+            node.dataset.recaptchaSolved = "";
+        };
+        tool.stalk("#g-recaptcha-response", {}, (node, stop) => {
+            stop();
+            setTimeout(() => poll(node), 500);
+        });
+
+        return `:has(#g-recaptcha-response[data-recaptcha-solved]) ${selector}`;
+    },
 };
 
 const patch = {
