@@ -30,10 +30,7 @@
 // @match              https://filespayouts.com/*
 // @match              https://modsfire.com/*
 // @match              https://www.file-upload.org/*
-// @match              https://djxmaza.in/*
-// @match              https://smartfeecalculator.com/*
-// @match              https://gujjukhabar.in/*
-// @match              https://pdfhindibook.com/*
+// 
 // @match              https://upfilesgo.com/*
 // @match              https://safefileku.com/*
 // @match              https://uploadrar.com/*
@@ -83,6 +80,13 @@
 // @match              https://f95zone.to/*
 // @match              https://online-fix.me/*
 // @match              https://anon.to/*
+// @match              https://devuploads.com/*
+// @match              https://katfile.co/*
+// @match              https://datavaults.co/*
+// @match              https://link.snipcash.com/*
+// @match              https://fdsite.lat/*
+// @match              https://topshare.in/*
+// @match              https://dailyuploads.net/*
 // 
 // @match              https://gplinks.co/*
 // @match              https://skrresults.com/*
@@ -1064,6 +1068,7 @@ const bypass = {
         "speedy-links.com": /^\/s\?[A-Za-z0-9_-]{3,}$/,
         "f95zone.to": /^\/dl\/\d{4,}\/\?.*$/,
         "online-fix.me": /^\/ext\/.+$/,
+        "link.snipcash.com": /^\/[A-Za-z0-9_-]{3,}$/,
     },
     finalDomains: [
         "send.now",
@@ -1259,16 +1264,6 @@ const templates = {
             tool.click(tool.turnstile("#invisibleCaptchaShortlink"));
         },
     },
-    devuploads: {
-        patcher() {
-            patch.haste();
-        },
-        continue() {
-            tool.click("#gdl[style*='block']");
-            tool.click("#gdlf[style*='block']");
-            tool.click("#dln");
-        },
-    },
     exeio: {
         continue() {
             tool.click(".link-button:not(.disabled)");
@@ -1430,13 +1425,13 @@ const templates = {
 domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], templates.tpi);
 domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], templates.host);
 domains.add(["ouo.io", "ouo.press"], templates.ouo);
-domains.add(["djxmaza.in", "smartfeecalculator.com", "gujjukhabar.in", "pdfhindibook.com"], templates.devuploads);
 domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], templates.exeio);
 domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.com"], templates.cuttty);
 domains.add(["boost.ink", "bst.gg"], templates.boostink);
 domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], templates.pndk);
 domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], templates.xutio);
 domains.add(["fc-lc.xyz", "oii.io"], templates.fclc_oii);
+
 domains.add("pahe.ink", {
     patcher() {
         templates.antiAdbCore.patcher();
@@ -1975,13 +1970,76 @@ domains.add("online-fix.me", {
     patcher() {
         patch.haste();
     },
-    async continue() {
+    continue() {
         tool.click(".dl_content button[onclick]");
     },
 });
 
 domains.add("anon.to", {
-    async continue() {
+    continue() {
         tool.redirect("a#continue[href]");
+    },
+});
+
+domains.add("devuploads.com", {
+    patcher() {
+        tool.hide(".dl-promo, .dl-promo-mini, section.card-pad, .signup-band");
+    },
+    continue() {
+        tool.click("[type='submit'][name='method_free']:not([disabled], [value*='Please wait'])", { wait: 1000, count: 2 });
+        tool.click(".dl-actions button[type='submit']", { wait: 1000 });
+        tool.click(".dl-actions button.is-ready", { wait: 1000 });
+        tool.click(".dl-actions a[href]", { text: "Download File", wait: 1000 });
+        tool.click(".dl-actions a[href].is-ready", { text: "Download File", wait: 1000 });
+    },
+});
+
+domains.add("katfile.co", {
+    patcher() {
+        tool.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
+    },
+    continue() {
+        tool.click(".kfd-slow", { wait: 1000, count: 2 });
+        tool.click(tool.turnstile(".downloadbtn"));
+        tool.redirect("a#dlink[href]");
+    },
+});
+
+domains.add("datavaults.co", {
+    continue() {
+        tool.click("#original");
+        tool.click(tool.recaptcha("#downloadbtn:not([disabled])"));
+    },
+});
+
+domains.add("link.snipcash.com", {
+    continue() {
+        tool.click(tool.recaptcha("#invisibleCaptchaShortlink:not([disabled])"));
+        tool.click(".get-link:not(.disabled)");
+    },
+});
+
+domains.add("fdsite.lat", {
+    continue() {
+        tool.click(".dl-card button.btn-primary", { wait: 1000, visible: true });
+    },
+});
+
+domains.add("topshare.in", {
+    patcher() {
+        tool.hide(".post-content-container, #normal");
+    },
+    continue() {
+        tool.click("#btn-download", { visible: true });
+    },
+});
+
+domains.add("dailyuploads.net", {
+    patcher() {
+        patch.haste();
+    },
+    continue() {
+        tool.click(".du-dl-opt.is-free");
+        tool.click("#downloadbtn:not([disabled])");
     },
 });
