@@ -1275,8 +1275,13 @@ const templates = {
         },
     },
     boostink: {
-        continue() {
-            tool.redirect("script[src*='unlock.js']", { decodeB64: true, attr: /[a-z]{5,}/ });
+        async continue() {
+            const res = await tool.request(location.href);
+            const match = /unlock.js.+[a-z]+="([^"]+)"/.exec(res.response);
+            if (!match) return;
+
+            const decoded = atob(match[1]);
+            location.assign(decoded);
         },
     },
     pndk: {
