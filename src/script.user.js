@@ -1265,8 +1265,8 @@ const templates = {
     },
     exeio: {
         continue() {
-            tool.click(".link-button:not(.disabled)");
-            tool.click(tool.turnstile("#invisibleCaptchaShortlink"));
+            tool.click("#submit-button:not([disabled])", { count: 2 });
+            tool.click(tool.turnstile("#submit-button:not([disabled])"));
         },
     },
     cuttty: {
