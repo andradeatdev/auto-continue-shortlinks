@@ -2,7 +2,17 @@
   "name": "auto-continue-shortlinks",
   "version": "1.0.0",
   "description": "",
+  "author": "hdyzen",
   "type": "module",
+  "homepage": "https://github.com/andradeatdev/auto-continue-shortlinks#readme",
+  "bugs": {
+    "url": "https://github.com/andradeatdev/auto-continue-shortlinks/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andradeatdev/auto-continue-shortlinks.git"
+  },
+  "license": "GPL-3.0",
   "scripts": {
     "dev": "concurrently -k \"rollup -c -w\" \"http-server dist -c5 dist\"",
     "build": "rollup -c",
