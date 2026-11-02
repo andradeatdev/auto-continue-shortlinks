@@ -1585,16 +1585,13 @@ domains.add("shrinkme.click", {
 
 domains.add("themezon.net", {
     patcher() {
-        patch.define(win, "SMG", {
-            set(value, setter) {
-                value.adblock = false;
-                setter(value);
-            },
-        });
+        tool.hide("nav, header, .entry > :not(#smg-spot-end), .feat, aside, .author-box, .related, footer, .share-in");
+        tool.remove("#j-adblock");
     },
     continue() {
-        tool.click("button#smg-arm:not([disabled])", { wait: 1000 });
-        tool.click("form:not([hidden]) .smg-go:not([disabled])", { text: "Continue", visible: true });
+        tool.click("#smg-spot-header #j-start", { wait: 1000 });
+        tool.click("#j-next:not([disabled])");
+        tool.click("#smg-spot-end #j-start", { wait: 1000 });
     },
 });
 
