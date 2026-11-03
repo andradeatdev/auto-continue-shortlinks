@@ -1890,6 +1890,15 @@ domains.add("www.nexusmods.com", {
 });
 
 domains.add("f95zone.to", {
+    cache() {
+        const params = new URLSearchParams(location.search);
+        const k = params.get("k");
+        if (!k) return;
+
+        const url = `${location.origin}/?k=${k}`;
+        bypass.cache(url);
+        bypass.listener(url);
+    },
     continue() {
         tool.click(tool.hcaptcha(".f95dl-go button"));
     },
