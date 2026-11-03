@@ -228,127 +228,6 @@ const storage = {
     },
 };
 
-const bus = {
-    listeners: {},
-
-    on(event, callback) {
-        this.listeners[event] ||= [];
-        this.listeners[event].push(callback);
-        return () => this.off(event, callback);
-    },
-
-    off(event, callback) {
-        const list = this.listeners[event];
-        if (!list) return;
-        this.listeners[event] = list.filter(cb => cb !== callback);
-    },
-
-    emit(event, data) {
-        const eventCallbacks = this.listeners[event] || [];
-        for (const cb of eventCallbacks) try { cb(data, event); } catch (error) { console.error("[bus]", event, error); }
-
-        const wildcardCallbacks = this.listeners["*"] || [];
-        for (const cb of wildcardCallbacks) try { cb(data, event); } catch (error) { console.error("[bus:*]", event, error); }
-    },
-};
-
-const logger = {
-    MAX: 300,
-    LAST_KEY: "@debug-last",
-    TOGGLES: ["useCache", "useContinue", "usePatcher"],
-    startedAt: Date.now(),
-    entries: [],
-    previous: undefined,
-
-    init() {
-        this.previous = storage.get(this.LAST_KEY);
-        bus.on("*", (data, event) => this.add(event, data));
-        win.addEventListener("pagehide", () => this.persist());
-    },
-
-    add(event, data) {
-        this.entries.push({ t: Date.now() - this.startedAt, ev: event, data: this.sanitize(data) });
-        if (this.entries.length > this.MAX) this.entries.shift();
-    },
-
-    persist() {
-        storage.set(this.LAST_KEY, { href: location.href, at: new Date().toISOString(), entries: this.entries });
-    },
-
-    sanitize(data) {
-        if (data === undefined) return;
-        try {
-            return JSON.parse(JSON.stringify(data, (_key, value) => {
-                if (value instanceof Error) return { name: value.name, message: value.message };
-                if (value instanceof RegExp) return String(value);
-                if (typeof value === "function") return `[fn ${value.name}]`;
-                if (typeof value === "string" && value.length > 300) return `${value.slice(0, 300)}…`;
-                return value;
-            }));
-        } catch {
-            return "[unserializable]";
-        }
-    },
-
-    toggles() {
-        return Object.fromEntries(this.TOGGLES.map((name) => {
-            const global = storage.get(name, true);
-            const domain = storage.local().get(name, true);
-            return [name, { global, domain, effective: global && domain }];
-        }));
-    },
-
-    timeline(entries) {
-        return entries
-            .map(({ t, ev, data }) => `+${String(t).padStart(5)}ms  ${ev}${data === undefined ? "" : "  " + JSON.stringify(data)}`)
-            .join("\n");
-    },
-
-    format() {
-        const header = {
-            script: {
-                version: GM_info?.script?.version,
-                manager: GM_info?.scriptHandler,
-                managerVersion: GM_info?.version,
-            },
-            page: { hostname: location.hostname, href: location.href },
-            userAgent: navigator.userAgent,
-            toggles: this.toggles(),
-            localCacheEntries: Object.keys(storage.global().get("bypass-local", {})).length,
-        };
-
-        const parts = [
-            "## Environment",
-            JSON.stringify(header, undefined, 2),
-            "",
-            "## Current page flow",
-            this.timeline(this.entries) || "(no events)",
-        ];
-
-        if (this.previous?.entries?.length) {
-            parts.push("", `## Previous page flow (${this.previous.href})`, this.timeline(this.previous.entries));
-        }
-
-        return parts.join("\n");
-    },
-
-    copy() {
-        const text = this.format();
-        const ok = confirm(
-            `Copy debug report to clipboard?\n\n` +
-            `It includes: script settings, this page's URL (and the previous page's), and the event flow.\n` +
-            `${this.entries.length} events · ${text.length} characters\n\n`,
-        );
-        if (!ok) return;
-
-        if (typeof GM_setClipboard === "function") {
-            GM_setClipboard(text, "text");
-        } else {
-            navigator.clipboard.writeText(text).catch(() => prompt("Copy manually:", text));
-        }
-    },
-};
-
 const commands = {
     cmds: {
         useCache: {
@@ -396,12 +275,6 @@ const commands = {
                 GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml");
             },
         },
-        copyLogs: {
-            name: "Copy debug logs",
-            action() {
-                logger.copy();
-            },
-        },
     },
 
     exec() {
@@ -431,14 +304,12 @@ const commands = {
 
     toggleCommand(name, cmd) {
         const value = storage.get(name, cmd.value);
-        bus.emit("toggle:change", { scope: "global", name, to: !value });
         storage.set(name, !value);
         location.reload();
     },
 
     toggleCommandLocal(name, cmd) {
         const value = storage.local().get(name, cmd.value);
-        bus.emit("toggle:change", { scope: "domain", name, to: !value });
         storage.local().set(name, !value);
         location.reload();
     },
@@ -682,7 +553,6 @@ const tool = {
             });
 
             node.dispatchEvent(event);
-            bus.emit("tool:click", { selector, remaining: remaining - 1 });
 
             if (--remaining <= 0) stop();
             else return false;
@@ -1171,11 +1041,47 @@ const bypass = {
         storage.global().set("bypass-local", {});
     },
 
-    isFinalHost(hostname) {
+    trusted(hostname) {
         for (const domain of this.finalDomains) {
             if (typeof domain === "string" && hostname === domain) return true;
             if (domain instanceof RegExp && domain.test(hostname)) return true;
         }
+    },
+
+    title(title, links) {
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: `${this.cacheURL}/api/titles`,
+            headers: { "Content-Type": "application/json" },
+            responseType: "json",
+            data: JSON.stringify({
+                title,
+                links,
+            }),
+            onload: (data) => {
+                const { response } = data;
+                if (response.status !== "ok") { console.error(response); }
+            },
+        });
+    },
+
+    async lookup(titles) {
+        return new Promise(resolve => {
+            GM_xmlhttpRequest({
+                method: "POST",
+                url: `${this.cacheURL}/api/titles/lookup`,
+                headers: { "Content-Type": "application/json" },
+                responseType: "json",
+                data: JSON.stringify({
+                    titles,
+                }),
+                onload: (data) => {
+                    const { response } = data;
+                    if (response.status !== "ok") { console.error(response); }
+                    resolve(response.results);
+                },
+            });
+        });
     },
 };
 
@@ -1183,16 +1089,9 @@ const domains = {
     exec(stage, enabled, handler) {
         const fn = handler[stage];
         if (!fn) return;
+        if (!enabled) return;
 
-        if (!enabled) {
-            return bus.emit(`${stage}:skip`, { reason: "disabled" });
-        }
-
-        bus.emit(`${stage}:start`);
-        const fail = (error) => {
-            console.error(`[${stage}]`, error);
-            bus.emit(`${stage}:error`, error);
-        };
+        const fail = (error) => console.error(`[${stage}]`, error);;
 
         try {
             fn.call(handler)?.catch?.(fail);
@@ -1204,27 +1103,15 @@ const domains = {
     add(hosts, handler) {
         if (!handler) return;
         if (![hosts].flat().includes(location.hostname)) return;
-        logger.init();
 
         const { hostname, href, pathname, search } = location;
-
-        bus.emit("domain:match", {
-            hostname,
-            hasCache: !!handler.cache,
-            hasPatcher: !!handler.patcher,
-            hasContinue: !!handler.continue,
-        });
 
         commands.exec();
 
         if (config.useCache && handler.cache) {
-            bus.emit("cache:mode", { mode: "handler" });
             handler.cache();
         } else if (config.useCache) {
-            bus.emit("cache:mode", { mode: "generic" });
             bypass.exec(hostname, href, pathname, search);
-        } else {
-            bus.emit("cache:mode", { mode: "off" });
         }
 
         this.exec("patcher", config.usePatcher, handler);
