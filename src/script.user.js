@@ -402,18 +402,17 @@ const watch = {
         this.callbacks.add(callback);
         return () => this.callbacks.delete(callback);
     },
+};
 
-    ignore(callback) {
-        if (!this.observer) return callback();
+const ctxs = {
+    ctxs: new Map(),
 
-        this.drain();
-        if (this.queue.length > 0) this.schedule();
-
-        try {
-            return callback();
-        } finally {
-            this.observer.takeRecords();
+    of(name) {
+        if (!this.ctxs.has(name)) {
+            this.ctxs.set(name, {});
         }
+
+        return this.ctxs.get(name);
     },
 };
 
@@ -427,6 +426,23 @@ const shadow = {
     track(host, root) {
         this.roots.set(host, root);
         watch.attach(root);
+    },
+
+    query(selector, root = document) {
+        const [head, ...tail] = selector.split(">>>").map(part => part.trim());
+        let node = root.querySelector(head);
+
+        for (const part of tail) {
+            if (!node) return;
+
+            const inner = this.of(node);
+            if (!inner) return;
+
+            watch.attach(inner);
+            node = inner.querySelector(part);
+        }
+
+        return node;
     },
 
     queryAll(selector, root = document) {
