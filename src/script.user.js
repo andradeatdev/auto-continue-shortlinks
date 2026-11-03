@@ -940,7 +940,6 @@ const bypass = {
         "en.mrproblogger.com": /^\/[A-Za-z0-9_-]{3,}$/,
         "intercelestial.com": /^\/\?ht=[a-zA-Z0-9%]+$/,
         "speedy-links.com": /^\/s\?[A-Za-z0-9_-]{3,}$/,
-        "f95zone.to": /^\/dl\/\d{4,}\/\?.*$/,
         "online-fix.me": /^\/ext\/.+$/,
         "link.snipcash.com": /^\/[A-Za-z0-9_-]{3,}$/,
     },
@@ -1895,7 +1894,7 @@ domains.add("f95zone.to", {
         const k = params.get("k");
         if (!k) return;
 
-        const url = `${location.origin}/?k=${k}`;
+        const url = `${location.origin}${location.pathname}?k=${k}`;
         bypass.cache(url);
         bypass.listener(url);
     },
