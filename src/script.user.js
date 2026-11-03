@@ -463,17 +463,98 @@ const shadow = {
     },
 };
 
-const tool = {
+const dom = {
     guard(name, selector) {
-        if (typeof selector !== "string") throw new TypeError(`[tool.${name}] 'selector' must be a string`);
+        if (typeof selector !== "string") throw new TypeError(`[dom.${name}] 'selector' must be a string`);
     },
 
-    shown(node, isVisible) {
+    stalk(selector, handler, opts) {
+        this.guard("stalk", selector);
+
+        const seen = new WeakSet();
+        let isStopped = false;
+        let isRunning = false;
+        let isDirty = false;
+
+        const handle = async (node) => {
+            if (seen.has(node)) return;
+
+            const result = await handler(node);
+            if (result?.stop === true) return stop();
+            if (result?.continue === true) return;
+
+            seen.add(node);
+        };
+
+        const run = async () => {
+            if (isStopped) return;
+            if (isRunning) { isDirty = true; return; }
+
+            isRunning = true;
+            const nodes = dom.select(selector, opts);
+            for (const node of nodes) {
+                if (isStopped) break;
+                await handle(node);
+            }
+            isRunning = false;
+
+            if (isDirty) { isDirty = false; run(); }
+        };
+
+        const unwatch = watch.change(run);
+        const stop = () => { isStopped = true; unwatch(); };
+
+        run().catch(console.error);
+        return stop;
+    },
+
+    query(selector, options = {}) {
+        this.guard("element", selector);
+        const { timeout } = options;
+
+        return new Promise((resolve, reject) => {
+            let timer;
+
+            const done = dom.stalk(selector, options, (node, stop) => {
+                clearTimeout(timer);
+                resolve(node);
+                return { stop: true };
+            });
+
+            if (timeout > 0) {
+                timer = setTimeout(() => {
+                    done();
+                    reject(new Error(`Timeout of ${timeout}ms reached waiting for: ${selector}`));
+                }, timeout);
+            }
+        });
+    },
+
+    *select(selector, options = {}) {
+        this.guard("select", selector);
+
+        const nodes = shadow.queryAll(selector);
+        for (const node of nodes) {
+            if (this.match(node, options)) yield node;
+        }
+    },
+
+    match(node, options = {}) {
+        const { visible, text, css } = options;
+
+        if (!dom.visible(node, visible)) return false;
+        if (!dom.text(node, text)) return false;
+        if (!dom.css(node, css)) return false;
+
+        return true;
+    },
+
+    visible(node, isVisible) {
         if (typeof isVisible !== "boolean") return true;
         return node.checkVisibility({ visibilityProperty: true }) === isVisible;
     },
 
-    reads(node, text) {
+    text(node, text) {
         if (text === undefined || text === null) return true;
         const content = node.textContent;
         if (typeof text === "string") return content.includes(text);
@@ -484,7 +565,7 @@ const tool = {
         return false;
     },
 
-    styled(node, css) {
+    css(node, css) {
         if (!css) return true;
 
         const style = getComputedStyle(node);
@@ -500,212 +581,6 @@ const tool = {
         }
     },
 
-    wait(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    },
-
-    *select(selector, options = {}) {
-        this.guard("select", selector);
-
-        const nodes = shadow.queryAll(selector);
-        for (const node of nodes) {
-            if (this.match(node, options)) yield node;
-        }
-    },
-
-    match(node, options = {}) {
-        const { visible, text, css } = options;
-
-        if (!tool.shown(node, visible)) return false;
-        if (!tool.reads(node, text)) return false;
-        if (!tool.styled(node, css)) return false;
-
-        return true;
-    },
-
-    stalk(selector, options, handler) {
-        this.guard("each", selector);
-
-        const seen = new WeakSet();
-        let isStopped = false;
-        let isRunning = false;
-        let isDirty = false;
-
-        const handle = async (node) => {
-            if (seen.has(node)) return;
-            if (await handler(node, stop) === false) return;
-            seen.add(node);
-        };
-
-        const run = async () => {
-            if (isStopped) return;
-            if (isRunning) {
-                isDirty = true;
-                return;
-            }
-
-            isRunning = true;
-            let nodes = tool.select(selector, options);
-            // eslint-disable-next-line no-unmodified-loop-condition -- isStopped can be changed by handle()
-            while (!isStopped) {
-                const { value: node, done } = nodes.next();
-                if (!done) await handle(node);
-                else if (isDirty) {
-                    isDirty = false;
-                    nodes = tool.select(selector, options);
-                } else break;
-            }
-            isRunning = false;
-        };
-
-        const unwatch = watch.change(run);
-        const stop = () => {
-            isStopped = true;
-            unwatch();
-        };
-
-        run().catch(error => console.error(error));
-        return stop;
-    },
-
-    click(selector, options = {}) {
-        this.guard("click", selector);
-        const { wait = 0, scroll = false, count = 1, bubbles = true, when } = options;
-        const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
-        let remaining = count;
-
-        return tool.stalk(selector, options, async (node, stop) => {
-            if (when && !when(node)) return false;
-
-            if (wait > 0) await tool.wait(wait);
-            if (!node.isConnected) return false;
-
-            if (when && !when(node)) return false;
-
-            if (scroll !== false) node.scrollIntoView({ behavior, block, inline });
-
-            const event = new MouseEvent("click", {
-                bubbles,
-                cancelable: true,
-                composed: true,
-                view: win,
-            });
-
-            node.dispatchEvent(event);
-
-            if (--remaining <= 0) stop();
-            else return false;
-        });
-    },
-
-    scroll(selector, options = {}) {
-        this.guard("scroll", selector);
-        const { behavior = "smooth", block = "center", inline = "center" } = options;
-
-        return tool.stalk(selector, options, async (node, stop) => {
-            node.scrollIntoView({ behavior, block, inline });
-            stop();
-        });
-    },
-
-    input(selector, options = {}) {
-        this.guard("input", selector);
-        const { value = "" } = options;
-
-        return tool.stalk(selector, options, (node, stop) => {
-            node.value = value;
-            stop();
-        });
-    },
-
-    remove(selector, options = {}) {
-        this.guard("remove", selector);
-        return tool.stalk(selector, options, (node) => node.remove());
-    },
-
-    wrap(selector, options = {}) {
-        this.guard("wrap", selector);
-        return tool.stalk(selector, options, (node, stop) => {
-            const wrapper = document.createElement("div");
-            wrapper.style.cssText = `
-                visibility: hidden !important;
-                pointer-events: none !important;
-                opacity: 0 !important;
-            `;
-            document.body.append(wrapper);
-            wrapper.append(node);
-            stop();
-        });
-    },
-
-    hide(selector) {
-        this.guard("hide", selector);
-        const style = document.createElement("style");
-        style.textContent = `${selector} { display: none !important; }`;
-        document.documentElement.append(style);
-        return () => style.remove();
-    },
-
-    redirect(selector, options = {}) {
-        this.guard("redirect", selector);
-        const { attr = "href", decodeB64 = false } = options;
-
-        return tool.stalk(selector, options, async (node, stop) => {
-            let url = tool.attr(node, attr);
-            if (!url) return false;
-
-            if (decodeB64 === true) {
-                try { url = atob(url); } catch { return; }
-            }
-
-            stop();
-            location.assign(url);
-        });
-    },
-
-    element(selector, options = {}) {
-        this.guard("element", selector);
-        const { timeout } = options;
-
-        return new Promise((resolve) => {
-            let timer;
-            let isDone = false;
-
-            const done = tool.stalk(selector, options, (node, stop) => {
-                isDone = true;
-                clearTimeout(timer);
-                stop();
-                resolve(node);
-            });
-
-            if (!isDone && timeout > 0) {
-                timer = setTimeout(() => {
-                    done();
-                    resolve();
-                }, timeout);
-            }
-        });
-    },
-
-    request(url, options = {}) {
-        if (typeof url !== "string") throw new TypeError("[tool.request] Missing `url` argument");
-
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                method: options.method || "GET",
-                url,
-                headers: options.headers || {},
-                responseType: options.responseType || "text",
-                timeout: options.timeout,
-                data: options.data,
-                onload: resolve,
-                onerror: reject,
-                ontimeout: reject,
-                onabort: reject,
-            });
-        });
-    },
-
     turnstile(selector) {
         return `:has([name="cf-turnstile-response"][value]) ${selector}`;
     },
@@ -719,12 +594,178 @@ const tool = {
             if (node.value === "") return setTimeout(() => poll(node), 500);
             node.dataset.recaptchaSolved = "";
         };
-        tool.stalk("#g-recaptcha-response", {}, (node, stop) => {
-            stop();
+
+        act.stalk("#g-recaptcha-response", (node) => {
             setTimeout(() => poll(node), 500);
+            return { stop: true };
         });
 
         return `:has(#g-recaptcha-response[data-recaptcha-solved]) ${selector}`;
+    },
+};
+
+const act = {
+    guard(name, selector) {
+        if (typeof selector !== "string") throw new TypeError(`[act.${name}] 'selector' must be a string`);
+    },
+
+    wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    },
+
+    click(selector, options = {}) {
+        this.guard("click", selector);
+
+        const { wait = 0, scroll = false, count = 1, bubbles = true, when } = options;
+        const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
+        let remaining = count;
+
+        return dom.stalk(selector, async (node) => {
+            if (when && !when(node)) return { continue: true };
+
+            if (wait > 0) await act.wait(wait);
+            if (!node.isConnected) return { continue: true };
+
+            if (when && !when(node)) return { continue: true };
+
+            if (scroll !== false) node.scrollIntoView({ behavior, block, inline });
+
+            const event = new MouseEvent("click", {
+                bubbles,
+                cancelable: true,
+                composed: true,
+                view: win,
+            });
+
+            node.dispatchEvent(event);
+
+            return --remaining <= 0 ? { stop: true } : { continue: true };
+        }, options);
+    },
+
+    scroll(selector, options = {}) {
+        this.guard("scroll", selector);
+
+        const { behavior = "smooth", block = "center", inline = "center" } = options;
+        return dom.stalk(selector, node => {
+            node.scrollIntoView({ behavior, block, inline });
+            return { stop: true };
+        }, options);
+    },
+
+    input(selector, options = {}) {
+        this.guard("input", selector);
+
+        const { value = "" } = options;
+        return dom.stalk(selector, node => {
+            node.value = value;
+            return { stop: true };
+        }, options);
+    },
+
+    remove(selector, options = {}) {
+        this.guard("remove", selector);
+
+        return dom.stalk(selector, node => node.remove(), options);
+    },
+
+    wrap(selector, options = {}) {
+        this.guard("wrap", selector);
+        return dom.stalk(selector, node => {
+            const wrapper = document.createElement("div");
+            wrapper.style.cssText = `
+                visibility: hidden !important;
+                pointer-events: none !important;
+                opacity: 0 !important;
+            `;
+
+            document.body.append(wrapper);
+            wrapper.append(node);
+
+            return { stop: true };
+        }, options);
+    },
+
+    hide(selector) {
+        this.guard("hide", selector);
+
+        const style = document.createElement("style");
+        style.textContent = `${selector} { display: none !important; }`;
+        document.documentElement.append(style);
+
+        return () => style.remove();
+    },
+
+    redirect(selector, options = {}) {
+        this.guard("redirect", selector);
+
+        const { attr = "href" } = options;
+        return dom.stalk(selector, async (node) => {
+            const url = dom.attr(node, attr);
+            if (!url) return { continue: true };
+
+            location.assign(url);
+            return { stop: true };
+        }, options);
+    },
+};
+
+const net = {
+    get(url) {
+        return this.json("GET", url);
+    },
+
+    post(url, body) {
+        return this.json("POST", url, body);
+    },
+
+    request(url, options = {}) {
+        if (typeof url !== "string") throw new TypeError("[net.request] Missing `url` argument");
+
+        const { method = "GET", headers = {}, data, timeout, overrideMimeType, responseType = "text" } = options;
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method,
+                url,
+                headers,
+                responseType,
+                data,
+                timeout,
+                overrideMimeType,
+                onload: resolve,
+                onerror: reject,
+                ontimeout: reject,
+            });
+        });
+    },
+
+    json(method, url, body) {
+        return this.request(url, {
+            method,
+            data: body && JSON.stringify(body),
+            headers: { "Content-Type": "application/json" },
+            responseType: "json",
+        });
+    },
+};
+
+const worker = {
+    url: "https://shortlinks.zencore.fun",
+    links: {
+        find(href) {
+            return net.get(`${worker.url}/api/check?url=${encodeURIComponent(href)}`);
+        },
+        save(href, destination) {
+            return net.post(`${worker.url}/api/save`, { shortlink: href, destination });
+        },
+    },
+    titles: {
+        save(title, links) {
+            return net.post(`${worker.url}/api/titles`, { title, links });
+        },
+        find(titles) {
+            return net.post(`${worker.url}/api/titles/lookup`, { titles });
+        },
     },
 };
 
@@ -884,86 +925,88 @@ const patch = {
         patch.apply(win, "setInterval", scale);
 
         patch.apply(win.Date, "now", () => dateNow(isFast()));
+        patch.apply(win.performance, "now", () => perfNow(isFast()));
 
         patch.hook(win, "Date", {
             construct: (target, args, newTarget) =>
                 Reflect.construct(target, args.length > 0 ? args : [dateNow(isFast())], newTarget),
             apply: target => new target(dateNow(isFast())).toString(),
         });
-
-        patch.apply(win.performance, "now", () => perfNow(isFast()));
     },
 
     fetch(options = {}) {
         const { url, returnValue = Object.create(null) } = options;
 
-        const isValidUrl = (u) => {
-            if (typeof url === "string") return u.includes(url);
-            if (url instanceof RegExp) {
-                url.lastIndex = 0;
-                return url.test(u);
-            }
+        const isMatch = (input) => {
+            if (typeof url === "string") return input.includes(url);
+            if (url instanceof RegExp) { url.lastIndex = 0; url.test(input); return; }
             return true;
         };
 
         patch.apply(win, "fetch", (target, thisArg, argArray) => {
             const [urlArg] = argArray;
-            if (isValidUrl(urlArg)) return returnValue;
+            if (isMatch(urlArg)) return returnValue;
+
             return Reflect.apply(target, thisArg, argArray);
         });
     },
 
     listener(options = {}) {
-        const { type, mode = "prevent", excludeTarget, includesText, excludeText } = options;
+        const { type, excludeTarget, includesText, excludeText } = options;
 
         patch.apply(win.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
             const [name, listener] = argArray;
-            const listenerSource = typeof listener === "function" ? listener.toString() : "";
 
-            const shouldBlock =
-                mode === "prevent" &&
-                (type === undefined || type === name) &&
-                !(excludeTarget !== undefined && thisArg instanceof Element && thisArg.matches(excludeTarget)) &&
-                (includesText === undefined || listenerSource.includes(includesText)) &&
-                (excludeText === undefined || !listenerSource.includes(excludeText));
+            if (type !== undefined && type !== name) {
+                return Reflect.apply(target, thisArg, argArray);
+            }
 
-            if (shouldBlock) return;
+            if (excludeTarget !== undefined && thisArg instanceof Element && thisArg.matches(excludeTarget)) {
+                return Reflect.apply(target, thisArg, argArray);
+            }
 
-            return Reflect.apply(target, thisArg, argArray);
+            if (includesText !== undefined || excludeText !== undefined) {
+                const source = typeof listener === "function" ? listener.toString() : "";
+
+                if (includesText !== undefined && !source.includes(includesText)) {
+                    return Reflect.apply(target, thisArg, argArray);
+                }
+                if (excludeText !== undefined && source.includes(excludeText)) {
+                    return Reflect.apply(target, thisArg, argArray);
+                }
+            }
         });
     },
 
     mask(selector, styles, options) {
-        this.computedStyleMap ||= new Map();
-        this.computedStyleMap.set(selector, { styles, options });
+        const ctx = ctxs.of("mask");
 
-        if (this.computedStylePatched) return;
-        this.computedStylePatched = true;
+        ctx.map ??= new Map();
+        ctx.map.set(selector, { styles, options });
+
+        if (ctx.patched) return;
+        ctx.patched = true;
 
         patch.apply(win, "getComputedStyle", (target, thisArg, argArray) => {
-            const [node] = argArray;
             const result = Reflect.apply(target, thisArg, argArray);
+            const [node] = argArray;
 
-            if (!node || typeof node.matches !== "function") return result;
+            if (!node?.matches) return result;
 
-            for (const [sel, conf] of this.computedStyleMap) {
-                if (!node.matches(sel)) continue;
-                if (!tool.match(node, conf.options)) continue;
+            const match = ctx.map.values().find(conf =>
+                node.matches(selector) && dom.match(node, conf.options),
+            );
 
-                return new Proxy(result, {
-                    get(t, prop, receiver) {
-                        return Object.hasOwn(conf.styles, prop) ? conf.styles[prop] : Reflect.get(t, prop, receiver);
-                    },
-                });
-            }
+            if (!match) return result;
 
-            return result;
+            return new Proxy(result, {
+                get: (t, prop) => Object.hasOwn(match.styles, prop) ? match.styles[prop] : t[prop],
+            });
         });
     },
 };
 
 const bypass = {
-    cacheURL: "https://shortlinks.zencore.fun",
     cacheMaxEntries: 50,
     shortenerPatterns: {
         "tpi.li": /^\/[A-Za-z0-9_-]{3,}$/,
@@ -1000,7 +1043,7 @@ const bypass = {
     ],
 
     exec(hostname, href, pathname, search) {
-        if (!this.cacheURL) return;
+        if (!worker.url) return;
 
         const pattern = this.shortenerPatterns[hostname];
         if (!pattern?.test(pathname + search)) return;
@@ -1015,18 +1058,13 @@ const bypass = {
         const destCached = cacheLocal[href];
         if (destCached) return navigation.navigate(destCached, { info: "bypass_link" });
 
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: `${this.cacheURL}/api/check?url=${encodeURIComponent(href)}`,
-            headers: { "Content-Type": "application/json" },
-            responseType: "json",
-            onload: ({ response }) => {
-                if (response?.status !== "ok" || !response.destination) return;
-                const url = new URL(response.destination);
-                if (url.protocol !== "https:" || !this.trusted(url.hostname)) return;
-                navigation.navigate(url.href, { info: "bypass_link" });
-            },
-        });
+        const { response } = worker.links.find(href);
+        if (response?.status !== "ok" || !response.destination) return;
+
+        const url = new URL(response.destination);
+        if (url.protocol !== "https:" || !this.trusted(url.hostname)) return;
+
+        navigation.navigate(url.href, { info: "bypass_link" });
     },
 
     listener(href) {
@@ -1047,21 +1085,9 @@ const bypass = {
     save(href, destination) {
         storage.global().merge("bypass-local", { [href]: destination });
 
-        GM_xmlhttpRequest({
-            method: "POST",
-            url: `${this.cacheURL}/api/save`,
-            headers: { "Content-Type": "application/json" },
-            responseType: "json",
-            data: JSON.stringify({
-                shortlink: href,
-                destination,
-            }),
-            onload: (data) => {
-                const { response } = data;
-                if (response.status !== "ok") { console.error(response); }
-                navigation.navigate(destination, { info: "bypass_link" });
-            },
-        });
+        const { response } = worker.links.save(href, destination);
+        if (response?.status !== "ok") { console.error(response); }
+        navigation.navigate(destination, { info: "bypass_link" });
     },
 
     clear() {
@@ -1080,39 +1106,17 @@ const bypass = {
     },
 
     title(title, links) {
-        GM_xmlhttpRequest({
-            method: "POST",
-            url: `${this.cacheURL}/api/titles`,
-            headers: { "Content-Type": "application/json" },
-            responseType: "json",
-            data: JSON.stringify({
-                title,
-                links,
-            }),
-            onload: (data) => {
-                const { response } = data;
-                if (response.status !== "ok") { console.error(response); }
-            },
-        });
+        const { response } = worker.titles.save(title, links);
+        if (response?.status !== "ok") console.error(response);
     },
 
     async lookup(titles) {
-        return new Promise(resolve => {
-            GM_xmlhttpRequest({
-                method: "POST",
-                url: `${this.cacheURL}/api/titles/lookup`,
-                headers: { "Content-Type": "application/json" },
-                responseType: "json",
-                data: JSON.stringify({
-                    titles,
-                }),
-                onload: (data) => {
-                    const { response } = data;
-                    if (response.status !== "ok") { console.error(response); }
-                    resolve(response.results);
-                },
-            });
-        });
+        const { response } = await worker.titles.find(titles);
+
+        if (response?.status !== "ok") console.error(response);
+        if (!response.results) return console.error("Titles undefined");
+
+        return response.results;
     },
 };
 
