@@ -86,6 +86,12 @@
 // @match              https://fdsite.lat/*
 // @match              https://topshare.in/*
 // @match              https://dailyuploads.net/*
+// @match              https://psa.wf/*
+// @match              https://get-to.link/*
+// @match              https://no-bots-allowed.org/*
+// 
+// @match              https://premium.hairmova.com/*
+// @match              https://product.hairmova.com/*
 // 
 // @match              https://gplinks.co/*
 // @match              https://skrresults.com/*
@@ -129,7 +135,6 @@
 // @grant              GM_addValueChangeListener
 // @grant              GM_registerMenuCommand
 // @grant              GM_openInTab
-// @grant              GM_setClipboard
 // @grant              GM_info
 // @grant              unsafeWindow
 // @grant              window.close
@@ -1157,6 +1162,22 @@ const templates = {
             tool.click("#submit-button:not([disabled])");
         },
     },
+    nobots: {
+        patcher() {
+            tool.hide(".single-content > :not(div), #masthead, .post-navigation, .entry-related, #comments, footer");
+        },
+        continue() {
+            tool.scroll("#safegate-wait1");
+            tool.click("#safegate-proceed-btn", { visible: true });
+            tool.scroll("#safegate-wait2", { visible: true });
+            tool.click("#safegate-go", { visible: true });
+
+            tool.stalk("#safegate-reveal-overlay > div > div > span", {}, node => {
+                storage.global().set("no-bots-allowed", node.textContent.trim());
+                window.close();
+            });
+        },
+    },
     boostink: {
         async continue() {
             const res = await tool.request(location.href);
@@ -1342,6 +1363,7 @@ domains.add(["boost.ink", "bst.gg"], templates.boostink);
 domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], templates.pndk);
 domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], templates.xutio);
 domains.add(["fc-lc.xyz", "oii.io"], templates.fclc_oii);
+domains.add(["premium.hairmova.com", "product.hairmova.com"], templates.nobots);
 
 domains.add("pahe.ink", {
     patcher() {
@@ -1950,5 +1972,96 @@ domains.add("dailyuploads.net", {
     continue() {
         tool.click(".du-dl-opt.is-free");
         tool.click("#downloadbtn:not([disabled])");
+    },
+});
+
+domains.add("psa.wf", {
+    async cache() {
+        const entry = await tool.element(".entry-inner:has(> .sp-wrap)");
+        const headsNode = entry.querySelectorAll(".sp-head");
+        const titles = [...headsNode].filter(head => tool.match(head, { text: /-PSA$/m })).map(n => n.textContent.trim());
+
+        const links = await bypass.lookup(titles);
+        for (const link of links) {
+            if (!link.found) continue;
+
+            tool.stalk(".sp-head", { text: link.title }, n => {
+                const downloadIcon = n.nextElementSibling.querySelector(".fa-download");
+                const body = downloadIcon.closest(".sp-body");
+                const nodeLinks = link.links.map(l => `<a href="${l}">${l}</a>`).join("<br>");
+                body.insertAdjacentHTML("afterbegin", `<p>${nodeLinks}</p>`);
+            });
+        }
+    },
+    async continue() {
+        if (!location.pathname.startsWith("/safegate/")) return;
+
+        const drag = (thumb, track) => {
+            const maxLeft = track.offsetWidth - thumb.offsetWidth - 4;
+            const rect = thumb.getBoundingClientRect();
+
+            const x = rect.left + (maxLeft - ((Number(thumb.style.left) || 2) - 2)) + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+
+            thumb.dispatchEvent(new MouseEvent("mousedown", {
+                bubbles: true,
+                clientX: rect.left + rect.width / 2,
+                clientY: y,
+            }));
+
+            document.dispatchEvent(new MouseEvent("mousemove", {
+                bubbles: true,
+                clientX: x,
+                clientY: y,
+            }));
+
+            document.dispatchEvent(new MouseEvent("mouseup", {
+                bubbles: true,
+                clientX: x,
+                clientY: y,
+            }));
+        };
+
+        const track = await tool.element("#sg-track");
+        const thumb = track.querySelector("#sg-thumb");
+        drag(thumb, track);
+
+        tool.stalk("#sg-code-a", {}, async (node, stop) => {
+            stop();
+            storage.global().set("no-bots-allowed", node.textContent.trim());
+            GM_openInTab("https://no-bots-allowed.org", { active: true, insert: true });
+
+            const input = await tool.element("input.sg-input");
+            const button = await tool.element("button.sg-btn");
+            storage.global().watch("no-bots-allowed", (newValue) => {
+                input.value = newValue;
+                button.click();
+            });
+        });
+    },
+});
+
+domains.add("get-to.link", {
+    async cache() {
+        const titleNode = await tool.element("#content-box center h2");
+        const pNode = await tool.element("#content-box p:has(a[href][target='_blank'])");
+
+        const title = titleNode.textContent.trim();
+        const links = [...pNode.querySelectorAll("a[href][target='_blank']")].map(l => l.href);
+
+        bypass.title(title, links);
+    },
+});
+
+domains.add("no-bots-allowed.org", {
+    continue() {
+        const code = storage.global().get("no-bots-allowed");
+
+        tool.stalk("input#nba-code", {}, (node, stop) => {
+            if (!code) return stop();
+            node.value = code;
+        });
+
+        tool.click(":has(input#nba-code:not(:placeholder-shown)) .nba-btn");
     },
 });
