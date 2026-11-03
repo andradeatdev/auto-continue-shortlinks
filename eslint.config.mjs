@@ -84,6 +84,7 @@ export default defineConfig([
       "unicorn/prefer-await": "off",
       "unicorn/prefer-add-event-listener": "off",
       'unicorn/prefer-at': "off",
+      "unicorn/no-array-callback-reference": "off",
 
       "sonarjs/pseudo-random": "off",
       "sonarjs/super-linear-regex": "off",
