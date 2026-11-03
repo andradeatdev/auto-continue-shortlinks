@@ -1131,9 +1131,10 @@ const templates = {
     host: {
         patcher() {
             patch.haste();
+            tool.hide("#masthead, aside, #content > :not(center, form), footer");
+            tool.remove("div", { css: { position: "fixed" }, text: "detected" });
         },
         continue() {
-            tool.remove("div", { css: { position: "fixed" }, text: "detected" });
             tool.click("#startButton");
             tool.click("a[href='#getmylink']");
             tool.click("#getnewlink");
