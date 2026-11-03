@@ -897,14 +897,15 @@ const patch = {
 
             return (nextFast) => {
                 const real = read();
+                const currentSpeed = isCurrentFast ? speed : 1;
 
                 if (nextFast !== isCurrentFast) {
-                    virtualAt += (real - realAt) * (isCurrentFast ? speed : 1);
+                    virtualAt += (real - realAt) * currentSpeed;
                     realAt = real;
                     isCurrentFast = nextFast;
                 }
 
-                return virtualAt + (real - realAt) * (isCurrentFast ? speed : 1);
+                return virtualAt + (real - realAt) * currentSpeed;
             };
         };
 
@@ -1154,27 +1155,27 @@ const domains = {
     },
 };
 
-const templates = {
+const generics = {
     tpi: {
         patcher() {
-            templates.antiAdbCore.patcher();
-            templates.pahe.patcher();
+            generics.antiAdbCore.patcher();
+            generics.pahe.patcher();
         },
         continue() {
-            tool.click("#continue:not([disabled])");
-            tool.click(".get-link[href]:not(.disabled)");
+            act.click("#continue:not([disabled])");
+            act.click(".get-link[href]:not(.disabled)");
         },
     },
     host: {
         patcher() {
             patch.haste();
-            tool.hide("#masthead, aside, #content > :not(center, form), footer");
-            tool.remove("div", { css: { position: "fixed" }, text: "detected" });
+            act.hide("#masthead, aside, #content > :not(center, form), footer");
+            act.remove("div", { css: { position: "fixed" }, text: "detected" });
         },
         continue() {
-            tool.click("#startButton");
-            tool.click("a[href='#getmylink']");
-            tool.click("#getnewlink");
+            act.click("#startButton");
+            act.click("a[href='#getmylink']");
+            act.click("#getnewlink");
         },
     },
     ouo: {
@@ -1182,32 +1183,32 @@ const templates = {
             patch.haste();
         },
         continue() {
-            tool.click("#btn-main:not(.disabled)");
-            tool.click(tool.turnstile("#invisibleCaptchaShortlink"));
+            act.click("#btn-main:not(.disabled)");
+            act.click(dom.turnstile("#invisibleCaptchaShortlink"));
         },
     },
     exeio: {
         continue() {
-            tool.click("#submit-button:not([disabled])", { count: 2 });
-            tool.click(tool.turnstile("#submit-button:not([disabled])"));
+            act.click("#submit-button:not([disabled])", { count: 2 });
+            act.click(dom.turnstile("#submit-button:not([disabled])"));
         },
     },
     cuttty: {
         continue() {
-            tool.click("#submit-button:not([disabled])");
+            act.click("#submit-button:not([disabled])");
         },
     },
     nobots: {
         patcher() {
-            tool.hide(".single-content > :not(div), #masthead, .post-navigation, .entry-related, #comments, footer");
+            act.hide(".single-content > :not(div), #masthead, .post-navigation, .entry-related, #comments, footer");
         },
         continue() {
-            tool.scroll("#safegate-wait1");
-            tool.click("#safegate-proceed-btn", { visible: true });
-            tool.scroll("#safegate-wait2", { visible: true });
-            tool.click("#safegate-go", { visible: true });
+            act.scroll("#safegate-wait1");
+            act.click("#safegate-proceed-btn", { visible: true });
+            act.scroll("#safegate-wait2", { visible: true });
+            act.click("#safegate-go", { visible: true });
 
-            tool.stalk("#safegate-reveal-overlay > div > div > span", {}, node => {
+            dom.stalk("#safegate-reveal-overlay > div > div > span", {}, node => {
                 storage.global().set("no-bots-allowed", node.textContent.trim());
                 window.close();
             });
@@ -1215,7 +1216,7 @@ const templates = {
     },
     boostink: {
         async continue() {
-            const res = await tool.request(location.href);
+            const res = await net.request(location.href);
             const match = /unlock.js.+[a-z]+="([^"]+)"/.exec(res.response);
             if (!match) return;
 
@@ -1227,7 +1228,7 @@ const templates = {
         patcher() {
             const adsSelectors = ".adsbox, .pub_300x250, .ad-banner, .ad-unit, .text-ad, .adsbygoogle, .ad-placement, .textads, .banner-ads, #adsense";
 
-            tool.hide(".crumb, .post-title, .post-meta, .share, figure, .toc, .site-footer, .side, .section-title, h1");
+            act.hide(".crumb, .post-title, .post-meta, .share, figure, .toc, .site-footer, .side, .section-title, h1");
             patch.mask(adsSelectors, { display: "block", visibility: "visible" });
             patch.define(win.HTMLElement.prototype, "offsetParent", {
                 get(getter) {
@@ -1252,15 +1253,15 @@ const templates = {
             });
         },
         continue() {
-            tool.click(tool.turnstile("#go-btn"));
-            tool.click("#step-top .step-btn:not([disabled])");
-            tool.click("#step-bottom .step-btn:not([disabled])", { count: 2 });
+            act.click(dom.turnstile("#go-btn"));
+            act.click("#step-top .step-btn:not([disabled])");
+            act.click("#step-bottom .step-btn:not([disabled])", { count: 2 });
         },
     },
     xutio: {
         continue() {
-            tool.click("#sl-primary:not([disabled])", { visible: true });
-            tool.click(".get-link:not(.disabled)");
+            act.click("#sl-primary:not([disabled])", { visible: true });
+            act.click(".get-link:not(.disabled)");
         },
     },
     fclc_oii: {
@@ -1268,8 +1269,8 @@ const templates = {
             patch.define(win, "AdscoreInit", { get: () => () => { } });
         },
         async continue() {
-            tool.click(tool.hcaptcha("button#hCaptchaShortlink"));
-            tool.click(tool.turnstile("button#submitBtn"));
+            act.click(dom.hcaptcha("button#hCaptchaShortlink"));
+            act.click(dom.turnstile("button#submitBtn"));
 
             setInterval(() => document.dispatchEvent(new MouseEvent("mousemove")), 100);
         },
@@ -1279,7 +1280,7 @@ const templates = {
             const mirror = (url, dest) => {
                 // console.log("url", url, "| dest", dest);
 
-                tool.request(url, {
+                net.request(url, {
                     headers: {
                         "Referer": `${location.origin}/`,
                         "Sec-Fetch-Dest": dest,
@@ -1372,76 +1373,77 @@ const templates = {
             patch.apply(win.Node.prototype, "appendChild", (target, thisArg, argArray) => {
                 const [node] = argArray;
                 const result = Reflect.apply(target, thisArg, argArray);
+
+                const alert = node.querySelector?.("[role='alertdialog']");
+                if (alert) alert.remove();
+
                 if (node.nodeName === "SLOT") {
                     const sheet = new CSSStyleSheet();
                     sheet.replaceSync("div:has([role='dialog']) { display: none !important; }");
                     thisArg.adoptedStyleSheets.push(sheet);
                 }
+
                 return result;
             });
-
-            patch.apply(win.Document.prototype, "createElementNS", (target, thisArg, argArray) => {
-                return argArray[1].includes("-") ? undefined : Reflect.apply(target, thisArg, argArray);
-            });
-
-            tool.wrap("body > div:has([role='dialog'])");
         },
     },
 };
 
-domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], templates.tpi);
-domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], templates.host);
-domains.add(["ouo.io", "ouo.press"], templates.ouo);
-domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], templates.exeio);
-domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.com"], templates.cuttty);
-domains.add(["boost.ink", "bst.gg"], templates.boostink);
-domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], templates.pndk);
-domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], templates.xutio);
-domains.add(["fc-lc.xyz", "oii.io"], templates.fclc_oii);
-domains.add(["premium.hairmova.com", "product.hairmova.com"], templates.nobots);
+domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.tpi);
+domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], generics.host);
+domains.add(["ouo.io", "ouo.press"], generics.ouo);
+domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], generics.exeio);
+domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.com"], generics.cuttty);
+domains.add(["boost.ink", "bst.gg"], generics.boostink);
+domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], generics.pndk);
+domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], generics.xutio);
+domains.add(["fc-lc.xyz", "oii.io"], generics.fclc_oii);
+domains.add(["premium.hairmova.com", "product.hairmova.com"], generics.nobots);
 
 domains.add("pahe.ink", {
     patcher() {
-        templates.antiAdbCore.patcher();
-        templates.pahe.patcher();
+        generics.antiAdbCore.patcher();
+        generics.pahe.patcher();
     },
 });
 
 domains.add("linegee.net", {
     patcher() {
-        templates.antiAdbCore.patcher();
-        templates.pahe.patcher();
+        generics.antiAdbCore.patcher();
+        generics.pahe.patcher();
     },
     continue() {
-        tool.click(".btn-primary", { wait: 4000 });
+        act.click(".btn-primary", { wait: 4000 });
     },
 });
 
 domains.add("pahe.plus", {
     patcher() {
-        templates.antiAdbCore.patcher();
-        templates.pahe.patcher();
+        generics.antiAdbCore.patcher();
+        generics.pahe.patcher();
+        patch.listener({ type: "click", excludeTarget: "#invisibleCaptchaShortlink" });
+        act.hide(".banner, body > [style*='fixed'], html > div");
     },
     continue() {
-        tool.click(tool.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"));
-        tool.redirect(".get-link[href^='https://']:not(.disabled)");
+        act.click(dom.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"), { bubbles: false });
+        act.redirect(".get-link[href^='https://']:not(.disabled)");
     },
 });
 
 domains.add("intercelestial.com", {
     patcher() {
-        templates.antiAdbCore.patcher();
-        templates.pahe.patcher();
+        generics.antiAdbCore.patcher();
+        generics.pahe.patcher();
 
         patch.listener({ type: "click", excludeTarget: ".myButton" });
         patch.apply(win, "open", () => { });
         patch.define(win, "LLct", { get: () => "1" });
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
 
-        tool.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
+        act.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
     },
     continue() {
-        tool.click(".myButton", { count: 3, bubbles: false });
+        act.click(".myButton", { count: 3, bubbles: false });
     },
     cache() {
         bypass.cache(location.href);
@@ -1461,7 +1463,7 @@ domains.add("intercelestial.com", {
 
 domains.add("vexfile.com", {
     continue() {
-        tool.redirect(".generate-link:not(.blocked)");
+        act.redirect(".generate-link:not(.blocked)");
     },
 });
 
@@ -1470,8 +1472,8 @@ domains.add("filespayouts.com", {
         patch.haste({ text: "tick" });
     },
     continue() {
-        tool.click("#method_free");
-        tool.click(tool.turnstile("#downloadbtn"));
+        act.click("#method_free");
+        act.click(dom.turnstile("#downloadbtn"));
     },
 });
 
@@ -1480,22 +1482,22 @@ domains.add("modsfire.com", {
         patch.haste();
     },
     continue() {
-        tool.click(".download-button");
+        act.click(".download-button");
     },
 });
 
 domains.add("www.file-upload.org", {
     continue() {
-        tool.click("button[name='method_free']");
-        tool.click(tool.hcaptcha("#downloadbtn:not([disabled])"));
+        act.click("button[name='method_free']");
+        act.click(dom.hcaptcha("#downloadbtn:not([disabled])"));
     },
 });
 
 domains.add("upfilesgo.com", {
     continue() {
-        tool.click("#link-button-free:not([disabled])");
-        tool.click("#file-captcha #link-button:not([disabled])");
-        tool.click(".get-link:not(.disabled)");
+        act.click("#link-button-free:not([disabled])");
+        act.click("#file-captcha #link-button:not([disabled])");
+        act.click(".get-link:not(.disabled)");
     },
 });
 
@@ -1504,40 +1506,40 @@ domains.add("safefileku.com", {
         patch.haste();
     },
     continue() {
-        tool.click(tool.turnstile("button[type='submit']"));
+        act.click(dom.turnstile("button[type='submit']"));
     },
 });
 
 domains.add("uploadrar.com", {
     continue() {
-        tool.click("button[name='method_free']");
-        tool.click("#downloadbtn:not([disabled])");
-        tool.click("a.btn-primary.active[href]");
+        act.click("button[name='method_free']");
+        act.click("#downloadbtn:not([disabled])");
+        act.click("a.btn-primary.active[href]");
     },
 });
 
 domains.add("shrinkme.click", {
     continue() {
-        tool.click(tool.turnstile(".btn-primary:not([disabled])"));
-        tool.click(".get-link:not(.disabled)");
+        act.click(dom.turnstile(".btn-primary:not([disabled])"));
+        act.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("themezon.net", {
     patcher() {
-        tool.hide("nav, header, .entry > :not(#smg-spot-end), .feat, aside, .author-box, .related, footer, .share-in");
-        tool.remove("#j-adblock");
+        act.hide("nav, header, .entry > :not(#smg-spot-end), .feat, aside, .author-box, .related, footer, .share-in");
+        act.remove("#j-adblock");
     },
     continue() {
-        tool.click("#smg-spot-header #j-start", { wait: 1000 });
-        tool.click("#j-next:not([disabled])");
-        tool.click("#smg-spot-end #j-start", { wait: 1000 });
+        act.click("#smg-spot-header #j-start", { wait: 1000 });
+        act.click("#j-next:not([disabled])");
+        act.click("#smg-spot-end #j-start", { wait: 1000 });
     },
 });
 
 domains.add("en.mrproblogger.com", {
     continue() {
-        tool.click(".get-link:not(.disabled)");
+        act.click(".get-link:not(.disabled)");
     },
 });
 
@@ -1547,140 +1549,140 @@ domains.add("aradmag.online", {
         patch.apply(win, "open", () => { });
     },
     continue() {
-        tool.click("[id^='ow_step']:last-of-type button");
-        tool.click("#offerContinueBtn");
-        tool.click("#continueBtn:not([disabled])");
+        act.click("[id^='ow_step']:last-of-type button");
+        act.click("#offerContinueBtn");
+        act.click("#continueBtn:not([disabled])");
     },
 });
 
 domains.add("horrorpay.online", {
     continue() {
-        tool.click(".get-link:not(.disabled)");
+        act.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("uploady.io", {
     continue() {
-        tool.click("#free_dwn");
-        tool.click("#downloadbtn");
+        act.click("#free_dwn");
+        act.click("#downloadbtn");
     },
 });
 
 domains.add("apkadmin.com", {
     continue() {
-        tool.click("#downloadbtn");
+        act.click("#downloadbtn");
     },
 });
 
 domains.add("www.up-4ever.net", {
     continue() {
-        tool.remove("#u4ab_modal");
-        tool.click(`button[name="method_free"]`);
+        act.remove("#u4ab_modal");
+        act.click(`button[name="method_free"]`);
 
-        tool.click("#downloadbtn");
+        act.click("#downloadbtn");
 
-        tool.click(tool.turnstile("[type='submit']:not([disabled])"));
-        tool.click("#dl2btn");
+        act.click(dom.turnstile("[type='submit']:not([disabled])"));
+        act.click("#dl2btn");
     },
 });
 
 domains.add("cloud.unblockedgames.world", {
     continue() {
-        tool.click("a[onclick]", { text: "Start Verification" });
-        tool.click("#verify_button2");
-        tool.click("#verify_button");
+        act.click("a[onclick]", { text: "Start Verification" });
+        act.click("#verify_button2");
+        act.click("#verify_button");
 
-        tool.redirect("#two_steps_btn[href]");
+        act.redirect("#two_steps_btn[href]");
     },
 });
 
 domains.add("jobzhub.store", {
     continue() {
-        tool.click("#next", { visible: true });
-        tool.click("#scroll", { visible: true });
-        tool.click("#glink", { visible: true });
-        tool.click(tool.turnstile("#surl:not(.disabled)"));
+        act.click("#next", { visible: true });
+        act.click("#scroll", { visible: true });
+        act.click("#glink", { visible: true });
+        act.click(dom.turnstile("#surl:not(.disabled)"));
     },
 });
 
 domains.add("aii.sh", {
     continue() {
-        tool.click(tool.turnstile("button#continue"));
-        tool.click(".btn-primary[href]:not(.disabled)");
+        act.click(dom.turnstile("button#continue"));
+        act.click(".btn-primary[href]:not(.disabled)");
     },
 });
 
 domains.add("aknewz.xyz", {
     continue() {
-        tool.click("#next");
-        tool.click("#scroll:not(.hidden)", { count: 2 });
-        tool.click(tool.turnstile("#surl"));
+        act.click("#next");
+        act.click("#scroll:not(.hidden)", { count: 2 });
+        act.click(dom.turnstile("#surl"));
     },
 });
 
 domains.add("toolskitpro.net", {
     continue() {
-        tool.remove("div", { css: { position: "fixed" } });
-        tool.click(".show #afterBtn");
-        tool.click("#nxt");
-        tool.click("#getl");
+        act.remove("div", { css: { position: "fixed" } });
+        act.click(".show #afterBtn");
+        act.click("#nxt");
+        act.click("#getl");
     },
 });
 
 domains.add("icutlink.com", {
     continue() {
-        tool.click(".get-link:not(.disabled)");
+        act.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("lnbz.la", {
     patcher() {
-        templates.antiAdbCore.patcher();
+        generics.antiAdbCore.patcher();
     },
     continue() {
-        tool.click(tool.turnstile("#continue"));
-        tool.click(".get-link:not(.disabled)");
+        act.click(dom.turnstile("#continue"));
+        act.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("avnsgames.com", {
     continue() {
-        tool.click("#getnewlink");
+        act.click("#getnewlink");
     },
 });
 
 domains.add("zdrive.to", {
     continue() {
-        tool.click("#freeBtn", { wait: 500 });
-        tool.click("#down_1Form button", { visible: true });
-        tool.click("#down_2Form button", { visible: true });
-        tool.click(".btn-download:not(.disabled)");
+        act.click("#freeBtn", { wait: 500 });
+        act.click("#down_1Form button", { visible: true });
+        act.click("#down_2Form button", { visible: true });
+        act.click(".btn-download:not(.disabled)");
     },
 });
 
 domains.add("cloudfam.io", {
     continue() {
-        tool.redirect("#btn-clean-continue[href]");
-        tool.redirect("#cf-btn-free[href]");
-        tool.redirect("#free-btn[href]");
-        tool.redirect("#cf-dl-btn[href]");
+        act.redirect("#btn-clean-continue[href]");
+        act.redirect("#cf-btn-free[href]");
+        act.redirect("#free-btn[href]");
+        act.redirect("#cf-dl-btn[href]");
     },
 });
 
 domains.add("uiil.ink", {
     continue() {
-        tool.click("#form-continue [type='submit']");
-        tool.click(tool.turnstile("#invisibleCaptchaShortlink"));
-        tool.click(`#multiLinkBtn:not(.disabled)`);
+        act.click("#form-continue [type='submit']");
+        act.click(dom.turnstile("#invisibleCaptchaShortlink"));
+        act.click(`#multiLinkBtn:not(.disabled)`);
     },
 });
 
 domains.add("coinclix.co", {
     async continue() {
-        tool.click("#link-card > #btnVerification");
-        tool.redirect("#link-card > .btn-primary[href]");
+        act.click("#link-card > #btnVerification");
+        act.redirect("#link-card > .btn-primary[href]");
 
-        const linkInstructions = await tool.element("#link-instructions-body");
+        const linkInstructions = await dom.query("#link-instructions-body");
         const keys = linkInstructions.querySelectorAll("kbd");
         const key = keys[keys.length - 1];
         const url = `https://geekgrove.net/?key=${key.textContent}`;
@@ -1691,8 +1693,8 @@ domains.add("coinclix.co", {
         });
 
         storage.global().watch("geekgrove-return-key", async (newValue) => {
-            tool.input("#link-card input#verificationCode", { value: newValue });
-            tool.click("#link-card button#btnVerification");
+            act.input("#link-card input#verificationCode", { value: newValue });
+            act.click("#link-card button#btnVerification");
         });
     },
 });
@@ -1703,7 +1705,7 @@ domains.add("geekgrove.net", {
         patch.apply(win.Document.prototype, "hasFocus", () => false);
         patch.listener({ type: "click", excludeTarget: "button" });
 
-        tool.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭, body > div:has(#accept-btn), div[style*='z-index']");
+        act.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭, body > div:has(#accept-btn), div[style*='z-index']");
     },
     async continue() {
         const key = new URLSearchParams(location.search).get("key");
@@ -1722,12 +1724,12 @@ domains.add("geekgrove.net", {
             location.assign(match[1]);
         };
 
-        tool.click("#btnLinkStart", { text: "Start" });
-        tool.click("#btnLinkContinue", { text: "Verify", wait: 1000 });
-        tool.click("#btnLinkContinue", { text: "Verify" });
-        tool.click("#btnLpcont", { text: "Continue" });
+        act.click("#btnLinkStart", { text: "Start" });
+        act.click("#btnLinkContinue", { text: "Verify", wait: 1000 });
+        act.click("#btnLinkContinue", { text: "Verify" });
+        act.click("#btnLpcont", { text: "Continue" });
 
-        const returnKey = await tool.element("#linkResHeader kbd");
+        const returnKey = await dom.query("#linkResHeader kbd");
         storage.global().set("geekgrove-return-key", returnKey.textContent);
         window.close();
     },
@@ -1735,45 +1737,45 @@ domains.add("geekgrove.net", {
 
 domains.add("www.google.com", {
     continue() {
-        tool.redirect("a[href^='https://'], a[href^='/goto?url=']");
+        act.redirect("a[href^='https://'], a[href^='/goto?url=']");
     },
 });
 
 domains.add("toolkit.inshorturl.com", {
     continue() {
-        tool.redirect("#lkActions a[href]");
+        act.redirect("#lkActions a[href]");
     },
 });
 
 domains.add("mahitimanch.in", {
     continue() {
-        tool.click("#link");
-        tool.click("#linkx");
-        tool.redirect("#gtelinkbtn");
+        act.click("#link");
+        act.click("#linkx");
+        act.redirect("#gtelinkbtn");
     },
 });
 
 domains.add("inshorturl.in", {
     continue() {
-        tool.redirect("#ts-get-link[href^='https']");
+        act.redirect("#ts-get-link[href^='https']");
     },
 });
 
 domains.add("blog.adlink.click", {
     continue() {
-        tool.click(".btn.get-link:not(.disabled)");
+        act.click(".btn.get-link:not(.disabled)");
     },
 });
 
 domains.add("bit.ly", {
     continue() {
-        tool.click(`#${CSS.escape("action:continue")}`);
+        act.click(`#${CSS.escape("action:continue")}`);
     },
 });
 
 domains.add("adfoc.us", {
     continue() {
-        tool.click(".nv-skip");
+        act.click(".nv-skip");
     },
 });
 
@@ -1807,34 +1809,34 @@ domains.add("speedy-links.com", {
         });
     },
     continue() {
-        tool.click("[data-task]");
-        tool.click(".d31-unlock-btn.enabled");
+        act.click("[data-task]");
+        act.click(".d31-unlock-btn.enabled");
     },
 });
 
 domains.add("nerventualken.com", {
     continue() {
-        tool.click(tool.turnstile("#go"));
+        act.click(dom.turnstile("#go"));
     },
 });
 
 domains.add("datanodes.to", {
     continue() {
-        tool.click("#method_free:not([disabled])");
-        tool.click("button.py-3", { text: "Free Download" });
-        tool.click("button.py-3", { text: "Start Download" });
+        act.click("#method_free:not([disabled])");
+        act.click("button.py-3", { text: "Free Download" });
+        act.click("button.py-3", { text: "Start Download" });
     },
 });
 
 domains.add("fuckingfast.co", {
     continue() {
-        tool.click(".link-button", { wait: 500 });
+        act.click(".link-button", { wait: 500 });
     },
 });
 
 domains.add("filekeeper.net", {
     continue() {
-        tool.click("#download-button");
+        act.click("#download-button");
     },
 });
 
@@ -1848,39 +1850,39 @@ domains.add("linkvertise.com", {
         });
     },
     continue() {
-        tool.redirect("a[href]:has(> button)", { text: "Get access" });
-        tool.click("ui-divider + lv-membership-plan-option");
-        tool.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
-        tool.click(".skip-button > *", { count: 4 });
-        tool.click(".success-card button");
+        act.redirect("a[href]:has(> button)", { text: "Get access" });
+        act.click("ui-divider + lv-membership-plan-option");
+        act.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
+        act.click(".skip-button > *", { count: 4 });
+        act.click(".success-card button");
     },
 });
 
 domains.add("app.khaddavi.net", {
     continue() {
-        tool.click("button.ready", { count: 4 });
+        act.click("button.ready", { count: 4 });
     },
 });
 
 domains.add("sfl.gl", {
     continue() {
-        tool.click("button", { text: "OPEN LINK" });
+        act.click("button", { text: "OPEN LINK" });
     },
 });
 
 domains.add("link4m.net", {
     patcher() {
-        tool.remove("body > div", { text: "Adblock" });
+        act.remove("body > div", { text: "Adblock" });
     },
     continue() {
-        tool.click(".get-link:not(.disabled)");
+        act.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("gplinks.co", {
     continue() {
-        tool.redirect(".gate-btn-skip");
-        tool.redirect(tool.turnstile("#captchaButton:not(.disabled)"));
+        act.redirect(".gate-btn-skip");
+        act.redirect(dom.turnstile("#captchaButton:not(.disabled)"));
     },
 });
 
@@ -1889,8 +1891,8 @@ domains.add("skrresults.com", {
         patch.haste({ factor: 0.01 });
     },
     continue() {
-        tool.click("#VerifyBtn", { visible: true });
-        tool.click("#NextBtn", { visible: true });
+        act.click("#VerifyBtn", { visible: true });
+        act.click("#NextBtn", { visible: true });
     },
 });
 
@@ -1902,27 +1904,27 @@ domains.add("rekonise.com", {
         });
     },
     continue() {
-        tool.click(".action-button:not([disabled])", { count: 10 });
-        tool.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
+        act.click(".action-button:not([disabled])", { count: 10 });
+        act.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
     },
 });
 
 domains.add("safelinkearn.com", {
     continue() {
-        tool.click(".open-btn");
+        act.click(".open-btn");
     },
 });
 
 domains.add("www.mirrored.to", {
     continue() {
-        tool.click(".get_btn");
-        tool.redirect(".highlight a[href]:has(.get_btn)");
+        act.click(".get_btn");
+        act.redirect(".highlight a[href]:has(.get_btn)");
     },
 });
 
 domains.add("www.nexusmods.com", {
     continue() {
-        tool.click("mod-file-download >>> .nxm-button-secondary-filled-weak");
+        act.click("mod-file-download >>> .nxm-button-secondary-filled-weak");
     },
 });
 
@@ -1937,7 +1939,7 @@ domains.add("f95zone.to", {
         bypass.listener(url);
     },
     continue() {
-        tool.click(tool.hcaptcha(".f95dl-go button"));
+        act.click(dom.hcaptcha(".f95dl-go button"));
     },
 });
 
@@ -1946,66 +1948,66 @@ domains.add("online-fix.me", {
         patch.haste();
     },
     continue() {
-        tool.click(".dl_content button[onclick]");
+        act.click(".dl_content button[onclick]");
     },
 });
 
 domains.add("anon.to", {
     continue() {
-        tool.redirect("a#continue[href]");
+        act.redirect("a#continue[href]");
     },
 });
 
 domains.add("devuploads.com", {
     patcher() {
-        tool.hide(".dl-promo, .dl-promo-mini, section.card-pad, .signup-band");
+        act.hide(".dl-promo, .dl-promo-mini, section.card-pad, .signup-band");
     },
     continue() {
-        tool.click("[type='submit'][name='method_free']:not([disabled], [value*='Please wait'])", { wait: 1000, count: 2 });
-        tool.click(".dl-actions button[type='submit']", { wait: 1000 });
-        tool.click(".dl-actions button.is-ready", { wait: 1000 });
-        tool.click(".dl-actions a[href]", { text: "Download File", wait: 1000 });
-        tool.click(".dl-actions a[href].is-ready", { text: "Download File", wait: 1000 });
+        act.click("[type='submit'][name='method_free']:not([disabled], [value*='Please wait'])", { wait: 1000, count: 2 });
+        act.click(".dl-actions button[type='submit']", { wait: 1000 });
+        act.click(".dl-actions button.is-ready", { wait: 1000 });
+        act.click(".dl-actions a[href]", { text: "Download File", wait: 1000 });
+        act.click(".dl-actions a[href].is-ready", { text: "Download File", wait: 1000 });
     },
 });
 
 domains.add("katfile.co", {
     patcher() {
-        tool.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
+        act.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
     },
     continue() {
-        tool.click(".kfd-slow", { wait: 1000, count: 2 });
-        tool.click(tool.turnstile(".downloadbtn"));
-        tool.redirect("a#dlink[href]");
+        act.click(".kfd-slow", { wait: 1000, count: 2 });
+        act.click(dom.turnstile(".downloadbtn"));
+        act.redirect("a#dlink[href]");
     },
 });
 
 domains.add("datavaults.co", {
     continue() {
-        tool.click("#original");
-        tool.click(tool.recaptcha("#downloadbtn:not([disabled])"));
+        act.click("#original");
+        act.click(dom.recaptcha("#downloadbtn:not([disabled])"));
     },
 });
 
 domains.add("link.snipcash.com", {
     continue() {
-        tool.click(tool.recaptcha("#invisibleCaptchaShortlink:not([disabled])"));
-        tool.click(".get-link:not(.disabled)");
+        act.click(dom.recaptcha("#invisibleCaptchaShortlink:not([disabled])"));
+        act.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("fdsite.lat", {
     continue() {
-        tool.click(".dl-card button.btn-primary", { wait: 1000, visible: true });
+        act.click(".dl-card button.btn-primary", { wait: 1000, visible: true });
     },
 });
 
 domains.add("topshare.in", {
     patcher() {
-        tool.hide(".post-content-container, #normal");
+        act.hide(".post-content-container, #normal");
     },
     continue() {
-        tool.click("#btn-download", { visible: true });
+        act.click("#btn-download", { visible: true });
     },
 });
 
@@ -2014,22 +2016,22 @@ domains.add("dailyuploads.net", {
         patch.haste();
     },
     continue() {
-        tool.click(".du-dl-opt.is-free");
-        tool.click("#downloadbtn:not([disabled])");
+        act.click(".du-dl-opt.is-free");
+        act.click("#downloadbtn:not([disabled])");
     },
 });
 
 domains.add("psa.wf", {
     async cache() {
-        const entry = await tool.element(".entry-inner:has(> .sp-wrap)");
+        const entry = await dom.query(".entry-inner:has(> .sp-wrap)");
         const headsNode = entry.querySelectorAll(".sp-head");
-        const titles = [...headsNode].filter(head => tool.match(head, { text: /-PSA$/m })).map(n => n.textContent.trim());
+        const titles = [...headsNode].filter(head => dom.match(head, { text: /-PSA$/m })).map(n => n.textContent.trim());
 
         const links = await bypass.lookup(titles);
         for (const link of links) {
             if (!link.found) continue;
 
-            tool.stalk(".sp-head", { text: link.title }, n => {
+            dom.stalk(".sp-head", { text: link.title }, n => {
                 const downloadIcon = n.nextElementSibling.querySelector(".fa-download");
                 const body = downloadIcon.closest(".sp-body");
                 const nodeLinks = link.links.map(l => `<a href="${l}">${l}</a>`).join("<br>");
@@ -2066,17 +2068,17 @@ domains.add("psa.wf", {
             }));
         };
 
-        const track = await tool.element("#sg-track");
+        const track = await dom.query("#sg-track");
         const thumb = track.querySelector("#sg-thumb");
         drag(thumb, track);
 
-        tool.stalk("#sg-code-a", {}, async (node, stop) => {
+        dom.stalk("#sg-code-a", {}, async (node, stop) => {
             stop();
             storage.global().set("no-bots-allowed", node.textContent.trim());
             GM_openInTab("https://no-bots-allowed.org", { active: true, insert: true });
 
-            const input = await tool.element("input.sg-input");
-            const button = await tool.element("button.sg-btn");
+            const input = await dom.query("input.sg-input");
+            const button = await dom.query("button.sg-btn");
             storage.global().watch("no-bots-allowed", (newValue) => {
                 input.value = newValue;
                 button.click();
@@ -2087,8 +2089,8 @@ domains.add("psa.wf", {
 
 domains.add("get-to.link", {
     async cache() {
-        const titleNode = await tool.element("#content-box center h2");
-        const pNode = await tool.element("#content-box p:has(a[href][target='_blank'])");
+        const titleNode = await dom.query("#content-box center h2");
+        const pNode = await dom.query("#content-box p:has(a[href][target='_blank'])");
 
         const title = titleNode.textContent.trim();
         const links = [...pNode.querySelectorAll("a[href][target='_blank']")].map(l => l.href);
@@ -2101,11 +2103,11 @@ domains.add("no-bots-allowed.org", {
     continue() {
         const code = storage.global().get("no-bots-allowed");
 
-        tool.stalk("input#nba-code", {}, (node, stop) => {
+        dom.stalk("input#nba-code", {}, (node, stop) => {
             if (!code) return stop();
             node.value = code;
         });
 
-        tool.click(":has(input#nba-code:not(:placeholder-shown)) .nba-btn");
+        act.click(":has(input#nba-code:not(:placeholder-shown)) .nba-btn");
     },
 });
