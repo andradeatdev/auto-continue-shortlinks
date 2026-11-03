@@ -277,7 +277,25 @@ const commands = {
         reportUrl: {
             name: "Report URL issue",
             action() {
-                GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml");
+                const { script, scriptHandler, platform, userAgentData } = GM_info;
+
+                const browser = platform?.browserName && platform.browserVersion
+                    ? `${platform.browserName} ${platform.browserVersion}`
+                    : userAgentData?.brands
+                        ?.filter(({ brand }) => !/Not.?A.?Brand/i.test(brand))
+                        .map(({ brand, version }) => `${brand} ${version}`)
+                        .join(", ") || "Unknown browser";
+
+                const params = new URLSearchParams({
+                    template: "site-broken.yml",
+                    url: location.href.split("?", 1)[0],
+                    version: script.version,
+                    env: `${browser} + ${scriptHandler} ${GM_info.version}`,
+                });
+
+                GM_openInTab(
+                    `https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?${params}`,
+                );
             },
         },
     },
