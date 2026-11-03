@@ -972,7 +972,7 @@ const bypass = {
         const pattern = this.shortenerPatterns[hostname];
         if (!pattern?.test(pathname + search)) return;
 
-        this.cache(href);
+        if (config.useCache) this.cache(href);
         this.listener(href);
         this.clear();
     },
@@ -980,10 +980,7 @@ const bypass = {
     cache(href) {
         const cacheLocal = storage.global().get("bypass-local", {});
         const destCached = cacheLocal[href];
-        if (destCached) {
-            navigation.navigate(destCached, { info: "bypass_link" });
-            return;
-        }
+        if (destCached) return navigation.navigate(destCached, { info: "bypass_link" });
 
         GM_xmlhttpRequest({
             method: "GET",
@@ -1111,7 +1108,7 @@ const domains = {
 
         if (config.useCache && handler.cache) {
             handler.cache();
-        } else if (config.useCache) {
+        } else {
             bypass.exec(hostname, href, pathname, search);
         }
 
