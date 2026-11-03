@@ -962,18 +962,14 @@ const bypass = {
     ],
 
     exec(hostname, href, pathname, search) {
-        if (!this.cacheURL) return bus.emit("cache:skip", { reason: "no-cacheURL" });
+        if (!this.cacheURL) return;
 
         const pattern = this.shortenerPatterns[hostname];
-        if (!pattern) return bus.emit("cache:skip", { reason: "host-not-in-patterns" });
+        if (!pattern?.test(pathname + search)) return;
 
-        const path = pathname + search;
-        if (!pattern.test(path)) return bus.emit("cache:skip", { reason: "path-mismatch", path });
-
-        bus.emit("cache:eligible", { href });
         this.cache(href);
         this.listener(href);
-        this.prune();
+        this.clear();
     },
 
     cache(href) {
@@ -992,7 +988,7 @@ const bypass = {
             onload: ({ response }) => {
                 if (response?.status !== "ok" || !response.destination) return;
                 const url = new URL(response.destination);
-                if (url.protocol !== "https:" || !this.isFinalHost(url.hostname)) return;
+                if (url.protocol !== "https:" || !this.trusted(url.hostname)) return;
                 navigation.navigate(url.href, { info: "bypass_link" });
             },
         });
@@ -1003,7 +999,7 @@ const bypass = {
             if (event.info === "bypass_link") return;
 
             const destinationURL = new URL(event.destination.url);
-            const isFinalHost = this.isFinalHost(destinationURL.hostname);
+            const isFinalHost = this.trusted(destinationURL.hostname);
             const isSameURL = destinationURL.href === href;
 
             if (!isFinalHost || isSameURL) return;
@@ -1033,7 +1029,7 @@ const bypass = {
         });
     },
 
-    prune() {
+    clear() {
         const cacheLocal = storage.global().get("bypass-local", {});
         const entries = Object.entries(cacheLocal);
         if (entries.length <= this.cacheMaxEntries) return;
