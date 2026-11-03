@@ -515,7 +515,7 @@ const dom = {
         return new Promise((resolve, reject) => {
             let timer;
 
-            const done = dom.stalk(selector, options, (node, stop) => {
+            const done = dom.stalk(selector, options, node => {
                 clearTimeout(timer);
                 resolve(node);
                 return { stop: true };
