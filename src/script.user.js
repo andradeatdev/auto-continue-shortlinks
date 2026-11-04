@@ -145,6 +145,7 @@
 // 
 // @connect            shortlinks.zencore.fun
 // @connect            intercelestial.com
+// @connect            clksz.com
 //
 // @copyright          2024-2026 hdyzen (andradeatdev) — https://github.com/andradeatdev/auto-continue-shortlinks/
 // @license            GPL-3.0
@@ -717,18 +718,18 @@ const act = {
 };
 
 const net = {
-    get(url) {
-        return this.json("GET", url);
+    get(url, options = {}) {
+        return this.request(url, options);
     },
 
     post(url, body) {
-        return this.json("POST", url, body);
+        return this.request(url, { data: body });
     },
 
     request(url, options = {}) {
         if (typeof url !== "string") throw new TypeError("[net.request] Missing `url` argument");
 
-        const { method = "GET", headers = {}, data, timeout, overrideMimeType, responseType = "text" } = options;
+        const { method = "GET", headers = {}, data, timeout, overrideMimeType, responseType = "text", redirect, anonymous } = options;
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method,
@@ -738,9 +739,12 @@ const net = {
                 data,
                 timeout,
                 overrideMimeType,
+                redirect,
+                anonymous,
                 onload: resolve,
                 onerror: reject,
                 ontimeout: reject,
+                onabort: reject,
             });
         });
     },
@@ -759,18 +763,18 @@ const worker = {
     url: "https://shortlinks.zencore.fun",
     links: {
         find(href) {
-            return net.get(`${worker.url}/api/check?url=${encodeURIComponent(href)}`);
+            return net.json("GET", `${worker.url}/api/check?url=${encodeURIComponent(href)}`);
         },
         save(href, destination) {
-            return net.post(`${worker.url}/api/save`, { shortlink: href, destination });
+            return net.json("POST", `${worker.url}/api/save`, { shortlink: href, destination });
         },
     },
     titles: {
         save(title, links) {
-            return net.post(`${worker.url}/api/titles`, { title, links });
+            return net.json("POST", `${worker.url}/api/titles`, { title, links });
         },
         find(titles) {
-            return net.post(`${worker.url}/api/titles/lookup`, { titles });
+            return net.json("POST", `${worker.url}/api/titles/lookup`, { titles });
         },
     },
 };
@@ -1015,6 +1019,9 @@ const bypass = {
         "online-fix.me": /^\/ext\/.+$/,
         "link.snipcash.com": /^\/[A-Za-z0-9_-]{3,}$/,
     },
+    gatePatterns: {
+        "clksz.com": /^\/r\/[^/]+\/.+$/,
+    },
     finalDomains: [
         "send.now",
         "1fichier.com",
@@ -1055,6 +1062,7 @@ const bypass = {
         if (destCached) return navigation.navigate(destCached, { info: "bypass_link" });
 
         const { response } = await worker.links.find(href);
+        console.log("res", response);
         if (response?.status !== "ok" || !response.destination) return;
 
         const url = new URL(response.destination);
@@ -1066,16 +1074,47 @@ const bypass = {
     listener(href) {
         navigation.addEventListener("navigate", (event) => {
             if (event.info === "bypass_link") return;
+            console.dir("navigate", event);
 
-            const destinationURL = new URL(event.destination.url);
-            const isFinalHost = this.trusted(destinationURL.hostname);
-            const isSameURL = destinationURL.href === href;
+            const dest = new URL(event.destination.url);
+            if (dest.href === href) return;
 
-            if (!isFinalHost || isSameURL) return;
-            event.preventDefault();
+            if (this.trusted(dest.hostname)) {
+                event.preventDefault();
+                this.save(href, dest.href);
+                return;
+            }
 
-            this.save(href, destinationURL.href);
+            if (this.gate(dest)) {
+                event.preventDefault();
+                this.follow(href, dest.href);
+            }
         });
+    },
+
+    gate(dest) {
+        const pattern = this.gatePatterns[dest.hostname];
+        if (!pattern) return;
+
+        return pattern.test(dest.pathname + dest.search);
+    },
+
+    async follow(href, destination) {
+        const { finalUrl } = await net.get(destination, {
+            headers: {
+                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                Host: location.hostname,
+                Referer: location.href,
+                Cookie: document.cookie,
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+            },
+        });
+
+        const final = new URL(finalUrl);
+        if (!this.trusted(final.hostname)) return;
+
+        this.save(href, final);
     },
 
     async save(href, destination) {
