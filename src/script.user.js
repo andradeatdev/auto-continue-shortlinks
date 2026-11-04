@@ -1031,6 +1031,7 @@ const bypass = {
         "gofile.io",
         "mxdrop.click",
         "uploadhaven.com",
+        "flycutlink.com",
     ],
 
     exec(hostname, href, pathname, search) {
@@ -1272,10 +1273,20 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], {
     patcher() {
         generics.antiAdbCore.patcher();
         generics.pahe.patcher();
+        patch.apply(win.Object, "getOwnPropertyDescriptor", (target, thisArg, argArray) => {
+            const [obj, prop] = argArray;
+            const desc = Reflect.apply(target, thisArg, argArray);
+
+            if (prop === "isTrusted" && obj instanceof Event) {
+                return { ...desc, get: () => true };
+            }
+
+            return desc;
+        });
     },
     continue() {
-        act.click("#continue:not([disabled])");
-        act.click(".get-link[href]:not(.disabled)");
+        act.click("form button.btn-primary:not([disabled])");
+        act.click("button.btn-success:not(.disabled)");
     },
 });
 
@@ -1284,11 +1295,11 @@ domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixb
         patch.haste();
         act.hide("#masthead, aside, #content > :not(center, form), footer");
         act.remove("div", { css: { position: "fixed" }, text: "detected" });
+        patch.listener({ type: "click", excludeTarget: "#startButton, #getnewlink" });
     },
     continue() {
-        act.click("#startButton");
-        act.click("a[href='#getmylink']");
-        act.click("#getnewlink");
+        act.click("#startButton", { wait: 2000 });
+        act.click("#getnewlink", { visible: true });
     },
 });
 
@@ -1355,7 +1366,7 @@ domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], 
         });
     },
     continue() {
-        act.click(dom.turnstile("#go-btn"));
+        act.click("#go-btn:not([disabled])");
         act.click("#step-top .step-btn:not([disabled])");
         act.click("#step-bottom .step-btn:not([disabled])", { count: 2 });
     },
