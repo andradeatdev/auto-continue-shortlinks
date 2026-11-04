@@ -686,12 +686,14 @@ const act = {
         }, options);
     },
 
-    hide(selector) {
+    hide(selector, options = {}) {
         this.guard("hide", selector);
+
+        const { root = document.documentElement } = options;
 
         const style = document.createElement("style");
         style.textContent = `${selector} { display: none !important; }`;
-        document.documentElement.append(style);
+        root.append(style);
 
         return () => style.remove();
     },
@@ -1144,125 +1146,6 @@ const domains = {
 };
 
 const generics = {
-    tpi: {
-        patcher() {
-            generics.antiAdbCore.patcher();
-            generics.pahe.patcher();
-        },
-        continue() {
-            act.click("#continue:not([disabled])");
-            act.click(".get-link[href]:not(.disabled)");
-        },
-    },
-    host: {
-        patcher() {
-            patch.haste();
-            act.hide("#masthead, aside, #content > :not(center, form), footer");
-            act.remove("div", { css: { position: "fixed" }, text: "detected" });
-        },
-        continue() {
-            act.click("#startButton");
-            act.click("a[href='#getmylink']");
-            act.click("#getnewlink");
-        },
-    },
-    ouo: {
-        patcher() {
-            patch.haste();
-        },
-        continue() {
-            act.click("#btn-main:not(.disabled)");
-            act.click(dom.turnstile("#invisibleCaptchaShortlink"));
-        },
-    },
-    exeio: {
-        continue() {
-            act.click("#submit-button:not([disabled])", { count: 2 });
-            act.click(dom.turnstile("#submit-button:not([disabled])"));
-        },
-    },
-    cuttty: {
-        continue() {
-            act.click("#submit-button:not([disabled])");
-        },
-    },
-    nobots: {
-        patcher() {
-            act.hide(".single-content > :not(div), #masthead, .post-navigation, .entry-related, #comments, footer");
-        },
-        continue() {
-            act.scroll("#safegate-wait1");
-            act.click("#safegate-proceed-btn", { visible: true });
-            act.scroll("#safegate-wait2", { visible: true });
-            act.click("#safegate-go", { visible: true });
-
-            dom.stalk("#safegate-reveal-overlay > div > div > span", {}, node => {
-                storage.global().set("no-bots-allowed", node.textContent.trim());
-                window.close();
-            });
-        },
-    },
-    boostink: {
-        async continue() {
-            const res = await net.request(location.href);
-            const match = /unlock.js.+[a-z]+="([^"]+)"/.exec(res.response);
-            if (!match) return;
-
-            const decoded = atob(match[1]);
-            location.assign(decoded);
-        },
-    },
-    pndk: {
-        patcher() {
-            const adsSelectors = ".adsbox, .pub_300x250, .ad-banner, .ad-unit, .text-ad, .adsbygoogle, .ad-placement, .textads, .banner-ads, #adsense";
-
-            act.hide(".crumb, .post-title, .post-meta, .share, figure, .toc, .site-footer, .side, .section-title, h1");
-            patch.mask(adsSelectors, { display: "block", visibility: "visible" });
-            patch.define(win.HTMLElement.prototype, "offsetParent", {
-                get(getter) {
-                    return this.matches(adsSelectors) ? document.body : getter();
-                },
-            });
-            patch.define(win.HTMLElement.prototype, "offsetHeight", {
-                get(getter) {
-                    return this.matches(adsSelectors) ? 1 : getter();
-                },
-            });
-            patch.define(win.HTMLElement.prototype, "offsetWidth", {
-                get(getter) {
-                    return this.matches(adsSelectors) ? 1 : getter();
-                },
-            });
-            patch.define(win.HTMLImageElement.prototype, "src", {
-                set() {
-                    this.onerror = () => { };
-                    this.onload();
-                },
-            });
-        },
-        continue() {
-            act.click(dom.turnstile("#go-btn"));
-            act.click("#step-top .step-btn:not([disabled])");
-            act.click("#step-bottom .step-btn:not([disabled])", { count: 2 });
-        },
-    },
-    xutio: {
-        continue() {
-            act.click("#sl-primary:not([disabled])", { visible: true });
-            act.click(".get-link:not(.disabled)");
-        },
-    },
-    fclc_oii: {
-        patcher() {
-            patch.define(win, "AdscoreInit", { get: () => () => { } });
-        },
-        async continue() {
-            act.click(dom.hcaptcha("button#hCaptchaShortlink"));
-            act.click(dom.turnstile("button#submitBtn"));
-
-            setInterval(() => document.dispatchEvent(new MouseEvent("mousemove")), 100);
-        },
-    },
     pahe: {
         patcher() {
             const mirror = (url, dest) => {
@@ -1362,13 +1245,22 @@ const generics = {
                 const [node] = argArray;
                 const result = Reflect.apply(target, thisArg, argArray);
 
-                const alert = node.querySelector?.("[role='alertdialog']");
-                if (alert) alert.remove();
+                const hasHifen = node.tagName?.includes("-");
+                if (hasHifen) {
+                    node.remove();
+                    console.log("F", node);
+                    return;
+                }
+
+                const isModal = node.getHTML?.().includes("adblock");
+                if (isModal) {
+                    node.remove();
+                    return;
+                }
 
                 if (node.nodeName === "SLOT") {
-                    const sheet = new CSSStyleSheet();
-                    sheet.replaceSync("div:has([role='dialog']) { display: none !important; }");
-                    thisArg.adoptedStyleSheets.push(sheet);
+                    act.hide(":not(slot)", { root: node.getRootNode() });
+                    return;
                 }
 
                 return result;
@@ -1377,16 +1269,134 @@ const generics = {
     },
 };
 
-domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.tpi);
-domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], generics.host);
-domains.add(["ouo.io", "ouo.press"], generics.ouo);
-domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], generics.exeio);
-domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.com"], generics.cuttty);
-domains.add(["boost.ink", "bst.gg"], generics.boostink);
-domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], generics.pndk);
-domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], generics.xutio);
-domains.add(["fc-lc.xyz", "oii.io"], generics.fclc_oii);
-domains.add(["premium.hairmova.com", "product.hairmova.com"], generics.nobots);
+domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], {
+    patcher() {
+        generics.antiAdbCore.patcher();
+        generics.pahe.patcher();
+    },
+    continue() {
+        act.click("#continue:not([disabled])");
+        act.click(".get-link[href]:not(.disabled)");
+    },
+});
+
+domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], {
+    patcher() {
+        patch.haste();
+        act.hide("#masthead, aside, #content > :not(center, form), footer");
+        act.remove("div", { css: { position: "fixed" }, text: "detected" });
+    },
+    continue() {
+        act.click("#startButton");
+        act.click("a[href='#getmylink']");
+        act.click("#getnewlink");
+    },
+});
+
+domains.add(["ouo.io", "ouo.press"], {
+    patcher() {
+        patch.haste();
+    },
+    continue() {
+        act.click("#btn-main:not(.disabled)");
+        act.click(dom.turnstile("#invisibleCaptchaShortlink"));
+    },
+});
+
+domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], {
+    continue() {
+        act.click("#submit-button:not([disabled])", { count: 2 });
+        act.click(dom.turnstile("#submit-button:not([disabled])"));
+    },
+});
+
+domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.com"], {
+    continue() {
+        act.click("#submit-button:not([disabled])");
+    },
+});
+
+domains.add(["boost.ink", "bst.gg"], {
+    async continue() {
+        const res = await net.request(location.href);
+        const match = /unlock.js.+[a-z]+="([^"]+)"/.exec(res.response);
+        if (!match) return;
+
+        const decoded = atob(match[1]);
+        location.assign(decoded);
+    },
+});
+
+domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], {
+    patcher() {
+        const adsSelectors = ".adsbox, .pub_300x250, .ad-banner, .ad-unit, .text-ad, .adsbygoogle, .ad-placement, .textads, .banner-ads, #adsense";
+
+        act.hide(".crumb, .post-title, .post-meta, .share, figure, .toc, .site-footer, .side, .section-title, h1");
+        patch.mask(adsSelectors, { display: "block", visibility: "visible" });
+        patch.define(win.HTMLElement.prototype, "offsetParent", {
+            get(getter) {
+                return this.matches(adsSelectors) ? document.body : getter();
+            },
+        });
+        patch.define(win.HTMLElement.prototype, "offsetHeight", {
+            get(getter) {
+                return this.matches(adsSelectors) ? 1 : getter();
+            },
+        });
+        patch.define(win.HTMLElement.prototype, "offsetWidth", {
+            get(getter) {
+                return this.matches(adsSelectors) ? 1 : getter();
+            },
+        });
+        patch.define(win.HTMLImageElement.prototype, "src", {
+            set() {
+                this.onerror = () => { };
+                this.onload();
+            },
+        });
+    },
+    continue() {
+        act.click(dom.turnstile("#go-btn"));
+        act.click("#step-top .step-btn:not([disabled])");
+        act.click("#step-bottom .step-btn:not([disabled])", { count: 2 });
+    },
+});
+
+domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], {
+    continue() {
+        act.click("#sl-primary:not([disabled])", { visible: true });
+        act.click(".get-link:not(.disabled)");
+    },
+});
+
+domains.add(["fc-lc.xyz", "oii.io"], {
+    patcher() {
+        patch.define(win, "AdscoreInit", { get: () => () => { } });
+    },
+    async continue() {
+        act.click(dom.hcaptcha("button#hCaptchaShortlink"));
+        act.click(dom.turnstile("button#submitBtn"));
+
+        setInterval(() => document.dispatchEvent(new MouseEvent("mousemove")), 100);
+    },
+});
+
+domains.add(["premium.hairmova.com", "product.hairmova.com"], {
+    patcher() {
+        act.hide(".single-content > :not(div), #masthead, .post-navigation, .entry-related, #comments, footer");
+    },
+    continue() {
+        act.scroll("#safegate-wait1");
+        act.click("#safegate-proceed-btn", { visible: true });
+        act.scroll("#safegate-wait2", { visible: true });
+        act.click("#safegate-go", { visible: true });
+
+        dom.stalk("#safegate-reveal-overlay > div > div > span", {}, node => {
+            storage.global().set("no-bots-allowed", node.textContent.trim());
+            window.close();
+        });
+    },
+});
 
 domains.add("pahe.ink", {
     patcher() {
