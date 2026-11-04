@@ -89,6 +89,10 @@
 // @match              https://psa.wf/*
 // @match              https://get-to.link/*
 // @match              https://no-bots-allowed.org/*
+// @match              https://fileroy.com/*
+// 
+// @match              https://astrorede.com/*
+// @match              https://app.lovemodz.space/*
 // 
 // @match              https://premium.hairmova.com/*
 // @match              https://product.hairmova.com/*
@@ -2117,5 +2121,30 @@ domains.add("no-bots-allowed.org", {
         });
 
         act.click(":has(input#nba-code:not(:placeholder-shown)) .nba-btn");
+    },
+});
+
+domains.add("fileroy.com", {
+    continue() {
+        act.click(".fr-gate-button:not([disabled])");
+        act.click(".download-file-link", { wait: 1000 });
+    },
+});
+
+domains.add("astrorede.com", {
+    continue() {
+        act.click("#bt");
+        act.click("#bt", { text: "CONTINUAR" });
+    },
+});
+
+domains.add("app.lovemodz.space", {
+    patcher() {
+        patch.haste();
+    },
+    continue() {
+        act.click("#sl-g1");
+        act.click("#sl-g3", { visible: true });
+        act.click("#sl-g5", { visible: true });
     },
 });
