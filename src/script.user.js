@@ -1049,12 +1049,12 @@ const bypass = {
         this.clear();
     },
 
-    cache(href) {
+    async cache(href) {
         const cacheLocal = storage.global().get("bypass-local", {});
         const destCached = cacheLocal[href];
         if (destCached) return navigation.navigate(destCached, { info: "bypass_link" });
 
-        const { response } = worker.links.find(href);
+        const { response } = await worker.links.find(href);
         if (response?.status !== "ok" || !response.destination) return;
 
         const url = new URL(response.destination);
@@ -1078,10 +1078,10 @@ const bypass = {
         });
     },
 
-    save(href, destination) {
+    async save(href, destination) {
         storage.global().merge("bypass-local", { [href]: destination });
 
-        const { response } = worker.links.save(href, destination);
+        const { response } = await worker.links.save(href, destination);
         if (response?.status !== "ok") { console.error(response); }
         navigation.navigate(destination, { info: "bypass_link" });
     },
@@ -1101,8 +1101,8 @@ const bypass = {
         }
     },
 
-    title(title, links) {
-        const { response } = worker.titles.save(title, links);
+    async title(title, links) {
+        const { response } = await worker.titles.save(title, links);
         if (response?.status !== "ok") console.error(response);
     },
 
