@@ -770,46 +770,39 @@ const worker = {
 };
 
 const patch = {
-    installToString() {
-        if (patch.toStringPatched) return;
-        patch.toStringPatched = true;
+    conceal(fake, original) {
+        const ctx = ctxs.of("conceal");
 
-        patch.fnToString = win.Function.prototype.toString;
-        patch.fnToStringMap = new WeakMap();
+        ctx.originals ??= new WeakMap();
+        ctx.originals.set(fake, ctx.originals.get(original) ?? original);
 
-        const newToString = function () {
-            const original = patch.fnToStringMap.get(this);
-            return patch.fnToString.call(original || this);
+        if (ctx.concealed) return;
+        ctx.concealed = true;
+
+        const proto = win.Function.prototype;
+        const native = proto.toString;
+
+        const toString = function () {
+            return native.call(ctx.originals.get(this) ?? this);
         };
 
-        patch.fnToStringMap.set(newToString, patch.fnToString);
-
-        Object.defineProperties(newToString, {
+        Object.defineProperties(toString, {
             name: { value: "toString", configurable: true },
             length: { value: 0, configurable: true },
         });
 
-        const desc = Object.getOwnPropertyDescriptor(win.Function.prototype, "toString");
-        Object.defineProperty(win.Function.prototype, "toString", { ...desc, value: newToString });
+        ctx.originals.set(toString, native);
+
+        const desc = Object.getOwnPropertyDescriptor(proto, "toString");
+        Object.defineProperty(proto, "toString", { ...desc, value: toString });
     },
 
     hook(owner, property, handler) {
         const target = owner[property];
         if (typeof target !== "function") return false;
 
-        patch.installToString();
-
-        const traps = {};
-
-        if (handler.apply) {
-            traps.apply = (t, thisArg, argArray) => handler.apply(t, thisArg, argArray);
-        }
-        if (handler.construct) {
-            traps.construct = (t, argArray, newTarget) => handler.construct(t, argArray, newTarget);
-        }
-
-        const proxy = new Proxy(target, traps);
-        patch.fnToStringMap.set(proxy, target);
+        const proxy = new Proxy(target, handler);
+        patch.conceal(proxy, target);
 
         const proto = target.prototype;
         if (proto && proto.constructor === target) {
@@ -822,13 +815,8 @@ const patch = {
         }
 
         const desc = Object.getOwnPropertyDescriptor(owner, property);
-        if (desc && "value" in desc) {
-            Object.defineProperty(owner, property, { ...desc, value: proxy });
-        } else {
-            owner[property] = proxy;
-        }
-
-        return true;
+        if (desc && "value" in desc) Object.defineProperty(owner, property, { ...desc, value: proxy });
+        else owner[property] = proxy;
     },
 
     apply(owner, property, applyFn) {
@@ -1809,8 +1797,8 @@ domains.add("speedy-links.com", {
         });
     },
     continue() {
-        act.click("[data-task]");
-        act.click(".d31-unlock-btn.enabled");
+        act.click("[class*='task-list'] > *");
+        act.click("[class*='unlock-btn'].enabled");
     },
 });
 
