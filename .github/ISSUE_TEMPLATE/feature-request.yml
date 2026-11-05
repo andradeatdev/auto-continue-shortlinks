@@ -7,6 +7,7 @@ body:
     attributes:
       value: |
         Thanks for the suggestion. Please check the existing issues first and add a 👍 or a comment instead of opening a duplicate.
+        To request support for a **new site**, use the [Site requests](https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10) thread in Discussions instead.
 
   - type: textarea
     id: idea
@@ -20,28 +21,24 @@ body:
   - type: textarea
     id: why
     attributes:
-      label: Why do you need it?
-      description: What problem does it solve, or what do you do manually today?
-    validations:
-      required: true
+      label: Why would it help?
+      description: What problem does it solve, or what do you do manually today? (optional)
 
   - type: dropdown
     id: area
     attributes:
       label: Area
-      description: Which part of the script does it touch?
+      description: Which part of the script does it touch? Pick "Not sure" if you don't know.
       options:
+        - Not sure
         - Cache
         - Continue
         - Patcher
         - Menu commands
-        - Host support
         - Other
-    validations:
-      required: true
 
   - type: input
-    id: site
+    id: url
     attributes:
-      label: Site or host (if it applies)
+      label: Example URL (if it applies)
       placeholder: https://tpi.li/abc123

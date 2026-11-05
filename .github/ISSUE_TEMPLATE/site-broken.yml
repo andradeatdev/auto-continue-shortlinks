@@ -1,6 +1,6 @@
 name: Site stopped working
 description: A supported site no longer continues automatically
-title: "[site-broken] <host>: "
+title: "[site-broken] "
 labels: ["site-broken", "needs-triage"]
 body:
   - type: markdown
@@ -8,33 +8,14 @@ body:
       value: |
         Thanks for reporting. Please check the existing issues for the same site first and add a 👍 or a comment instead of opening a duplicate.
 
-  - type: dropdown
-    id: site
-    attributes:
-      label: Site
-      description: Which host is the problem on?
-      options:
-        - tpi.li
-        - oii.la
-        - srnky.com
-        - clksz.com
-        - pahe.plus
-        - intercelestial.com
-        - linegee.net
-        - ouo.io
-        - fc-lc.xyz
-        - boost.ink
-        - exeygo.com
-        - cuttty.com
-        - Other (write it below)
-    validations:
-      required: true
-
   - type: input
     id: url
     attributes:
-      label: Page URL (without query string)
-      placeholder: https://tpi.li/abc123
+      label: Page URL(s)
+      description: One link is enough, but a couple more from the same site help me tell whether it's a general problem or just that link. One per line.
+      placeholder: |
+        https://tpi.li/abc123
+        https://tpi.li/def456
     validations:
       required: true
 
@@ -55,30 +36,27 @@ body:
   - type: textarea
     id: details
     attributes:
-      label: Details
-      description: What did you expect, and what happened instead?
-    validations:
-      required: true
+      label: Additional details
+      description: Anything that helps reproduce it (optional).
 
   - type: input
     id: version
     attributes:
       label: Script version
-      placeholder: "1.6.0"
+      description: Shown in the last option of the script's menu (Menu → this script).
+      placeholder: x.y.z 
     validations:
       required: true
 
-  - type: dropdown
+  - type: checkboxes
     id: toggles
     attributes:
-      label: Menu toggles for this domain
-      description: Violentmonkey menu → this script
-      multiple: true
+      label: Menu toggles I turned off for this domain
+      description: Violentmonkey/Tampermonkey menu → this script. Leave empty if you changed nothing.
       options:
-        - cache enabled
-        - patcher enabled
-        - continue enabled
-        - I disabled one of them
+        - label: cache
+        - label: patcher
+        - label: continue
 
   - type: input
     id: env
