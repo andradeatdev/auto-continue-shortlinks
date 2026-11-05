@@ -156,44 +156,172 @@
 // you may copy, modify and redistribute it only under the GNU General Public
 // License v3. Source and this notice must be kept intact (GPL-3.0, §4–§5).
 
+/** @type {Window & typeof globalThis} */
 const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 
-const config = {
-    defaultTimerFactor: 0.05,
+/**
+ * @typedef {Object} MatchOptions
+ * @property {Record<string, boolean|string|RegExp|Function>} [attrs] Attribute filters. `true` = exists, `false` = missing.
+ * @property {Record<string, string|RegExp|Function|*>} [props] Node property filters (e.g. `{ disabled: false }`).
+ * @property {string|RegExp|Function} [text] Filter by `textContent`.
+ * @property {boolean} [visible] Require the node to be visible (`true`) or hidden (`false`).
+ * @property {Record<string, string>} [css] Computed style values the node must have.
+ */
 
+/**
+ * @typedef {Object} StalkResult
+ * @property {boolean} [stop] Stop watching entirely.
+ * @property {boolean} [continue] Skip this node and re-check it on the next run.
+ */
+
+/**
+ * `limit` is the max number of distinct nodes to handle before stopping.
+ * @typedef {MatchOptions & { limit?: number }} StalkOptions
+ */
+
+/**
+ * @typedef {(node: Element) => StalkResult|void|Promise<StalkResult|void>} StalkHandler
+ */
+
+/**
+ * @typedef {Object} ScrollOptions
+ * @property {ScrollBehavior} [behavior="smooth"]
+ * @property {ScrollLogicalPosition} [block="center"]
+ * @property {ScrollLogicalPosition} [inline="center"]
+ */
+
+/**
+ * @typedef {StalkOptions & {
+ *   wait?: number,
+ *   scroll?: false|ScrollOptions,
+ *   count?: number,
+ *   times?: number,
+ *   bubbles?: boolean,
+ *   when?: (node: Element) => boolean
+ * }} ClickOptions
+ */
+
+/**
+ * @typedef {Object} StorageScope
+ * @property {(key: string, defaultValue?: *) => *} get
+ * @property {(key: string, value: *) => void} set
+ * @property {(key: string, value: Object) => void} merge
+ * @property {(key: string, callback: (after: *, before: *, remote: boolean) => void) => number} watch
+ */
+
+/**
+ * @typedef {Object} RequestOptions
+ * @property {string} [method="GET"]
+ * @property {Record<string, string>} [headers]
+ * @property {*} [data]
+ * @property {number} [timeout]
+ * @property {string} [overrideMimeType]
+ * @property {XMLHttpRequestResponseType} [responseType="text"]
+ * @property {"follow"|"error"|"manual"} [redirect]
+ * @property {boolean} [anonymous]
+ */
+
+/**
+ * @typedef {Object} HasteOptions
+ * @property {number} [factor] Timer multiplier (smaller = faster).
+ * @property {string} [text] Only speed up callbacks whose source includes this text.
+ * @property {number} [ms] Only speed up timers with exactly this delay.
+ * @property {() => boolean} [when] Only speed up while this returns true.
+ */
+
+/**
+ * @typedef {Object} DomainHandler
+ * @property {() => void|Promise<void>} [patcher] Runs first; installs patches and hides.
+ * @property {() => void|Promise<void>} [continue] Runs after; clicks/redirects through the page.
+ * @property {() => void|Promise<void>} [cache] Replaces the default bypass cache logic.
+ */
+
+/**
+ * @typedef {Object} Command
+ * @property {string} name
+ * @property {boolean} [value]
+ * @property {() => boolean} [when]
+ * @property {() => void} [action]
+ * @property {Record<string, Command>} [cmds]
+ */
+
+const config = {
+    /**
+     * Returns true only if the setting is enabled both globally and for the current domain.
+     * @param {string} name
+     * @returns {boolean}
+     */
     isEnabled(name) {
         const global = storage.get(name, true);
         const local = storage.local().get(name, true);
         return global && local;
     },
 
+    /**
+     * Whether the destination cache is enabled.
+     * @returns {boolean}
+     */
     get useCache() {
         return config.isEnabled("useCache");
     },
+    /**
+     * Whether auto-continue actions are enabled.
+     * @returns {boolean}
+     */
     get useContinue() {
         return config.isEnabled("useContinue");
     },
+    /**
+     * Whether patches are enabled.
+     * @returns {boolean}
+     */
     get usePatcher() {
         return config.isEnabled("usePatcher");
     },
 };
 
 const storage = {
+    /**
+     * Saves a value with GM_setValue.
+     * @param {string} key
+     * @param {*} value
+     */
     set(key, value) {
         GM_setValue(key, value);
     },
 
+    /**
+     * Reads a value with GM_getValue.
+     * @param {string} key
+     * @param {*} [defaultValue]
+     * @returns {*}
+     */
     get(key, defaultValue) {
         return GM_getValue(key, defaultValue);
     },
 
+    /**
+     * Scope limited to the current hostname.
+     * @returns {StorageScope}
+     */
     local() {
         return this.scope("@local", location.hostname);
     },
+
+    /**
+     * Scope shared across all domains.
+     * @returns {StorageScope}
+     */
     global() {
         return this.scope("@global");
     },
 
+    /**
+     * Creates a scoped view over one storage key.
+     * @param {string} ns Root storage key.
+     * @param {string} [bucket] Optional sub-key (e.g. a hostname).
+     * @returns {StorageScope}
+     */
     scope(ns, bucket) {
         const read = () => {
             const root = storage.get(ns, {});
@@ -201,10 +329,22 @@ const storage = {
         };
 
         const scope = {
+            /**
+             * Reads a value from the scope.
+             * @param {string} key
+             * @param {*} [defaultValue]
+             * @returns {*}
+             */
             get(key, defaultValue) {
                 const value = read()[key];
                 return value === undefined ? defaultValue : value;
             },
+
+            /**
+             * Writes a value to the scope.
+             * @param {string} key
+             * @param {*} value
+             */
             set(key, value) {
                 const root = storage.get(ns, {});
 
@@ -217,9 +357,22 @@ const storage = {
 
                 storage.set(ns, root);
             },
+
+            /**
+             * Shallow-merges an object into the stored object at `key`.
+             * @param {string} key
+             * @param {Object} value
+             */
             merge(key, value) {
                 scope.set(key, { ...scope.get(key, {}), ...value });
             },
+
+            /**
+             * Calls back when the value at `key` changes (also from other tabs).
+             * @param {string} key
+             * @param {(after: *, before: *, remote: boolean) => void} callback
+             * @returns {number} Listener id.
+             */
             watch(key, callback) {
                 const pick = (root) => (bucket === undefined ? root : root?.[bucket])?.[key];
 
@@ -239,6 +392,7 @@ const storage = {
 };
 
 const commands = {
+    /** @type {Record<string, Command>} */
     cmds: {
         useCache: {
             name: "Use cache - all domains",
@@ -305,6 +459,7 @@ const commands = {
         },
     },
 
+    /** Registers all menu commands (skips those whose `when` returns false). */
     exec() {
         for (const [name, cmd] of Object.entries(this.cmds)) {
             if (cmd.when && !cmd.when()) continue;
@@ -312,6 +467,11 @@ const commands = {
         }
     },
 
+    /**
+     * Registers one command, plus its per-domain sub-commands.
+     * @param {string} name
+     * @param {Command} cmd
+     */
     registerMenuCommand(name, cmd) {
         if (cmd.action) {
             GM_registerMenuCommand(`▶  ${cmd.name}`, () => cmd.action());
@@ -330,12 +490,22 @@ const commands = {
         }
     },
 
+    /**
+     * Toggles a global setting and reloads the page.
+     * @param {string} name
+     * @param {Command} cmd
+     */
     toggleCommand(name, cmd) {
         const value = storage.get(name, cmd.value);
         storage.set(name, !value);
         location.reload();
     },
 
+    /**
+     * Toggles a setting for the current domain and reloads the page.
+     * @param {string} name
+     * @param {Command} cmd
+     */
     toggleCommandLocal(name, cmd) {
         const value = storage.local().get(name, cmd.value);
         storage.local().set(name, !value);
@@ -344,17 +514,36 @@ const commands = {
 };
 
 const watch = {
+    /** @type {MutationObserverInit} */
     OPTIONS: { childList: true, subtree: true, attributes: true, characterData: true },
+    /** @type {Set<(records: MutationRecord[]) => void>} */
     callbacks: new Set(),
-    observer: undefined,
+    /** @type {MutationObserver} */
+    observer: new MutationObserver((records) => this.executor(records)),
+    /** @type {boolean} */
+    running: false,
+    /** @type {MutationRecord[]} */
     queue: [],
+    /** @type {boolean} */
     isScheduled: false,
+    /** @type {Set<Node>} */
     pending: new Set(),
 
+    /** Moves pending mutation records into the queue. */
     drain() {
         for (const record of this.observer.takeRecords()) this.queue.push(record);
     },
 
+    /**
+     * Queues mutation records and schedules a single flush.
+     * @param {MutationRecord[]} records
+     */
+    executor(records) {
+        for (const record of records) this.queue.push(record);
+        this.schedule();
+    },
+
+    /** Delivers queued mutation records to all callbacks. */
     flush() {
         this.isScheduled = false;
         this.drain();
@@ -374,26 +563,29 @@ const watch = {
         this.observer.takeRecords();
     },
 
+    /** Schedules a single flush on the next animation frame. */
     schedule() {
         if (this.isScheduled) return;
         this.isScheduled = true;
         requestAnimationFrame(() => this.flush());
     },
 
+    /** Starts the shared MutationObserver (no-op if already started). */
     observe() {
-        if (this.observer) return;
-        this.observer = new MutationObserver((records) => {
-            for (const record of records) this.queue.push(record);
-            this.schedule();
-        });
+        if (this.running) return;
+        this.running = true;
         this.observer.observe(document.documentElement, this.OPTIONS);
 
         for (const root of this.pending) this.observer.observe(root, this.OPTIONS);
         this.pending.clear();
     },
 
+    /**
+     * Observes an extra root (e.g. a shadow root). Queued if the observer has not started.
+     * @param {Node} root
+     */
     attach(root) {
-        if (!this.observer) {
+        if (!this.running) {
             this.pending.add(root);
             return;
         }
@@ -402,6 +594,11 @@ const watch = {
         this.schedule();
     },
 
+    /**
+     * Subscribes to DOM changes.
+     * @param {(records: MutationRecord[]) => void} callback
+     * @returns {() => boolean} Unsubscribe function.
+     */
     change(callback) {
         this.observe();
         this.callbacks.add(callback);
@@ -410,8 +607,14 @@ const watch = {
 };
 
 const ctxs = {
+    /** @type {Map<string, Record<string, *>>} */
     ctxs: new Map(),
 
+    /**
+     * Returns a persistent object for `name`, creating it if needed. Used to share state between patches.
+     * @param {string} name
+     * @returns {Record<string, *>}
+     */
     of(name) {
         if (!this.ctxs.has(name)) {
             this.ctxs.set(name, {});
@@ -422,17 +625,34 @@ const ctxs = {
 };
 
 const shadow = {
+    /** @type {WeakMap<Element, ShadowRoot>} */
     roots: new WeakMap(),
 
+    /**
+     * Returns the shadow root of a host, including closed roots registered with `track`.
+     * @param {Element} host
+     * @returns {ShadowRoot|undefined}
+     */
     of(host) {
         return host.shadowRoot || this.roots.get(host) || undefined;
     },
 
+    /**
+     * Registers a (closed) shadow root for a host and observes it.
+     * @param {Element} host
+     * @param {ShadowRoot} root
+     */
     track(host, root) {
         this.roots.set(host, root);
         watch.attach(root);
     },
 
+    /**
+     * Finds the first element. Use `>>>` to pierce shadow roots.
+     * @param {string} selector
+     * @param {ParentNode} [root=document]
+     * @returns {Element|undefined}
+     */
     query(selector, root = document) {
         const [head, ...tail] = selector.split(">>>").map(part => part.trim());
         let node = root.querySelector(head);
@@ -450,6 +670,12 @@ const shadow = {
         return node;
     },
 
+    /**
+     * Finds all elements. Use `>>>` to pierce shadow roots.
+     * @param {string} selector
+     * @param {ParentNode} [root=document]
+     * @returns {Element[]}
+     */
     queryAll(selector, root = document) {
         const [head, ...tail] = selector.split(">>>").map(part => part.trim());
         let nodes = [...root.querySelectorAll(head)];
@@ -469,14 +695,31 @@ const shadow = {
 };
 
 const dom = {
+    /**
+     * Throws if `selector` is not a string.
+     * @param {string} name Caller name for the error.
+     * @param {*} selector
+     */
     guard(name, selector) {
         if (typeof selector !== "string") throw new TypeError(`[dom.${name}] 'selector' must be a string`);
     },
 
-    stalk(selector, handler, opts) {
+    /**
+     * Watches the DOM and runs `handler` on each new matching node.
+     * Return `{ stop: true }` to stop, `{ continue: true }` to retry the node later.
+     * Any other return marks the node as handled.
+     * @param {string} selector
+     * @param {StalkHandler} handler
+     * @param {StalkOptions} [opts]
+     * @returns {() => void} Function that stops watching.
+     */
+    stalk(selector, handler, opts = {}) {
         this.guard("stalk", selector);
 
+        const { limit = Infinity } = opts;
         const seen = new WeakSet();
+
+        let handled = 0;
         let isStopped = false;
         let isRunning = false;
         let isDirty = false;
@@ -489,6 +732,7 @@ const dom = {
             if (result?.continue === true) return;
 
             seen.add(node);
+            if (++handled >= limit) stop();
         };
 
         const run = async () => {
@@ -513,18 +757,24 @@ const dom = {
         return stop;
     },
 
+    /**
+     * Waits for the first matching node.
+     * @param {string} selector
+     * @param {StalkOptions & { timeout?: number }} [options] `timeout` in ms rejects the promise.
+     * @returns {Promise<Element>}
+     */
     query(selector, options = {}) {
-        this.guard("element", selector);
+        this.guard("query", selector);
         const { timeout } = options;
 
         return new Promise((resolve, reject) => {
             let timer;
 
-            const done = dom.stalk(selector, options, node => {
+            const done = dom.stalk(selector, node => {
                 clearTimeout(timer);
                 resolve(node);
                 return { stop: true };
-            });
+            }, options);
 
             if (timeout > 0) {
                 timer = setTimeout(() => {
@@ -535,6 +785,12 @@ const dom = {
         });
     },
 
+    /**
+     * Yields every node matching the selector and the match options.
+     * @param {string} selector
+     * @param {MatchOptions} [options]
+     * @returns {Generator<Element>}
+     */
     *select(selector, options = {}) {
         this.guard("select", selector);
 
@@ -544,32 +800,96 @@ const dom = {
         }
     },
 
+    /**
+     * Checks a node against all match options.
+     * @param {Element} node
+     * @param {MatchOptions} [options]
+     * @returns {boolean}
+     */
     match(node, options = {}) {
-        const { visible, text, css } = options;
+        const { attrs, props, text, visible, css } = options;
 
-        if (!dom.visible(node, visible)) return false;
+        if (!dom.attrs(node, attrs)) return false;
+        if (!dom.props(node, props)) return false;
         if (!dom.text(node, text)) return false;
+        if (!dom.visible(node, visible)) return false;
         if (!dom.css(node, css)) return false;
 
         return true;
     },
 
+    /**
+     * Compares a value: string (contains), RegExp (test), function (predicate) or strict equality.
+     * @param {*} actual
+     * @param {*} expected
+     * @returns {boolean}
+     */
+    test(actual, expected) {
+        if (typeof actual === "string" && typeof expected === "string") return actual.includes(expected);
+        if (typeof expected === "function") return !!expected(actual);
+        if (typeof actual === "string" && expected instanceof RegExp) {
+            expected.lastIndex = 0;
+            return expected.test(actual);
+        }
+
+        return actual === expected;
+    },
+
+    /**
+     * Matches attribute filters. `true` = exists, `false` = missing.
+     * @param {Element} node
+     * @param {MatchOptions["attrs"]} [attrs]
+     * @returns {boolean}
+     */
+    attrs(node, attrs) {
+        if (!attrs) return true;
+
+        return Object.entries(attrs).every(([name, expected]) => {
+            if (expected === true) return node.hasAttribute(name);
+            if (expected === false) return !node.hasAttribute(name);
+            return dom.test(node.getAttribute(name), expected);
+        });
+    },
+
+    /**
+     * Matches node property filters.
+     * @param {Element} node
+     * @param {MatchOptions["props"]} [props]
+     * @returns {boolean}
+     */
+    props(node, props) {
+        if (!props) return true;
+        return Object.entries(props).every(([key, expected]) => dom.test(node[key], expected));
+    },
+
+    /**
+     * Matches visibility. Skipped if `isVisible` is not a boolean.
+     * @param {Element} node
+     * @param {boolean} [isVisible]
+     * @returns {boolean}
+     */
     visible(node, isVisible) {
         if (typeof isVisible !== "boolean") return true;
         return node.checkVisibility({ visibilityProperty: true }) === isVisible;
     },
 
+    /**
+     * Matches `textContent`.
+     * @param {Element} node
+     * @param {string|RegExp|Function} [text]
+     * @returns {boolean}
+     */
     text(node, text) {
-        if (text === undefined || text === null) return true;
-        const content = node.textContent;
-        if (typeof text === "string") return content.includes(text);
-        if (text instanceof RegExp) {
-            text.lastIndex = 0;
-            return text.test(content);
-        }
-        return false;
+        if (text == undefined) return true;
+        return dom.test(node.textContent, text);
     },
 
+    /**
+     * Matches computed styles.
+     * @param {Element} node
+     * @param {Record<string, string>} [css]
+     * @returns {boolean}
+     */
     css(node, css) {
         if (!css) return true;
 
@@ -577,30 +897,52 @@ const dom = {
         return Object.entries(css).every(([key, value]) => style[key] === value);
     },
 
+    /**
+     * Reads an attribute by name, or by the first attribute name matching a RegExp.
+     * @param {Element} node
+     * @param {string|RegExp} attr
+     * @returns {string|null|undefined}
+     */
     attr(node, attr) {
         if (typeof attr === "string") return node.getAttribute(attr);
         if (attr instanceof RegExp) {
             attr.lastIndex = 0;
             const name = node.getAttributeNames().find(n => attr.test(n));
+            // No matching attribute: `name` is undefined, and `getAttribute` returns null.
             return node.getAttribute(name);
         }
     },
 
+    /**
+     * Wraps a selector so it only matches after Cloudflare Turnstile is solved.
+     * @param {string} selector
+     * @returns {string}
+     */
     turnstile(selector) {
         return `:has([name="cf-turnstile-response"][value]) ${selector}`;
     },
 
+    /**
+     * Wraps a selector so it only matches after hCaptcha is solved.
+     * @param {string} selector
+     * @returns {string}
+     */
     hcaptcha(selector) {
         return `:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) ${selector}`;
     },
 
+    /**
+     * Wraps a selector so it only matches after reCAPTCHA is solved.
+     * @param {string} selector
+     * @returns {string}
+     */
     recaptcha(selector) {
         const poll = (node) => {
             if (node.value === "") return setTimeout(() => poll(node), 500);
             node.dataset.recaptchaSolved = "";
         };
 
-        act.stalk("#g-recaptcha-response", (node) => {
+        this.stalk("#g-recaptcha-response", (node) => {
             setTimeout(() => poll(node), 500);
             return { stop: true };
         });
@@ -610,18 +952,34 @@ const dom = {
 };
 
 const act = {
+    /**
+     * Throws if `selector` is not a string.
+     * @param {string} name
+     * @param {*} selector
+     */
     guard(name, selector) {
         if (typeof selector !== "string") throw new TypeError(`[act.${name}] 'selector' must be a string`);
     },
 
+    /**
+     * Resolves after `ms` milliseconds.
+     * @param {number} ms
+     * @returns {Promise<void>}
+     */
     wait(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     },
 
+    /**
+     * Clicks matching elements, optionally waiting and scrolling first.
+     * @param {string} selector
+     * @param {ClickOptions} [options]
+     * @returns {() => void} Stop function.
+     */
     click(selector, options = {}) {
         this.guard("click", selector);
 
-        const { wait = 0, scroll = false, count = 1, bubbles = true, when } = options;
+        const { wait = 0, scroll = false, count = 1, times = 1, bubbles = true, when } = options;
         const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
         let remaining = count;
 
@@ -642,12 +1000,18 @@ const act = {
                 view: win,
             });
 
-            node.dispatchEvent(event);
+            for (let i = 0; i < times; i++) node.dispatchEvent(event);
 
             return --remaining <= 0 ? { stop: true } : { continue: true };
         }, options);
     },
 
+    /**
+     * Scrolls matching elements into view.
+     * @param {string} selector
+     * @param {StalkOptions & ScrollOptions} [options]
+     * @returns {() => void}
+     */
     scroll(selector, options = {}) {
         this.guard("scroll", selector);
 
@@ -658,6 +1022,12 @@ const act = {
         }, options);
     },
 
+    /**
+     * Sets the `value` of matching inputs.
+     * @param {string} selector
+     * @param {StalkOptions & { value?: string }} [options]
+     * @returns {() => void}
+     */
     input(selector, options = {}) {
         this.guard("input", selector);
 
@@ -668,12 +1038,24 @@ const act = {
         }, options);
     },
 
+    /**
+     * Removes matching elements.
+     * @param {string} selector
+     * @param {StalkOptions} [options]
+     * @returns {() => void}
+     */
     remove(selector, options = {}) {
         this.guard("remove", selector);
 
         return dom.stalk(selector, node => node.remove(), options);
     },
 
+    /**
+     * Moves matching elements into an invisible wrapper.
+     * @param {string} selector
+     * @param {StalkOptions} [options]
+     * @returns {() => void}
+     */
     wrap(selector, options = {}) {
         this.guard("wrap", selector);
         return dom.stalk(selector, node => {
@@ -691,6 +1073,12 @@ const act = {
         }, options);
     },
 
+    /**
+     * Hides matching elements with injected CSS.
+     * @param {string} selector
+     * @param {{ root?: Node }} [options]
+     * @returns {() => void} Function that undoes the hiding.
+     */
     hide(selector, options = {}) {
         this.guard("hide", selector);
 
@@ -703,6 +1091,12 @@ const act = {
         return () => style.remove();
     },
 
+    /**
+     * Navigates to the URL found in an attribute of the matching element.
+     * @param {string} selector
+     * @param {StalkOptions & { attr?: string|RegExp }} [options]
+     * @returns {() => void}
+     */
     redirect(selector, options = {}) {
         this.guard("redirect", selector);
 
@@ -718,14 +1112,32 @@ const act = {
 };
 
 const net = {
+    /**
+     * GET request.
+     * @param {string} url
+     * @param {RequestOptions} [options]
+     * @returns {Promise<Object>} GM response.
+     */
     get(url, options = {}) {
         return this.request(url, options);
     },
 
+    /**
+     * POST request.
+     * @param {string} url
+     * @param {*} body
+     * @returns {Promise<Object>}
+     */
     post(url, body) {
         return this.request(url, { data: body });
     },
 
+    /**
+     * Promise wrapper around GM_xmlhttpRequest.
+     * @param {string} url
+     * @param {RequestOptions} [options]
+     * @returns {Promise<Object>}
+     */
     request(url, options = {}) {
         if (typeof url !== "string") throw new TypeError("[net.request] Missing `url` argument");
 
@@ -749,6 +1161,13 @@ const net = {
         });
     },
 
+    /**
+     * Sends and receives JSON.
+     * @param {string} method
+     * @param {string} url
+     * @param {Object} [body]
+     * @returns {Promise<Object>}
+     */
     json(method, url, body) {
         return this.request(url, {
             method,
@@ -760,19 +1179,44 @@ const net = {
 };
 
 const worker = {
+    /** @type {string} */
     url: "https://shortlinks.zencore.fun",
     links: {
+        /**
+         * Looks up a saved destination for a shortlink.
+         * @param {string} href
+         * @returns {Promise<Object>}
+         */
         find(href) {
             return net.json("GET", `${worker.url}/api/check?url=${encodeURIComponent(href)}`);
         },
+
+        /**
+         * Saves a shortlink and its destination.
+         * @param {string} href
+         * @param {string} destination
+         * @returns {Promise<Object>}
+         */
         save(href, destination) {
             return net.json("POST", `${worker.url}/api/save`, { shortlink: href, destination });
         },
     },
     titles: {
+        /**
+         * Saves download links for a title.
+         * @param {string} title
+         * @param {string[]} links
+         * @returns {Promise<Object>}
+         */
         save(title, links) {
             return net.json("POST", `${worker.url}/api/titles`, { title, links });
         },
+
+        /**
+         * Looks up saved links for several titles.
+         * @param {string[]} titles
+         * @returns {Promise<Object>}
+         */
         find(titles) {
             return net.json("POST", `${worker.url}/api/titles/lookup`, { titles });
         },
@@ -780,6 +1224,11 @@ const worker = {
 };
 
 const patch = {
+    /**
+     * Makes a fake function look native when `toString` is called.
+     * @param {Function} fake
+     * @param {Function} original
+     */
     conceal(fake, original) {
         const ctx = ctxs.of("conceal");
 
@@ -807,6 +1256,13 @@ const patch = {
         Object.defineProperty(proto, "toString", { ...desc, value: toString });
     },
 
+    /**
+     * Replaces a function with a Proxy using the given handler.
+     * @param {Object} owner
+     * @param {string} property
+     * @param {ProxyHandler<Function>} handler
+     * @returns {false|void} False if the target is not a function.
+     */
     hook(owner, property, handler) {
         const target = owner[property];
         if (typeof target !== "function") return false;
@@ -829,14 +1285,32 @@ const patch = {
         else owner[property] = proxy;
     },
 
+    /**
+     * Intercepts calls to a function.
+     * @param {Object} owner
+     * @param {string} property
+     * @param {(target: Function, thisArg: *, args: any[]) => *} applyFn
+     */
     apply(owner, property, applyFn) {
         return this.hook(owner, property, { apply: applyFn });
     },
 
+    /**
+     * Intercepts `new` on a constructor.
+     * @param {Object} owner
+     * @param {string} property
+     * @param {(target: Function, args: any[], newTarget: Function) => Object} constructFn
+     */
     construct(owner, property, constructFn) {
         return this.hook(owner, property, { construct: constructFn });
     },
 
+    /**
+     * Overrides a property with custom getter/setter that can call the original behavior.
+     * @param {Object} owner
+     * @param {string} property
+     * @param {{ get?: Function, set?: Function }} accessors
+     */
     define(owner, property, { get, set }) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property) || {};
 
@@ -867,8 +1341,12 @@ const patch = {
         });
     },
 
+    /**
+     * Speeds up timers (`setTimeout`, `setInterval`, `Date`, `performance.now`).
+     * @param {HasteOptions} [options]
+     */
     haste(options = {}) {
-        const { factor = config.defaultTimerFactor, text, ms, when } = options;
+        const { factor = 0.005, text, ms, when } = options;
 
         const speed = 1 / (factor || 0.001);
         const realDate = win.Date.now.bind(win.Date);
@@ -933,12 +1411,16 @@ const patch = {
         });
     },
 
+    /**
+     * Blocks matching `fetch` calls and returns a fake value instead.
+     * @param {{ url?: string|RegExp, returnValue?: * }} [options]
+     */
     fetch(options = {}) {
         const { url, returnValue = Object.create(null) } = options;
 
         const isMatch = (input) => {
             if (typeof url === "string") return input.includes(url);
-            if (url instanceof RegExp) { url.lastIndex = 0; url.test(input); return; }
+            if (url instanceof RegExp) { url.lastIndex = 0; return url.test(input); }
             return true;
         };
 
@@ -950,6 +1432,10 @@ const patch = {
         });
     },
 
+    /**
+     * Blocks matching `addEventListener` registrations.
+     * @param {{ type?: string, excludeTarget?: string, includesText?: string, excludeText?: string }} [options]
+     */
     listener(options = {}) {
         const { type, excludeTarget, includesText, excludeText } = options;
 
@@ -977,6 +1463,12 @@ const patch = {
         });
     },
 
+    /**
+     * Fakes `getComputedStyle` results for nodes matching `selector`.
+     * @param {string} selector
+     * @param {Record<string, string>} styles
+     * @param {MatchOptions} [options]
+     */
     mask(selector, styles, options) {
         const ctx = ctxs.of("mask");
 
@@ -1006,7 +1498,9 @@ const patch = {
 };
 
 const bypass = {
+    /** @type {number} */
     cacheMaxEntries: 50,
+    /** @type {Record<string, RegExp>} */
     shortenerPatterns: {
         "tpi.li": /^\/[A-Za-z0-9_-]{3,}$/,
         "oii.la": /^\/[A-Za-z0-9_-]{3,}$/,
@@ -1019,9 +1513,11 @@ const bypass = {
         "online-fix.me": /^\/ext\/.+$/,
         "link.snipcash.com": /^\/[A-Za-z0-9_-]{3,}$/,
     },
+    /** @type {Record<string, RegExp>} */
     gatePatterns: {
         "clksz.com": /^\/r\/[^/]+\/.+$/,
     },
+    /** @type {(string|RegExp)[]} */
     finalDomains: [
         "send.now",
         "1fichier.com",
@@ -1045,6 +1541,13 @@ const bypass = {
         "flycutlink.com",
     ],
 
+    /**
+     * Starts cache lookup and navigation tracking if the current URL is a known shortlink.
+     * @param {string} hostname
+     * @param {string} href
+     * @param {string} pathname
+     * @param {string} search
+     */
     exec(hostname, href, pathname, search) {
         if (!worker.url) return;
 
@@ -1056,6 +1559,11 @@ const bypass = {
         this.clear();
     },
 
+    /**
+     * Redirects to a known destination (local cache first, then worker).
+     * @param {string} href
+     * @returns {Promise<void>}
+     */
     async cache(href) {
         const cacheLocal = storage.global().get("bypass-local", {});
         const destCached = cacheLocal[href];
@@ -1071,6 +1579,10 @@ const bypass = {
         navigation.navigate(url.href, { info: "bypass_link" });
     },
 
+    /**
+     * Listens for navigations and saves trusted destinations.
+     * @param {string} href
+     */
     listener(href) {
         navigation.addEventListener("navigate", (event) => {
             if (event.info === "bypass_link") return;
@@ -1092,6 +1604,11 @@ const bypass = {
         });
     },
 
+    /**
+     * Whether the destination is an intermediate gate page that must be followed.
+     * @param {URL} dest
+     * @returns {boolean|undefined}
+     */
     gate(dest) {
         const pattern = this.gatePatterns[dest.hostname];
         if (!pattern) return;
@@ -1099,6 +1616,12 @@ const bypass = {
         return pattern.test(dest.pathname + dest.search);
     },
 
+    /**
+     * Follows a gate URL to its final destination and saves it.
+     * @param {string} href
+     * @param {string} destination
+     * @returns {Promise<void>}
+     */
     async follow(href, destination) {
         const { finalUrl } = await net.get(destination, {
             headers: {
@@ -1117,6 +1640,12 @@ const bypass = {
         this.save(href, final);
     },
 
+    /**
+     * Saves a destination locally and on the worker, then navigates to it.
+     * @param {string} href
+     * @param {string|URL} destination
+     * @returns {Promise<void>}
+     */
     async save(href, destination) {
         storage.global().merge("bypass-local", { [href]: destination });
 
@@ -1125,6 +1654,7 @@ const bypass = {
         navigation.navigate(destination, { info: "bypass_link" });
     },
 
+    /** Resets the local cache when it exceeds `cacheMaxEntries`. */
     clear() {
         const cacheLocal = storage.global().get("bypass-local", {});
         const entries = Object.entries(cacheLocal);
@@ -1133,6 +1663,11 @@ const bypass = {
         storage.global().set("bypass-local", {});
     },
 
+    /**
+     * Whether the hostname is a trusted final destination.
+     * @param {string} hostname
+     * @returns {boolean|undefined}
+     */
     trusted(hostname) {
         for (const domain of this.finalDomains) {
             if (typeof domain === "string" && hostname === domain) return true;
@@ -1140,11 +1675,22 @@ const bypass = {
         }
     },
 
+    /**
+     * Saves download links for a title on the worker.
+     * @param {string} title
+     * @param {string[]} links
+     * @returns {Promise<void>}
+     */
     async title(title, links) {
         const { response } = await worker.titles.save(title, links);
         if (response?.status !== "ok") console.error(response);
     },
 
+    /**
+     * Fetches saved links for titles from the worker.
+     * @param {string[]} titles
+     * @returns {Promise<Object[]|undefined>}
+     */
     async lookup(titles) {
         const { response } = await worker.titles.find(titles);
 
@@ -1156,6 +1702,12 @@ const bypass = {
 };
 
 const domains = {
+    /**
+     * Runs one stage (`patcher`/`continue`) of a handler, catching sync and async errors.
+     * @param {"patcher"|"continue"} stage
+     * @param {boolean} enabled
+     * @param {DomainHandler} handler
+     */
     exec(stage, enabled, handler) {
         const fn = handler[stage];
         if (!fn) return;
@@ -1170,6 +1722,11 @@ const domains = {
         }
     },
 
+    /**
+     * Registers a handler for one or more hostnames. Runs only if it matches the current page.
+     * @param {string|string[]} hosts
+     * @param {DomainHandler} handler
+     */
     add(hosts, handler) {
         if (!handler) return;
         if (![hosts].flat().includes(location.hostname)) return;
@@ -1444,7 +2001,7 @@ domains.add(["premium.hairmova.com", "product.hairmova.com"], {
         act.scroll("#safegate-wait2", { visible: true });
         act.click("#safegate-go", { visible: true });
 
-        dom.stalk("#safegate-reveal-overlay > div > div > span", {}, node => {
+        dom.stalk("#safegate-reveal-overlay > div > div > span", node => {
             storage.global().set("no-bots-allowed", node.textContent.trim());
             window.close();
         });
@@ -2082,12 +2639,12 @@ domains.add("psa.wf", {
         for (const link of links) {
             if (!link.found) continue;
 
-            dom.stalk(".sp-head", { text: link.title }, n => {
+            dom.stalk(".sp-head", n => {
                 const downloadIcon = n.nextElementSibling.querySelector(".fa-download");
                 const body = downloadIcon.closest(".sp-body");
                 const nodeLinks = link.links.map(l => `<a href="${l}">${l}</a>`).join("<br>");
                 body.insertAdjacentHTML("afterbegin", `<p>${nodeLinks}</p>`);
-            });
+            }, { text: link.title });
         }
     },
     async continue() {
@@ -2123,8 +2680,7 @@ domains.add("psa.wf", {
         const thumb = track.querySelector("#sg-thumb");
         drag(thumb, track);
 
-        dom.stalk("#sg-code-a", {}, async (node, stop) => {
-            stop();
+        dom.stalk("#sg-code-a", async (node) => {
             storage.global().set("no-bots-allowed", node.textContent.trim());
             GM_openInTab("https://no-bots-allowed.org", { active: true, insert: true });
 
@@ -2134,6 +2690,8 @@ domains.add("psa.wf", {
                 input.value = newValue;
                 button.click();
             });
+
+            return { stop: true };
         });
     },
 });
@@ -2154,8 +2712,8 @@ domains.add("no-bots-allowed.org", {
     continue() {
         const code = storage.global().get("no-bots-allowed");
 
-        dom.stalk("input#nba-code", {}, (node, stop) => {
-            if (!code) return stop();
+        dom.stalk("input#nba-code", node => {
+            if (!code) return { stop: true };
             node.value = code;
         });
 
