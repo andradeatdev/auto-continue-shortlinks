@@ -887,6 +887,20 @@ const dom = {
     },
 
     /**
+     * Waits for the first match of each selector, in parallel.
+     * @template {Record<string, string>} T
+     * @param {T} selectors Map of name to selector.
+     * @param {StalkOptions & { timeout?: number }} [options] Applied to every selector.
+     * @returns {Promise<{ [K in keyof T]: Element }>}
+     */
+    async queries(selectors, options = {}) {
+        const entries = Object.entries(selectors);
+        const nodes = await Promise.all(entries.map(([, selector]) => this.query(selector, options)));
+
+        return Object.fromEntries(entries.map(([key], i) => [key, nodes[i]]));
+    },
+
+    /**
      * Yields every node matching the selector and the match options.
      * @param {string} selector
      * @param {MatchOptions} [options]
@@ -2693,8 +2707,10 @@ domains.add("psa.wf", {
             storage.global().set("no-bots-allowed", node.textContent.trim());
             GM_openInTab("https://no-bots-allowed.org", { active: true, insert: true });
 
-            const input = await dom.query("input.sg-input");
-            const button = await dom.query("button.sg-btn");
+            const { input, button } = await dom.queries({
+                input: "input.sg-input",
+                button: "button.sg-btn",
+            });
             storage.global().watch("no-bots-allowed", (newValue) => {
                 input.value = newValue;
                 button.click();
@@ -2707,8 +2723,10 @@ domains.add("psa.wf", {
 
 domains.add("get-to.link", {
     async cache() {
-        const titleNode = await dom.query("#content-box center h2");
-        const pNode = await dom.query("#content-box p:has(a[href][target='_blank'])");
+        const { titleNode, pNode } = await dom.queries({
+            titleNode: "#content-box center h2",
+            pNode: "#content-box p:has(a[href][target='_blank'])",
+        });
 
         const title = titleNode.textContent.trim();
         const links = [...pNode.querySelectorAll("a[href][target='_blank']")].map(l => l.href);
