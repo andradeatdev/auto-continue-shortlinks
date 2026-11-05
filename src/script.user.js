@@ -457,6 +457,12 @@ const commands = {
                 );
             },
         },
+        version: {
+            name: `Version ${GM_info.script.version}`,
+            action() {
+                GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/");
+            },
+        },
     },
 
     /** Registers all menu commands (skips those whose `when` returns false). */
@@ -1586,7 +1592,6 @@ const bypass = {
     listener(href) {
         navigation.addEventListener("navigate", (event) => {
             if (event.info === "bypass_link") return;
-            console.dir("navigate", event);
 
             const dest = new URL(event.destination.url);
             if (dest.href === href) return;
