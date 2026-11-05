@@ -104,7 +104,7 @@ export default defineConfig([
       "prefer-const": ["warn", { destructuring: "all" }],
       "no-unused-vars": ["warn", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
 
-      // "eqeqeq": ["error", "always"],
+      "eqeqeq": ["error", "always"],
       "no-eval": "error",
       "no-alert": "off",
       "no-shadow": "warn",
