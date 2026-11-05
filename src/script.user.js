@@ -251,7 +251,7 @@ const win = /** @type {Window & typeof globalThis} */ (
 /**
  * @typedef {string|((node: Node) => boolean)|{
  *   includes?: string,
- *   excludes?: string
+ *   not?: string
  * }} NodeMatcher
  */
 
@@ -692,25 +692,68 @@ const matcher = {
     },
 
     /**
-     * Matches a node against a CSS selector, a predicate or `{ includes, excludes }` selectors.
-     * Nothing to match (`undefined`/`null`) always passes. Non-elements (window, document)
-     * never match a selector, so they fail `includes` and pass `excludes`.
-     * @param {*} node
-     * @param {NodeMatcher} [expected]
+     * Matches attribute filters. `true` = exists, `false` = missing.
+     * @param {Element} node
+     * @param {Record<string, boolean|ValueMatcher>} [attrs]
      * @returns {boolean}
      */
-    node(node, expected) {
-        if (this.isNil(expected)) return true;
+    attrs(node, attrs) {
+        if (this.isNil(attrs)) return true;
+        return Object.entries(attrs).every(([name, expected]) => {
+            if (expected === true) return node.hasAttribute(name);
+            if (expected === false) return !node.hasAttribute(name);
+            return matcher.value(node.getAttribute(name), expected);
+        });
+    },
 
-        const is = (selector) => typeof node?.matches === "function" && node.matches(selector);
+    /**
+     * Matches node property filters.
+     * @param {Element} node
+     * @param {Record<string, ValueMatcher>} [props]
+     * @returns {boolean}
+     */
+    props(node, props) {
+        if (this.isNil(props)) return true;
+        return Object.entries(props).every(([key, expected]) => matcher.value(node[key], expected));
+    },
 
-        if (typeof expected === "string") return is(expected);
-        if (typeof expected === "function") return Boolean(expected(node));
+    /**
+     * Matches computed styles.
+     * @param {Element} node
+     * @param {Record<string, string>} [css]
+     * @returns {boolean}
+     */
+    css(node, css) {
+        if (this.isNil(css)) return true;
+        const style = getComputedStyle(node);
+        return Object.entries(css).every(([key, value]) => style[key] === value);
+    },
 
-        const { includes, excludes } = expected;
-        if (includes && !is(includes)) return false;
-        if (excludes && is(excludes)) return false;
-        return true;
+    is(node, selector) {
+        return typeof node?.matches === "function" && node.matches(selector);
+    },
+
+    visibility(node, visible) {
+        if (this.isNil(visible)) return true;
+        return node.checkVisibility({ visibilityProperty: true, opacityProperty: true }) === visible;
+    },
+
+    node(node, options) {
+        if (this.isNil(options)) return true;
+        const { is, not, attrs, props, text, visible, css, when } = options;
+
+        const checks = [
+            [!this.isNil(is), () => !this.is(node, is)],
+            [!this.isNil(not), () => this.is(not)],
+            [!this.isNil(attrs), () => !this.attrs(node, attrs)],
+            [!this.isNil(props), () => !this.props(props)],
+            [!this.isNil(text), () => !this.text(node.textContent, text)],
+            [typeof visible === "boolean", () => !this.visibility(node, visible)],
+            [!this.isNil(css), () => !this.css(node, css)],
+            [!this.isNil(when), () => !when(node)],
+        ];
+
+        return checks.every(([enabled, test]) => !enabled || !test());
     },
 
     /**
@@ -756,15 +799,6 @@ const shadow = {
 
 const dom = {
     /**
-     * Throws if `selector` is not a string.
-     * @param {string} name Caller name for the error.
-     * @param {*} selector
-     */
-    guard(name, selector) {
-        if (typeof selector !== "string") throw new TypeError(`[dom.${name}] 'selector' must be a string`);
-    },
-
-    /**
      * Watches the DOM and runs `handler` on each new matching node.
      * Return `{ stop: true }` to stop, `{ continue: true }` to retry the node later.
      * Any other return marks the node as handled.
@@ -774,8 +808,6 @@ const dom = {
      * @returns {() => void} Function that stops watching.
      */
     stalk(selector, handler, opts = {}) {
-        this.guard("stalk", selector);
-
         const { limit = Infinity } = opts;
         const seen = new WeakSet();
 
@@ -868,9 +900,7 @@ const dom = {
      * @returns {Promise<Element>}
      */
     query(selector, options = {}) {
-        this.guard("query", selector);
         const { timeout = 0 } = options;
-
         return new Promise((resolve, reject) => {
             let timer;
 
@@ -899,7 +929,6 @@ const dom = {
     async queries(selectors, options = {}) {
         const entries = Object.entries(selectors);
         const nodes = await Promise.all(entries.map(([, selector]) => this.query(selector, options)));
-
         return Object.fromEntries(entries.map(([key], i) => [key, nodes[i]]));
     },
 
@@ -910,107 +939,7 @@ const dom = {
      * @returns {Generator<Element>}
      */
     *select(selector, options = {}) {
-        this.guard("select", selector);
-
-        for (const node of this.find(selector)) {
-            if (this.match(node, options)) yield node;
-        }
-    },
-
-    /**
-     * Checks a node against all match options.
-     * @param {Element} node
-     * @param {MatchOptions} [options]
-     * @returns {boolean}
-     */
-    match(node, options = {}) {
-        const { attrs, props, text, visible, css, when } = options;
-
-        if (!dom.attrs(node, attrs)) return false;
-        if (!dom.props(node, props)) return false;
-        if (!dom.text(node, text)) return false;
-        if (!dom.visible(node, visible)) return false;
-        if (!dom.css(node, css)) return false;
-        if (when && !when(node)) return false;
-
-        return true;
-    },
-
-    /**
-     * Matches attribute filters. `true` = exists, `false` = missing.
-     * @param {Element} node
-     * @param {Record<string, boolean|ValueMatcher>} [attrs]
-     * @returns {boolean}
-     */
-    attrs(node, attrs) {
-        if (!attrs) return true;
-
-        return Object.entries(attrs).every(([name, expected]) => {
-            if (expected === true) return node.hasAttribute(name);
-            if (expected === false) return !node.hasAttribute(name);
-            return matcher.value(node.getAttribute(name), expected);
-        });
-    },
-
-    /**
-     * Matches node property filters.
-     * @param {Element} node
-     * @param {Record<string, ValueMatcher>} [props]
-     * @returns {boolean}
-     */
-    props(node, props) {
-        if (!props) return true;
-        return Object.entries(props).every(([key, expected]) => matcher.value(node[key], expected));
-    },
-
-    /**
-     * Matches visibility. Skipped if `isVisible` is not a boolean.
-     * @param {Element} node
-     * @param {boolean} [isVisible]
-     * @returns {boolean}
-     */
-    visible(node, isVisible) {
-        if (typeof isVisible !== "boolean") return true;
-        return node.checkVisibility({ visibilityProperty: true }) === isVisible;
-    },
-
-    /**
-     * Matches `textContent`.
-     * @param {Element} node
-     * @param {TextMatcher} [text]
-     * @returns {boolean}
-     */
-    text(node, text) {
-        return matcher.text(node.textContent, text);
-    },
-
-    /**
-     * Matches computed styles.
-     * @param {Element} node
-     * @param {Record<string, string>} [css]
-     * @returns {boolean}
-     */
-    css(node, css) {
-        if (!css) return true;
-
-        const style = getComputedStyle(node);
-        return Object.entries(css).every(([key, value]) => style[key] === value);
-    },
-
-    /**
-     * Reads an attribute by name, or by the first attribute name matching a RegExp.
-     * @param {Element} node
-     * @param {string|RegExp} attr
-     * @returns {string|null|undefined}
-     */
-    attr(node, attr) {
-        if (typeof attr === "string") return node.getAttribute(attr);
-        if (attr instanceof RegExp) {
-            attr.lastIndex = 0;
-            const name = node.getAttributeNames().find(n => attr.test(n));
-            // No matching attribute: `name` is undefined, and `getAttribute` returns null.
-            return node.getAttribute(name ?? "");
-        }
+        for (const node of this.find(selector)) if (matcher.node(node, options)) yield node;
     },
 
     /**
@@ -1053,15 +982,6 @@ const dom = {
 
 const act = {
     /**
-     * Throws if `selector` is not a string.
-     * @param {string} name
-     * @param {*} selector
-     */
-    guard(name, selector) {
-        if (typeof selector !== "string") throw new TypeError(`[act.${name}] 'selector' must be a string`);
-    },
-
-    /**
      * Resolves after `ms` milliseconds.
      * @param {number} ms
      * @returns {Promise<void>}
@@ -1070,38 +990,23 @@ const act = {
         return new Promise(resolve => setTimeout(resolve, ms));
     },
 
-    /**
-     * Clicks matching elements, optionally waiting and scrolling first.
-     * @param {string} selector
-     * @param {ClickOptions} [options]
-     * @returns {() => void} Stop function.
-     */
-    click(selector, options = {}) {
-        this.guard("click", selector);
-
-        const { wait = 0, scroll = false, count = 1, times = 1, bubbles = true, cancelable = true, composed = true } = options;
+    click(selector, { extra = {}, match = {} } = {}) {
+        const { wait = 0, scroll = false, count = 1, times = 1, event } = extra;
         const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
+        const init = { bubbles: true, cancelable: true, composed: true, view: win, ...event };
         let remaining = count;
 
         return dom.stalk(selector, async (node) => {
             if (wait > 0) {
                 await act.wait(wait);
-                if (!node.isConnected || !dom.match(node, options)) return { continue: true };
+                if (!node.isConnected || !matcher.node(node, match)) return { continue: true };
             }
 
             if (scroll !== false) node.scrollIntoView({ behavior, block, inline });
-
-            const event = new MouseEvent("click", {
-                bubbles,
-                cancelable,
-                composed,
-                view: win,
-            });
-
-            for (let i = 0; i < times; i++) node.dispatchEvent(event);
+            for (let i = 0; i < times; i++) node.dispatchEvent(new MouseEvent("click", init));
 
             return --remaining <= 0 ? { stop: true } : { continue: true };
-        }, options);
+        }, match);
     },
 
     /**
@@ -1111,7 +1016,6 @@ const act = {
      * @returns {() => void}
      */
     scroll(selector, options = {}) {
-        this.guard("scroll", selector);
         const { behavior = "smooth", block = "center", inline = "center" } = options;
         return dom.stalk(selector, node => node.scrollIntoView({ behavior, block, inline }), { limit: 1, ...options });
     },
@@ -1123,7 +1027,6 @@ const act = {
      * @returns {() => void}
      */
     prop(selector, options = {}) {
-        this.guard("prop", selector);
         const { prop = "value", value = "" } = options;
         return dom.stalk(selector, node => {
             if (typeof prop === "string") {
@@ -1152,8 +1055,6 @@ const act = {
      * @returns {() => void}
      */
     removeAttr(selector, names, options = {}) {
-        this.guard("removeAttr", selector);
-
         const list = [names].flat();
 
         return dom.stalk(selector, node => {
@@ -1169,7 +1070,6 @@ const act = {
      * @returns {() => void}
      */
     remove(selector, options = {}) {
-        this.guard("remove", selector);
         return dom.stalk(selector, node => node.remove(), options);
     },
 
@@ -1179,8 +1079,7 @@ const act = {
      * @param {StalkOptions} [options]
      * @returns {() => void}
      */
-    wrap(selector, options = {}) {
-        this.guard("wrap", selector);
+    stash(selector, options = {}) {
         return dom.stalk(selector, node => {
             const wrapper = document.createElement("div");
             wrapper.style.cssText = `
@@ -1200,8 +1099,6 @@ const act = {
      * @returns {() => void} Function that undoes the hiding.
      */
     hide(selector, options = {}) {
-        this.guard("hide", selector);
-
         const { root = document.documentElement } = options;
         const style = document.createElement("style");
 
@@ -1218,18 +1115,8 @@ const act = {
      * @returns {() => void}
      */
     redirect(selector, options = {}) {
-        this.guard("redirect", selector);
-
         const { attr = "href" } = options;
-        return dom.stalk(selector, node => {
-            const value = node.getAttribute(attr);
-            if (value === null) return;
-            location.assign(value);
-        }, {
-            limit: 1,
-            ...options,
-            attrs: { [attr]: true, ...options.attrs },
-        });
+        return dom.stalk(selector, node => location.assign(node.getAttribute(attr)), { limit: 1, attrs: { [attr]: true } });
     },
 };
 
@@ -1586,9 +1473,8 @@ const patch = {
 
             if (!node?.matches) return result;
 
-            const match = ctx.map.values().find(conf =>
-                node.matches(selector) && dom.match(node, conf.options),
-            );
+            const match = ctx.map.entries()
+                .find(([sel, conf]) => matcher.node(node, { ...conf.options, is: sel }))?.[1];
 
             if (!match) return result;
 
@@ -1670,15 +1556,14 @@ const bypass = {
      * @returns {Promise<void>}
      */
     async cache(href) {
-        const cacheLocal = storage.global().get("bypass-local", {});
-        const destCached = cacheLocal[href];
-        if (destCached) {
-            navigation.navigate(destCached, { info: "bypass_link" });
-            return;
-        }
+        // const cacheLocal = storage.global().get("bypass-local", {});
+        // const destCached = cacheLocal[href];
+        // if (destCached) {
+        //     navigation.navigate(destCached, { info: "bypass_link" });
+        //     return;
+        // }
 
         const { response } = await worker.links.find(href);
-        console.log("res", response);
         if (response?.status !== "ok" || !response.destination) return;
 
         const url = new URL(response.destination);
@@ -1741,7 +1626,9 @@ const bypass = {
             },
         });
 
-        this.save(href, res.finalUrl);
+        const final = new URL(res.finalUrl);
+        if (!this.trusted(final.hostname)) return;
+        this.save(href, final.href);
     },
 
     /**
@@ -1756,7 +1643,7 @@ const bypass = {
             return;
         }
 
-        storage.global().merge("bypass-local", { [href]: destination });
+        // storage.global().merge("bypass-local", { [href]: destination });
 
         const { response } = await worker.links.save(href, destination);
         if (response?.status !== "ok") { console.error(response); }
@@ -1913,36 +1800,6 @@ const generics = {
                 return target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
             });
 
-            // patch.apply(win.performance, "getEntriesByName", (target, thisArg, argArray) => {
-            //     const [name] = argArray;
-            //     if (typeof name === "string" && AD_REGEX.test(name)) {
-            //         return [{
-            //             name,
-            //             entryType: "resource",
-            //             startTime: 0,
-            //             duration: 100,
-            //             initiatorType: "fetch",
-            //             nextHopProtocol: "h2",
-            //             workerStart: 0,
-            //             redirectStart: 0,
-            //             redirectEnd: 0,
-            //             fetchStart: 0,
-            //             domainLookupStart: 0,
-            //             domainLookupEnd: 0,
-            //             connectStart: 0,
-            //             connectEnd: 0,
-            //             secureConnectionStart: 0,
-            //             requestStart: 1,
-            //             responseStart: 10,
-            //             responseEnd: 100,
-            //             transferSize: 145_000,
-            //             encodedBodySize: 145_000,
-            //             decodedBodySize: 145_000,
-            //         }];
-            //     }
-            //     return Reflect.apply(target, thisArg, argArray);
-            // });
-
             patch.apply(win.Node.prototype, "appendChild", (target, thisArg, argArray) => {
                 const [node] = argArray;
                 const result = Reflect.apply(target, thisArg, argArray);
@@ -1995,11 +1852,11 @@ domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixb
         patch.haste();
         act.hide("#masthead, aside, #content > :not(center, form), footer");
         act.remove("div", { css: { position: "fixed" }, text: "detected" });
-        patch.listener({ type: "click", target: { excludes: "#startButton, #getnewlink" } });
+        patch.listener({ type: "click", target: { not: "#startButton, #getnewlink" } });
     },
     continue() {
-        act.click("#startButton", { wait: 2000 });
-        act.click("#getnewlink", { visible: true });
+        act.click("#startButton", { extra: { wait: 2000 } });
+        act.click("#getnewlink", { match: { visible: true } });
     },
 });
 
@@ -2015,7 +1872,7 @@ domains.add(["ouo.io", "ouo.press"], {
 
 domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], {
     continue() {
-        act.click("#submit-button:not([disabled])", { count: 2 });
+        act.click("#submit-button:not([disabled])", { extra: { count: 2 } });
         act.click(dom.turnstile("#submit-button:not([disabled])"));
     },
 });
@@ -2068,13 +1925,13 @@ domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], 
     continue() {
         act.click("#go-btn:not([disabled])");
         act.click("#step-top .step-btn:not([disabled])");
-        act.click("#step-bottom .step-btn:not([disabled])", { count: 2 });
+        act.click("#step-bottom .step-btn:not([disabled])", { extra: { count: 2 } });
     },
 });
 
 domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], {
     continue() {
-        act.click("#sl-primary:not([disabled])", { visible: true });
+        act.click("#sl-primary:not([disabled])", { match: { visible: true } });
         act.click(".get-link:not(.disabled)");
     },
 });
@@ -2097,9 +1954,9 @@ domains.add(["premium.hairmova.com", "product.hairmova.com"], {
     },
     continue() {
         act.scroll("#safegate-wait1");
-        act.click("#safegate-proceed-btn", { visible: true });
-        act.scroll("#safegate-wait2", { visible: true });
-        act.click("#safegate-go", { visible: true });
+        act.click("#safegate-proceed-btn", { match: { visible: true } });
+        act.scroll("#safegate-wait2", { match: { visible: true } });
+        act.click("#safegate-go", { match: { visible: true } });
 
         dom.stalk("#safegate-reveal-overlay > div > div > span", node => {
             storage.global().set("no-bots-allowed", node.textContent.trim());
@@ -2121,11 +1978,11 @@ domains.add("pahe.plus", {
     patcher() {
         generics.antiAdbCore.patcher();
         generics.pahe.patcher();
-        patch.listener({ type: "click", target: { excludes: "#invisibleCaptchaShortlink" } });
+        patch.listener({ type: "click", target: { not: "#invisibleCaptchaShortlink" } });
         act.hide(".banner, body > [style*='fixed'], html > div");
     },
     continue() {
-        act.click(dom.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"), { bubbles: false });
+        act.click(dom.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"), { extra: { event: { bubbles: false } } });
         act.redirect(".get-link[href^='https://']:not(.disabled)");
     },
 });
@@ -2135,7 +1992,7 @@ domains.add("intercelestial.com", {
         generics.antiAdbCore.patcher();
         generics.pahe.patcher();
 
-        patch.listener({ type: "click", target: { excludes: ".myButton" } });
+        patch.listener({ type: "click", target: { not: ".myButton" } });
         patch.apply(win, "open", () => { });
         patch.define(win, "LLct", { get: () => "1" });
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
@@ -2143,7 +2000,7 @@ domains.add("intercelestial.com", {
         act.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
     },
     continue() {
-        act.click(".myButton", { count: 3, bubbles: false });
+        act.click(".myButton", { extra: { count: 3, event: { bubbles: false } } });
     },
     cache() {
         bypass.cache(location.href);
@@ -2163,7 +2020,7 @@ domains.add("intercelestial.com", {
 
 domains.add("vexfile.com", {
     continue() {
-        act.redirect(".generate-link:not(.blocked)");
+        act.redirect(".generate-link[href]:not(.blocked)");
     },
 });
 
@@ -2231,9 +2088,9 @@ domains.add("themezon.net", {
         act.remove("#j-adblock");
     },
     continue() {
-        act.click("#smg-spot-header #j-start", { wait: 1000 });
+        act.click("#smg-spot-header #j-start", { extra: { wait: 1000 } });
         act.click("#j-next:not([disabled])");
-        act.click("#smg-spot-end #j-start", { wait: 1000 });
+        act.click("#smg-spot-end #j-start", { extra: { wait: 1000 } });
     },
 });
 
@@ -2282,7 +2139,7 @@ domains.add("www.up-4ever.net", {
 
 domains.add("cloud.unblockedgames.world", {
     continue() {
-        act.click("a[onclick]", { text: "Start Verification" });
+        act.click("a[onclick]", { match: { text: "Start Verification" } });
         act.click("#verify_button2");
         act.click("#verify_button");
 
@@ -2292,9 +2149,9 @@ domains.add("cloud.unblockedgames.world", {
 
 domains.add("jobzhub.store", {
     continue() {
-        act.click("#next", { visible: true });
-        act.click("#scroll", { visible: true });
-        act.click("#glink", { visible: true });
+        act.click("#next", { match: { visible: true } });
+        act.click("#scroll", { match: { visible: true } });
+        act.click("#glink", { match: { visible: true } });
         act.click(dom.turnstile("#surl:not(.disabled)"));
     },
 });
@@ -2309,7 +2166,7 @@ domains.add("aii.sh", {
 domains.add("aknewz.xyz", {
     continue() {
         act.click("#next");
-        act.click("#scroll:not(.hidden)", { count: 2 });
+        act.click("#scroll:not(.hidden)", { extra: { count: 2 } });
         act.click(dom.turnstile("#surl"));
     },
 });
@@ -2341,9 +2198,9 @@ domains.add("avnsgames.com", {
 
 domains.add("zdrive.to", {
     continue() {
-        act.click("#freeBtn", { wait: 500 });
-        act.click("#down_1Form button", { visible: true });
-        act.click("#down_2Form button", { visible: true });
+        act.click("#freeBtn", { extra: { wait: 500 } });
+        act.click("#down_1Form button", { match: { visible: true } });
+        act.click("#down_2Form button", { match: { visible: true } });
         act.click(".btn-download:not(.disabled)");
     },
 });
@@ -2391,7 +2248,7 @@ domains.add("geekgrove.net", {
     patcher() {
         patch.define(win.document, "activeElement", { get: () => ({ tagName: "IFRAME" }) });
         patch.apply(win.Document.prototype, "hasFocus", () => false);
-        patch.listener({ type: "click", target: { excludes: "button" } });
+        patch.listener({ type: "click", target: { not: "button" } });
 
         act.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭, body > div:has(#accept-btn), div[style*='z-index']");
     },
@@ -2412,10 +2269,10 @@ domains.add("geekgrove.net", {
             location.assign(match[1]);
         };
 
-        act.click("#btnLinkStart", { text: "Start" });
-        act.click("#btnLinkContinue", { text: "Verify", wait: 1000 });
-        act.click("#btnLinkContinue", { text: "Verify" });
-        act.click("#btnLpcont", { text: "Continue" });
+        act.click("#btnLinkStart", { match: { text: "Start" } });
+        act.click("#btnLinkContinue", { match: { text: "Verify" }, extra: { wait: 1000 } });
+        act.click("#btnLinkContinue", { match: { text: "Verify" } });
+        act.click("#btnLpcont", { match: { text: "Continue" } });
 
         const returnKey = await dom.query("#linkResHeader kbd");
         storage.global().set("geekgrove-return-key", returnKey.textContent);
@@ -2439,7 +2296,7 @@ domains.add("mahitimanch.in", {
     continue() {
         act.click("#link");
         act.click("#linkx");
-        act.redirect("#gtelinkbtn");
+        act.redirect("#gtelinkbtn[href]");
     },
 });
 
@@ -2511,14 +2368,14 @@ domains.add("nerventualken.com", {
 domains.add("datanodes.to", {
     continue() {
         act.click("#method_free:not([disabled])");
-        act.click("button.py-3", { text: "Free Download" });
-        act.click("button.py-3", { text: "Start Download" });
+        act.click("button.py-3", { match: { text: "Free Download" } });
+        act.click("button.py-3", { match: { text: "Start Download" } });
     },
 });
 
 domains.add("fuckingfast.co", {
     continue() {
-        act.click(".link-button", { wait: 500 });
+        act.click(".link-button", { extra: { wait: 500 } });
     },
 });
 
@@ -2541,26 +2398,26 @@ domains.add("linkvertise.com", {
         act.redirect("a[href]:has(> button)", { text: "Get access" });
         act.click("ui-divider + lv-membership-plan-option");
         act.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
-        act.click(".skip-button > *", { count: 4 });
+        act.click(".skip-button > *", { extra: { count: 4 } });
         act.click(".success-card button");
     },
 });
 
 domains.add("app.khaddavi.net", {
     continue() {
-        act.click("button.ready", { count: 4 });
+        act.click("button.ready", { extra: { count: 4 } });
     },
 });
 
 domains.add("sfl.gl", {
     continue() {
-        act.click("button", { text: "OPEN LINK" });
+        act.click("button", { match: { text: "OPEN LINK" } });
     },
 });
 
 domains.add("link4m.net", {
     patcher() {
-        act.remove("body > div", { text: "Adblock" });
+        act.remove("body > div", { match: { text: "Adblock" } });
     },
     continue() {
         act.click(".get-link:not(.disabled)");
@@ -2569,8 +2426,8 @@ domains.add("link4m.net", {
 
 domains.add("gplinks.co", {
     continue() {
-        act.redirect(".gate-btn-skip");
-        act.redirect(dom.turnstile("#captchaButton:not(.disabled)"));
+        act.redirect(".gate-btn-skip[href]");
+        act.redirect(dom.turnstile("#captchaButton[href]:not(.disabled)"));
     },
 });
 
@@ -2579,8 +2436,8 @@ domains.add("skrresults.com", {
         patch.haste({ factor: 0.01 });
     },
     continue() {
-        act.click("#VerifyBtn", { visible: true });
-        act.click("#NextBtn", { visible: true });
+        act.click("#VerifyBtn", { match: { visible: true } });
+        act.click("#NextBtn", { match: { visible: true } });
     },
 });
 
@@ -2592,8 +2449,8 @@ domains.add("rekonise.com", {
         });
     },
     continue() {
-        act.click(".action-button:not([disabled])", { count: 10 });
-        act.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
+        act.click(".action-button:not([disabled])", { extra: { count: 10 } });
+        act.click(":has(.all-done-row) .cta-button:not([disabled])", { extra: { wait: 2000 } });
     },
 });
 
@@ -2651,11 +2508,11 @@ domains.add("devuploads.com", {
         act.hide(".dl-promo, .dl-promo-mini, section.card-pad, .signup-band");
     },
     continue() {
-        act.click("[type='submit'][name='method_free']:not([disabled], [value*='Please wait'])", { wait: 1000, count: 2 });
-        act.click(".dl-actions button[type='submit']", { wait: 1000 });
-        act.click(".dl-actions button.is-ready", { wait: 1000 });
-        act.click(".dl-actions a[href]", { text: "Download File", wait: 1000 });
-        act.click(".dl-actions a[href].is-ready", { text: "Download File", wait: 1000 });
+        act.click("[type='submit'][name='method_free']:not([disabled], [value*='Please wait'])", { extra: { wait: 1000, count: 2 } });
+        act.click(".dl-actions button[type='submit']", { extra: { wait: 1000 } });
+        act.click(".dl-actions button.is-ready", { extra: { wait: 1000 } });
+        act.click(".dl-actions a[href]", { match: { text: "Download File" }, extra: { wait: 1000 } });
+        act.click(".dl-actions a[href].is-ready", { match: { text: "Download File" }, extra: { wait: 1000 } });
     },
 });
 
@@ -2664,7 +2521,7 @@ domains.add("katfile.co", {
         act.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
     },
     continue() {
-        act.click(".kfd-slow", { wait: 1000, count: 2 });
+        act.click(".kfd-slow", { extra: { wait: 1000, count: 2 } });
         act.click(dom.turnstile(".downloadbtn"));
         act.redirect("a#dlink[href]");
     },
@@ -2686,7 +2543,7 @@ domains.add("link.snipcash.com", {
 
 domains.add("fdsite.lat", {
     continue() {
-        act.click(".dl-card button.btn-primary", { wait: 1000, visible: true });
+        act.click(".dl-card button.btn-primary", { extra: { wait: 1000 }, match: { visible: true } });
     },
 });
 
@@ -2695,7 +2552,7 @@ domains.add("topshare.in", {
         act.hide(".post-content-container, #normal");
     },
     continue() {
-        act.click("#btn-download", { visible: true });
+        act.click("#btn-download", { match: { visible: true } });
     },
 });
 
@@ -2713,7 +2570,7 @@ domains.add("psa.wf", {
     async cache() {
         const entry = await dom.query(".entry-inner:has(> .sp-wrap)");
         const headsNode = entry.querySelectorAll(".sp-head");
-        const titles = [...headsNode].filter(head => dom.match(head, { text: /-PSA$/m })).map(n => n.textContent.trim());
+        const titles = [...headsNode].filter(head => matcher.node(head, { text: /-PSA$/m })).map(n => n.textContent.trim());
 
         const links = await bypass.lookup(titles);
         for (const link of links) {
@@ -2796,14 +2653,14 @@ domains.add("no-bots-allowed.org", {
 domains.add("fileroy.com", {
     continue() {
         act.click(".fr-gate-button:not([disabled])");
-        act.click(".download-file-link", { wait: 1000 });
+        act.click(".download-file-link", { extra: { wait: 1000 } });
     },
 });
 
 domains.add("astrorede.com", {
     continue() {
         act.click("#bt");
-        act.click("#bt", { text: "CONTINUAR" });
+        act.click("#bt", { match: { text: "CONTINUAR" } });
     },
 });
 
@@ -2813,7 +2670,7 @@ domains.add("app.lovemodz.space", {
     },
     continue() {
         act.click("#sl-g1");
-        act.click("#sl-g3", { visible: true });
-        act.click("#sl-g5", { visible: true });
+        act.click("#sl-g3", { match: { visible: true } });
+        act.click("#sl-g5", { match: { visible: true } });
     },
 });
