@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "types": ["@violentmonkey/types"],
+    "lib": ["ESNext", "DOM"]
+  },
+  "typeAcquisition": {
+    "include": ["@violentmonkey/types"]
+  }
+}
