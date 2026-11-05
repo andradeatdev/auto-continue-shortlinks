@@ -430,7 +430,7 @@ const commands = {
         supportHost: {
             name: "Support a new shortlink/host",
             action() {
-                GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-request.yml");
+                GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10");
             },
         },
         reportUrl: {

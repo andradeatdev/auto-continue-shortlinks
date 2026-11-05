@@ -80,7 +80,7 @@ Os problemas mais comuns e suas soluções (script sem efeito, CAPTCHAs, timers,
 ## Reportar problemas / Pedir novo host
 
 - **Um site parou de funcionar:** use o comando **Report URL issue** no menu do script, ou abra o formulário [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml).
-- **Um novo site deveria ser suportado:** abra uma issue [Support a new site](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-request.yml).
+- **Um novo site deveria ser suportado:** comente na thread [Site requests](https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10) com pelo menos 3 links e o passo a passo.
 
 ## Licença
 

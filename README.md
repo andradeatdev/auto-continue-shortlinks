@@ -77,7 +77,7 @@ Common problems and their fixes (script not doing anything, CAPTCHAs, timers, th
 ## Report an Issue / Request a New Host
  
 - **A site stopped working:** use the **Report URL issue** command in the script menu, or open the [Site stopped working](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-broken.yml) form.
-- **A new site should be supported:** open a [Support a new site](https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?template=site-request.yml) issue.
+- **A new site should be supported:** comment on the [Site requests](https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10) thread with at least 3 links and the steps.
 
 ## License
  
