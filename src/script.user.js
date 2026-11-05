@@ -1627,8 +1627,8 @@ const bypass = {
         });
 
         const final = new URL(res.finalUrl);
-        if (!this.trusted(final.hostname)) return;
-        this.save(href, final.href);
+        if (this.trusted(final.hostname)) await this.save(href, final.href);
+        navigation.navigate(final.href, { info: "bypass_link" });
     },
 
     /**
@@ -1852,7 +1852,6 @@ domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixb
         patch.haste();
         act.hide("#masthead, aside, #content > :not(center, form), footer");
         act.remove("div", { css: { position: "fixed" }, text: "detected" });
-        patch.listener({ type: "click", target: { not: "#startButton, #getnewlink" } });
     },
     continue() {
         act.click("#startButton", { extra: { wait: 2000 } });
