@@ -42,10 +42,7 @@
 // From: OvaGames
 // @match              https://shrinkme.click/*
 // @match              https://themezon.net/*
-// @match              https://en.mrproblogger.com/*
-//
 // @match              https://aradmag.online/*
-// @match              https://horrorpay.online/*
 //
 // From: Others
 // @match              https://cloud.unblockedgames.world/*
@@ -55,7 +52,6 @@
 // @match              https://oii.io/*
 // @match              https://aknewz.xyz/*
 // @match              https://toolskitpro.net/*
-// @match              https://icutlink.com/*
 // @match              https://uiil.ink/*
 // @match              https://coinclix.co/*
 // @match              https://geekgrove.net/*
@@ -90,6 +86,10 @@
 // @match              https://get-to.link/*
 // @match              https://no-bots-allowed.org/*
 // @match              https://fileroy.com/*
+// 
+// @match              https://en.mrproblogger.com/*
+// @match              https://horrorpay.online/*
+// @match              https://icutlink.com/*
 // 
 // @match              https://astrorede.com/*
 // @match              https://app.lovemodz.space/*
@@ -161,11 +161,12 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 
 /**
  * @typedef {Object} MatchOptions
- * @property {Record<string, boolean|string|RegExp|Function>} [attrs] Attribute filters. `true` = exists, `false` = missing.
- * @property {Record<string, string|RegExp|Function|*>} [props] Node property filters (e.g. `{ disabled: false }`).
- * @property {string|RegExp|Function} [text] Filter by `textContent`.
+ * @property {Record<string, boolean|ValueMatcher>} [attrs] Attribute filters. `true` = exists, `false` = missing.
+ * @property {Record<string, ValueMatcher>} [props] Node property filters (e.g. `{ disabled: false }`).
+ * @property {TextMatcher} [text] Filter by `textContent`.
  * @property {boolean} [visible] Require the node to be visible (`true`) or hidden (`false`).
  * @property {Record<string, string>} [css] Computed style values the node must have.
+ * @property {(node: Element) => boolean} [when] Custom predicate. Runs last, after all other filters.
  */
 
 /**
@@ -197,7 +198,6 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
  *   count?: number,
  *   times?: number,
  *   bubbles?: boolean,
- *   when?: (node: Element) => boolean
  * }} ClickOptions
  */
 
@@ -224,7 +224,7 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 /**
  * @typedef {Object} HasteOptions
  * @property {number} [factor] Timer multiplier (smaller = faster).
- * @property {string} [text] Only speed up callbacks whose source includes this text.
+ * @property {TextMatcher} [text] Only speed up callbacks whose source matches this.
  * @property {number} [ms] Only speed up timers with exactly this delay.
  * @property {() => boolean} [when] Only speed up while this returns true.
  */
@@ -244,6 +244,22 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
  * @property {() => void} [action]
  * @property {Record<string, Command>} [cmds]
  */
+
+/**
+ * @typedef {string|((node: Node) => boolean)|{
+ *   includes?: string,
+ *   excludes?: string
+ * }} NodeMatcher
+ */
+
+/**
+ * @typedef {string|RegExp|((actual: string) => boolean)|{
+ *   includes?: string|RegExp,
+ *   excludes?: string|RegExp
+ * }} TextMatcher
+ */
+
+/** @typedef {string|RegExp|((actual: *) => boolean)|*} ValueMatcher */
 
 const config = {
     /**
@@ -392,77 +408,57 @@ const storage = {
 };
 
 const commands = {
-    /** @type {Record<string, Command>} */
-    cmds: {
-        useCache: {
-            name: "Use cache - all domains",
-            value: storage.get("useCache", true),
-
+    /** @returns {Record<string, Command>} */
+    get cmds() {
+        const toggle = (key) => ({
+            name: `Use ${key.slice(3).toLowerCase()} - all domains`,
+            value: storage.get(key, true),
             cmds: {
-                useCache: {
-                    name: "This domain",
-                    value: storage.local().get("useCache", true),
+                [key]: { name: "This domain", value: storage.local().get(key, true) },
+            },
+        });
+
+        return {
+            useCache: toggle("useCache"),
+            useContinue: toggle("useContinue"),
+            usePatcher: toggle("usePatcher"),
+            supportHost: {
+                name: "Support a new shortlink/host",
+                action() {
+                    GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10");
                 },
             },
-        },
-        useContinue: {
-            name: "Use continue - all domains",
-            value: storage.get("useContinue", true),
+            reportUrl: {
+                name: "Report URL issue",
+                action() {
+                    const { script, scriptHandler, platform, userAgentData } = GM_info;
 
-            cmds: {
-                useContinue: {
-                    name: "This domain",
-                    value: storage.local().get("useContinue", true),
+                    const browser = platform?.browserName && platform.browserVersion
+                        ? `${platform.browserName} ${platform.browserVersion}`
+                        : userAgentData?.brands
+                            ?.filter(({ brand }) => !/Not.?A.?Brand/i.test(brand))
+                            .map(({ brand, version }) => `${brand} ${version}`)
+                            .join(", ") || "Unknown browser";
+
+                    const params = new URLSearchParams({
+                        template: "site-broken.yml",
+                        url: location.href.split("?", 1)[0],
+                        version: script.version,
+                        env: `${browser} + ${scriptHandler} ${GM_info.version}`,
+                    });
+
+                    GM_openInTab(
+                        `https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?${params}`,
+                    );
                 },
             },
-        },
-        usePatcher: {
-            name: "Use patcher - all domains",
-            value: storage.get("usePatcher", true),
-
-            cmds: {
-                usePatcher: {
-                    name: "This domain",
-                    value: storage.local().get("usePatcher", true),
+            version: {
+                name: `Version ${GM_info.script.version}`,
+                action() {
+                    GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/");
                 },
             },
-        },
-        supportHost: {
-            name: "Support a new shortlink/host",
-            action() {
-                GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10");
-            },
-        },
-        reportUrl: {
-            name: "Report URL issue",
-            action() {
-                const { script, scriptHandler, platform, userAgentData } = GM_info;
-
-                const browser = platform?.browserName && platform.browserVersion
-                    ? `${platform.browserName} ${platform.browserVersion}`
-                    : userAgentData?.brands
-                        ?.filter(({ brand }) => !/Not.?A.?Brand/i.test(brand))
-                        .map(({ brand, version }) => `${brand} ${version}`)
-                        .join(", ") || "Unknown browser";
-
-                const params = new URLSearchParams({
-                    template: "site-broken.yml",
-                    url: location.href.split("?", 1)[0],
-                    version: script.version,
-                    env: `${browser} + ${scriptHandler} ${GM_info.version}`,
-                });
-
-                GM_openInTab(
-                    `https://github.com/andradeatdev/auto-continue-shortlinks/issues/new?${params}`,
-                );
-            },
-        },
-        version: {
-            name: `Version ${GM_info.script.version}`,
-            action() {
-                GM_openInTab("https://github.com/andradeatdev/auto-continue-shortlinks/");
-            },
-        },
+        };
     },
 
     /** Registers all menu commands (skips those whose `when` returns false). */
@@ -534,6 +530,8 @@ const watch = {
     isScheduled: false,
     /** @type {Set<Node>} */
     pending: new Set(),
+    /** @type {WeakSet<Node>} */
+    attached: new WeakSet(),
 
     /** Moves pending mutation records into the queue. */
     drain() {
@@ -558,13 +556,7 @@ const watch = {
         this.queue = [];
         if (records.length === 0) return;
 
-        for (const callback of this.callbacks) {
-            try {
-                callback(records);
-            } catch (error) {
-                console.error(error);
-            }
-        }
+        for (const callback of this.callbacks) safe.run(() => callback(records));
 
         this.observer.takeRecords();
     },
@@ -591,6 +583,9 @@ const watch = {
      * @param {Node} root
      */
     attach(root) {
+        if (this.attached.has(root)) return;
+        this.attached.add(root);
+
         if (!this.running) {
             this.pending.add(root);
             return;
@@ -612,6 +607,26 @@ const watch = {
     },
 };
 
+const safe = {
+    /**
+     * Runs `fn` and never throws. Sync and async errors go to `onError`.
+     * @template T
+     * @param {() => T} fn
+     * @param {(error: unknown) => void} [onError=console.error] Pass `() => {}` to ignore errors.
+     * @returns {T|Promise<T|undefined>|undefined} The result, or `undefined` if it failed.
+     */
+    run(fn, onError = console.error) {
+        const fail = (error) => { onError(error); };
+
+        try {
+            const result = fn();
+            return typeof result?.then === "function" ? result.then(undefined, fail) : result;
+        } catch (error) {
+            fail(error);
+        }
+    },
+};
+
 const ctxs = {
     /** @type {Map<string, Record<string, *>>} */
     ctxs: new Map(),
@@ -630,73 +645,109 @@ const ctxs = {
     },
 };
 
+const matcher = {
+    /**
+     * Compares a value: function (predicate), RegExp (test), string (contains) or strict equality.
+     * @param {*} actual
+     * @param {*} expected
+     * @param {{ exact?: boolean }} [options] `exact` compares strings with `===` instead of "contains".
+     * @returns {boolean}
+     */
+    value(actual, expected, { exact = false } = {}) {
+        if (typeof expected === "function") return Boolean(expected(actual));
+
+        if (typeof actual === "string" && expected instanceof RegExp) {
+            expected.lastIndex = 0;
+            return expected.test(actual);
+        }
+
+        if (!exact && typeof actual === "string" && typeof expected === "string") {
+            return Boolean(expected) && actual.includes(expected);
+        }
+
+        return actual === expected;
+    },
+
+    /**
+     * Matches a text against a string, RegExp, function or `{ includes, excludes }`.
+     * Nothing to match (`undefined`/`null`) always passes.
+     * @param {string} actual
+     * @param {TextMatcher} [expected]
+     * @returns {boolean}
+     */
+    text(actual, expected) {
+        if (this.isNil(expected)) return true;
+
+        if (typeof expected === "object" && !(expected instanceof RegExp)) {
+            const { includes, excludes } = expected;
+            if (includes && !matcher.value(actual, includes)) return false;
+            if (excludes && matcher.value(actual, excludes)) return false;
+            return true;
+        }
+
+        return matcher.value(actual, expected);
+    },
+
+    /**
+     * Matches a node against a CSS selector, a predicate or `{ includes, excludes }` selectors.
+     * Nothing to match (`undefined`/`null`) always passes. Non-elements (window, document)
+     * never match a selector, so they fail `includes` and pass `excludes`.
+     * @param {*} node
+     * @param {NodeMatcher} [expected]
+     * @returns {boolean}
+     */
+    node(node, expected) {
+        if (this.isNil(expected)) return true;
+
+        const is = (selector) => typeof node?.matches === "function" && node.matches(selector);
+
+        if (typeof expected === "string") return is(expected);
+        if (typeof expected === "function") return Boolean(expected(node));
+
+        const { includes, excludes } = expected;
+        if (includes && !is(includes)) return false;
+        if (excludes && is(excludes)) return false;
+        return true;
+    },
+
+    /**
+     * Whether a value is `null` or `undefined`.
+     * @param {*} value
+     * @returns {boolean}
+     */
+    isNil(value) {
+        return value === null || value === undefined;
+    },
+};
+
 const shadow = {
     /** @type {WeakMap<Element, ShadowRoot>} */
     roots: new WeakMap(),
+    isCapturing: false,
 
     /**
-     * Returns the shadow root of a host, including closed roots registered with `track`.
+     * Returns the shadow root of a host, including closed roots seen by `capture`.
      * @param {Element} host
      * @returns {ShadowRoot|undefined}
      */
     of(host) {
-        return host.shadowRoot || this.roots.get(host) || undefined;
+        return host.shadowRoot || this.roots.get(host);
     },
 
     /**
-     * Registers a (closed) shadow root for a host and observes it.
-     * @param {Element} host
-     * @param {ShadowRoot} root
+     * Starts recording every shadow root created from now on, closed ones included.
+     * The page still gets the original root and mode. Must run before the page creates its roots.
      */
-    track(host, root) {
-        this.roots.set(host, root);
-        watch.attach(root);
-    },
+    capture() {
+        if (this.isCapturing) return;
+        this.isCapturing = true;
 
-    /**
-     * Finds the first element. Use `>>>` to pierce shadow roots.
-     * @param {string} selector
-     * @param {ParentNode} [root=document]
-     * @returns {Element|undefined}
-     */
-    query(selector, root = document) {
-        const [head, ...tail] = selector.split(">>>").map(part => part.trim());
-        let node = root.querySelector(head);
-
-        for (const part of tail) {
-            if (!node) return;
-
-            const inner = this.of(node);
-            if (!inner) return;
-
-            watch.attach(inner);
-            node = inner.querySelector(part);
-        }
-
-        return node;
-    },
-
-    /**
-     * Finds all elements. Use `>>>` to pierce shadow roots.
-     * @param {string} selector
-     * @param {ParentNode} [root=document]
-     * @returns {Element[]}
-     */
-    queryAll(selector, root = document) {
-        const [head, ...tail] = selector.split(">>>").map(part => part.trim());
-        let nodes = [...root.querySelectorAll(head)];
-
-        for (const part of tail) {
-            nodes = nodes.flatMap((host) => {
-                const inner = this.of(host);
-                if (!inner) return [];
-
-                watch.attach(inner);
-                return [...inner.querySelectorAll(part)];
-            });
-        }
-
-        return nodes;
+        patch.apply(win.Element.prototype, "attachShadow", (target, thisArg, argArray) => {
+            const root = Reflect.apply(target, thisArg, argArray);
+            this.roots.set(thisArg, root);
+            watch.attach(root);
+            return root;
+        });
     },
 };
 
@@ -741,16 +792,19 @@ const dom = {
             if (++handled >= limit) stop();
         };
 
+        const sweep = async () => {
+            for (const node of dom.select(selector, opts)) {
+                if (isStopped) break;
+                await handle(node);
+            }
+        };
+
         const run = async () => {
             if (isStopped) return;
             if (isRunning) { isDirty = true; return; }
 
             isRunning = true;
-            const nodes = dom.select(selector, opts);
-            for (const node of nodes) {
-                if (isStopped) break;
-                await handle(node);
-            }
+            await safe.run(sweep);
             isRunning = false;
 
             if (isDirty) { isDirty = false; run(); }
@@ -759,8 +813,49 @@ const dom = {
         const unwatch = watch.change(run);
         const stop = () => { isStopped = true; unwatch(); };
 
-        run().catch(console.error);
+        run();
         return stop;
+    },
+
+    /**
+     * Lazily finds elements. Use `>>>` to pierce shadow roots.
+     * @param {string} selector
+     * @param {ParentNode} [root=document]
+     * @returns {Generator<Element>}
+     */
+    *find(selector, root = document) {
+        if (!selector.includes(">>>")) {
+            yield* root.querySelectorAll(selector);
+            return;
+        }
+
+        shadow.capture();
+
+        const [head, ...tail] = selector.split(">>>").map(part => part.trim());
+        yield* dom.pierce(root.querySelectorAll(head), tail);
+    },
+
+    /**
+     * Walks one shadow level per selector part, depth-first.
+     * @param {Iterable<Element>} nodes
+     * @param {string[]} parts
+     * @returns {Generator<Element>}
+     */
+    *pierce(nodes, parts) {
+        if (parts.length === 0) {
+            yield* nodes;
+            return;
+        }
+
+        const [part, ...rest] = parts;
+
+        for (const host of nodes) {
+            const inner = shadow.of(host);
+            if (!inner) continue;
+
+            watch.attach(inner);
+            yield* dom.pierce(inner.querySelectorAll(part), rest);
+        }
     },
 
     /**
@@ -800,8 +895,7 @@ const dom = {
     *select(selector, options = {}) {
         this.guard("select", selector);
 
-        const nodes = shadow.queryAll(selector);
-        for (const node of nodes) {
+        for (const node of this.find(selector)) {
             if (this.match(node, options)) yield node;
         }
     },
@@ -813,38 +907,22 @@ const dom = {
      * @returns {boolean}
      */
     match(node, options = {}) {
-        const { attrs, props, text, visible, css } = options;
+        const { attrs, props, text, visible, css, when } = options;
 
         if (!dom.attrs(node, attrs)) return false;
         if (!dom.props(node, props)) return false;
         if (!dom.text(node, text)) return false;
         if (!dom.visible(node, visible)) return false;
         if (!dom.css(node, css)) return false;
+        if (when && !when(node)) return false;
 
         return true;
     },
 
     /**
-     * Compares a value: string (contains), RegExp (test), function (predicate) or strict equality.
-     * @param {*} actual
-     * @param {*} expected
-     * @returns {boolean}
-     */
-    test(actual, expected) {
-        if (typeof actual === "string" && typeof expected === "string") return actual.includes(expected);
-        if (typeof expected === "function") return !!expected(actual);
-        if (typeof actual === "string" && expected instanceof RegExp) {
-            expected.lastIndex = 0;
-            return expected.test(actual);
-        }
-
-        return actual === expected;
-    },
-
-    /**
      * Matches attribute filters. `true` = exists, `false` = missing.
      * @param {Element} node
-     * @param {MatchOptions["attrs"]} [attrs]
+     * @param {Record<string, boolean|ValueMatcher>} [attrs]
      * @returns {boolean}
      */
     attrs(node, attrs) {
@@ -853,19 +931,19 @@ const dom = {
         return Object.entries(attrs).every(([name, expected]) => {
             if (expected === true) return node.hasAttribute(name);
             if (expected === false) return !node.hasAttribute(name);
-            return dom.test(node.getAttribute(name), expected);
+            return matcher.value(node.getAttribute(name), expected);
         });
     },
 
     /**
      * Matches node property filters.
      * @param {Element} node
-     * @param {MatchOptions["props"]} [props]
+     * @param {Record<string, ValueMatcher>} [props]
      * @returns {boolean}
      */
     props(node, props) {
         if (!props) return true;
-        return Object.entries(props).every(([key, expected]) => dom.test(node[key], expected));
+        return Object.entries(props).every(([key, expected]) => matcher.value(node[key], expected));
     },
 
     /**
@@ -886,8 +964,7 @@ const dom = {
      * @returns {boolean}
      */
     text(node, text) {
-        if (text == undefined) return true;
-        return dom.test(node.textContent, text);
+        return matcher.text(node.textContent, text);
     },
 
     /**
@@ -985,24 +1062,22 @@ const act = {
     click(selector, options = {}) {
         this.guard("click", selector);
 
-        const { wait = 0, scroll = false, count = 1, times = 1, bubbles = true, when } = options;
+        const { wait = 0, scroll = false, count = 1, times = 1, bubbles = true, cancelable = true, composed = true } = options;
         const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
         let remaining = count;
 
         return dom.stalk(selector, async (node) => {
-            if (when && !when(node)) return { continue: true };
-
-            if (wait > 0) await act.wait(wait);
-            if (!node.isConnected) return { continue: true };
-
-            if (when && !when(node)) return { continue: true };
+            if (wait > 0) {
+                await act.wait(wait);
+                if (!node.isConnected || !dom.match(node, options)) return { continue: true };
+            }
 
             if (scroll !== false) node.scrollIntoView({ behavior, block, inline });
 
             const event = new MouseEvent("click", {
                 bubbles,
-                cancelable: true,
-                composed: true,
+                cancelable,
+                composed,
                 view: win,
             });
 
@@ -1020,12 +1095,8 @@ const act = {
      */
     scroll(selector, options = {}) {
         this.guard("scroll", selector);
-
         const { behavior = "smooth", block = "center", inline = "center" } = options;
-        return dom.stalk(selector, node => {
-            node.scrollIntoView({ behavior, block, inline });
-            return { stop: true };
-        }, options);
+        return dom.stalk(selector, node => node.scrollIntoView({ behavior, block, inline }), { limit: 1, ...options });
     },
 
     /**
@@ -1036,12 +1107,8 @@ const act = {
      */
     input(selector, options = {}) {
         this.guard("input", selector);
-
         const { value = "" } = options;
-        return dom.stalk(selector, node => {
-            node.value = value;
-            return { stop: true };
-        }, options);
+        return dom.stalk(selector, node => { node.value = value; }, { limit: 1, ...options });
     },
 
     /**
@@ -1052,7 +1119,6 @@ const act = {
      */
     remove(selector, options = {}) {
         this.guard("remove", selector);
-
         return dom.stalk(selector, node => node.remove(), options);
     },
 
@@ -1067,16 +1133,13 @@ const act = {
         return dom.stalk(selector, node => {
             const wrapper = document.createElement("div");
             wrapper.style.cssText = `
-                visibility: hidden !important;
-                pointer-events: none !important;
-                opacity: 0 !important;
-            `;
-
+            visibility: hidden !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+        `;
             document.body.append(wrapper);
             wrapper.append(node);
-
-            return { stop: true };
-        }, options);
+        }, { limit: 1, ...options });
     },
 
     /**
@@ -1089,8 +1152,8 @@ const act = {
         this.guard("hide", selector);
 
         const { root = document.documentElement } = options;
-
         const style = document.createElement("style");
+
         style.textContent = `${selector} { display: none !important; }`;
         root.append(style);
 
@@ -1107,13 +1170,11 @@ const act = {
         this.guard("redirect", selector);
 
         const { attr = "href" } = options;
-        return dom.stalk(selector, async (node) => {
-            const url = dom.attr(node, attr);
-            if (!url) return { continue: true };
-
-            location.assign(url);
-            return { stop: true };
-        }, options);
+        return dom.stalk(selector, node => location.assign(node.getAttribute(attr)), {
+            limit: 1,
+            ...options,
+            attrs: { [attr]: true, ...options.attrs },
+        });
     },
 };
 
@@ -1362,14 +1423,12 @@ const patch = {
         const isFast = () => {
             if (!when) return true;
             if (isChecking) return false;
+
             isChecking = true;
-            try {
-                return Boolean(when());
-            } catch {
-                return false;
-            } finally {
-                isChecking = false;
-            }
+            const result = safe.run(when);
+            isChecking = false;
+
+            return Boolean(result);
         };
 
         const clock = (read) => {
@@ -1397,7 +1456,7 @@ const patch = {
         const shouldScale = (fn, delay) =>
             typeof delay === "number" &&
             (ms === undefined || ms === delay) &&
-            (!text || String(fn).includes(text));
+            matcher.text(String(fn), text);
 
         const scale = (target, thisArg, args) => {
             if (shouldScale(args[0], args[1]) && isFast()) args[1] *= factor;
@@ -1419,16 +1478,12 @@ const patch = {
 
     /**
      * Blocks matching `fetch` calls and returns a fake value instead.
-     * @param {{ url?: string|RegExp, returnValue?: * }} [options]
+     * @param {{ url?: TextMatcher, returnValue?: * }} [options]
      */
     fetch(options = {}) {
         const { url, returnValue = Object.create(null) } = options;
 
-        const isMatch = (input) => {
-            if (typeof url === "string") return input.includes(url);
-            if (url instanceof RegExp) { url.lastIndex = 0; return url.test(input); }
-            return true;
-        };
+        const isMatch = (input) => matcher.text(String(input?.url ?? input), url);
 
         patch.apply(win, "fetch", (target, thisArg, argArray) => {
             const [urlArg] = argArray;
@@ -1439,36 +1494,23 @@ const patch = {
     },
 
     /**
-     * Blocks matching `addEventListener` registrations.
-     * @param {{ type?: string, excludeTarget?: string, includesText?: string, excludeText?: string }} [options]
+     * Blocks `addEventListener` registrations that match all given filters.
+     * `target` filters by the node the listener is attached to.
+     * @param {{ type?: string|RegExp, target?: NodeMatcher, text?: TextMatcher }} [options]
      */
     listener(options = {}) {
-        const { type, excludeTarget, includesText, excludeText } = options;
+        const { type, target, text } = options;
+        const sourceOf = fn => typeof fn === "function" ? fn.toString() : "";
 
-        patch.apply(win.EventTarget.prototype, "addEventListener", (target, thisArg, argArray) => {
+        patch.apply(win.EventTarget.prototype, "addEventListener", (fn, thisArg, argArray) => {
             const [name, listener] = argArray;
+            const original = () => Reflect.apply(fn, thisArg, argArray);
 
-            if (type !== undefined && type !== name) {
-                return Reflect.apply(target, thisArg, argArray);
-            }
-
-            if (excludeTarget !== undefined && thisArg instanceof Element && thisArg.matches(excludeTarget)) {
-                return Reflect.apply(target, thisArg, argArray);
-            }
-
-            if (includesText !== undefined || excludeText !== undefined) {
-                const source = typeof listener === "function" ? listener.toString() : "";
-
-                if (includesText !== undefined && !source.includes(includesText)) {
-                    return Reflect.apply(target, thisArg, argArray);
-                }
-                if (excludeText !== undefined && source.includes(excludeText)) {
-                    return Reflect.apply(target, thisArg, argArray);
-                }
-            }
+            if (!matcher.isNil(type) && !matcher.value(name, type, { exact: true })) return original();
+            if (!matcher.node(thisArg, target)) return original();
+            if (!matcher.isNil(text) && !matcher.text(sourceOf(listener), text)) return original();
         });
     },
-
     /**
      * Fakes `getComputedStyle` results for nodes matching `selector`.
      * @param {string} selector
@@ -1503,21 +1545,23 @@ const patch = {
     },
 };
 
+const SLUG = /^\/[A-Za-z0-9_-]{3,}$/;
+
 const bypass = {
     /** @type {number} */
     cacheMaxEntries: 50,
     /** @type {Record<string, RegExp>} */
     shortenerPatterns: {
-        "tpi.li": /^\/[A-Za-z0-9_-]{3,}$/,
-        "oii.la": /^\/[A-Za-z0-9_-]{3,}$/,
-        "srnky.com": /^\/[A-Za-z0-9_-]{3,}$/,
-        "clksz.com": /^\/[A-Za-z0-9_-]{3,}$/,
-        "pahe.plus": /^\/[A-Za-z0-9_-]{3,}$/,
-        "en.mrproblogger.com": /^\/[A-Za-z0-9_-]{3,}$/,
+        "tpi.li": SLUG,
+        "oii.la": SLUG,
+        "srnky.com": SLUG,
+        "clksz.com": SLUG,
+        "pahe.plus": SLUG,
+        "en.mrproblogger.com": SLUG,
+        "link.snipcash.com": SLUG,
         "intercelestial.com": /^\/\?ht=[a-zA-Z0-9%]+$/,
         "speedy-links.com": /^\/s\?[A-Za-z0-9_-]{3,}$/,
         "online-fix.me": /^\/ext\/.+$/,
-        "link.snipcash.com": /^\/[A-Za-z0-9_-]{3,}$/,
     },
     /** @type {Record<string, RegExp>} */
     gatePatterns: {
@@ -1674,10 +1718,7 @@ const bypass = {
      * @returns {boolean|undefined}
      */
     trusted(hostname) {
-        for (const domain of this.finalDomains) {
-            if (typeof domain === "string" && hostname === domain) return true;
-            if (domain instanceof RegExp && domain.test(hostname)) return true;
-        }
+        return this.finalDomains.some(domain => matcher.value(hostname, domain, { exact: true }));
     },
 
     /**
@@ -1700,7 +1741,7 @@ const bypass = {
         const { response } = await worker.titles.find(titles);
 
         if (response?.status !== "ok") console.error(response);
-        if (!response.results) return console.error("Titles undefined");
+        if (!response?.results) return console.error("Titles undefined");
 
         return response.results;
     },
@@ -1715,16 +1756,9 @@ const domains = {
      */
     exec(stage, enabled, handler) {
         const fn = handler[stage];
-        if (!fn) return;
-        if (!enabled) return;
+        if (!fn || !enabled) return;
 
-        const fail = (error) => console.error(`[${stage}]`, error);;
-
-        try {
-            fn.call(handler)?.catch?.(fail);
-        } catch (error) {
-            fail(error);
-        }
+        safe.run(() => fn.call(handler), error => console.error(`[${stage}]`, error));
     },
 
     /**
@@ -1754,6 +1788,8 @@ const domains = {
 const generics = {
     pahe: {
         patcher() {
+            generics.antiAdbCore.patcher();
+
             const mirror = (url, dest) => {
                 // console.log("url", url, "| dest", dest);
 
@@ -1900,7 +1936,7 @@ domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixb
         patch.haste();
         act.hide("#masthead, aside, #content > :not(center, form), footer");
         act.remove("div", { css: { position: "fixed" }, text: "detected" });
-        patch.listener({ type: "click", excludeTarget: "#startButton, #getnewlink" });
+        patch.listener({ type: "click", target: { excludes: "#startButton, #getnewlink" } });
     },
     continue() {
         act.click("#startButton", { wait: 2000 });
@@ -2013,18 +2049,10 @@ domains.add(["premium.hairmova.com", "product.hairmova.com"], {
     },
 });
 
-domains.add("pahe.ink", {
-    patcher() {
-        generics.antiAdbCore.patcher();
-        generics.pahe.patcher();
-    },
-});
+domains.add("pahe.ink", generics.pahe);
 
 domains.add("linegee.net", {
-    patcher() {
-        generics.antiAdbCore.patcher();
-        generics.pahe.patcher();
-    },
+    ...generics.pahe,
     continue() {
         act.click(".btn-primary", { wait: 4000 });
     },
@@ -2034,7 +2062,7 @@ domains.add("pahe.plus", {
     patcher() {
         generics.antiAdbCore.patcher();
         generics.pahe.patcher();
-        patch.listener({ type: "click", excludeTarget: "#invisibleCaptchaShortlink" });
+        patch.listener({ type: "click", target: { excludes: "#invisibleCaptchaShortlink" } });
         act.hide(".banner, body > [style*='fixed'], html > div");
     },
     continue() {
@@ -2048,7 +2076,7 @@ domains.add("intercelestial.com", {
         generics.antiAdbCore.patcher();
         generics.pahe.patcher();
 
-        patch.listener({ type: "click", excludeTarget: ".myButton" });
+        patch.listener({ type: "click", target: { excludes: ".myButton" } });
         patch.apply(win, "open", () => { });
         patch.define(win, "LLct", { get: () => "1" });
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
@@ -2150,7 +2178,7 @@ domains.add("themezon.net", {
     },
 });
 
-domains.add("en.mrproblogger.com", {
+domains.add(["en.mrproblogger.com", "horrorpay.online", "icutlink.com"], {
     continue() {
         act.click(".get-link:not(.disabled)");
     },
@@ -2165,12 +2193,6 @@ domains.add("aradmag.online", {
         act.click("[id^='ow_step']:last-of-type button");
         act.click("#offerContinueBtn");
         act.click("#continueBtn:not([disabled])");
-    },
-});
-
-domains.add("horrorpay.online", {
-    continue() {
-        act.click(".get-link:not(.disabled)");
     },
 });
 
@@ -2242,12 +2264,6 @@ domains.add("toolskitpro.net", {
     },
 });
 
-domains.add("icutlink.com", {
-    continue() {
-        act.click(".get-link:not(.disabled)");
-    },
-});
-
 domains.add("lnbz.la", {
     patcher() {
         generics.antiAdbCore.patcher();
@@ -2316,7 +2332,7 @@ domains.add("geekgrove.net", {
     patcher() {
         patch.define(win.document, "activeElement", { get: () => ({ tagName: "IFRAME" }) });
         patch.apply(win.Document.prototype, "hasFocus", () => false);
-        patch.listener({ type: "click", excludeTarget: "button" });
+        patch.listener({ type: "click", target: { excludes: "button" } });
 
         act.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭, body > div:has(#accept-btn), div[style*='z-index']");
     },
@@ -2655,6 +2671,8 @@ domains.add("psa.wf", {
     async continue() {
         if (!location.pathname.startsWith("/safegate/")) return;
 
+        const fire = (target, type, clientX, clientY) => target.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX, clientY }));
+
         const drag = (thumb, track) => {
             const maxLeft = track.offsetWidth - thumb.offsetWidth - 4;
             const rect = thumb.getBoundingClientRect();
@@ -2662,23 +2680,9 @@ domains.add("psa.wf", {
             const x = rect.left + (maxLeft - ((Number(thumb.style.left) || 2) - 2)) + rect.width / 2;
             const y = rect.top + rect.height / 2;
 
-            thumb.dispatchEvent(new MouseEvent("mousedown", {
-                bubbles: true,
-                clientX: rect.left + rect.width / 2,
-                clientY: y,
-            }));
-
-            document.dispatchEvent(new MouseEvent("mousemove", {
-                bubbles: true,
-                clientX: x,
-                clientY: y,
-            }));
-
-            document.dispatchEvent(new MouseEvent("mouseup", {
-                bubbles: true,
-                clientX: x,
-                clientY: y,
-            }));
+            fire(thumb, "mousedown", rect.left + rect.width / 2, y);
+            fire(document, "mousemove", x, y);
+            fire(document, "mouseup", x, y);
         };
 
         const track = await dom.query("#sg-track");
