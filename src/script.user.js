@@ -519,7 +519,7 @@ const watch = {
     /** @type {Set<(records: MutationRecord[]) => void>} */
     callbacks: new Set(),
     /** @type {MutationObserver} */
-    observer: new MutationObserver((records) => this.executor(records)),
+    observer: new MutationObserver((records) => watch.executor(records)),
     /** @type {boolean} */
     running: false,
     /** @type {MutationRecord[]} */
