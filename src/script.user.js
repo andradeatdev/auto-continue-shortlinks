@@ -1117,15 +1117,49 @@ const act = {
     },
 
     /**
-     * Sets the `value` of matching inputs.
+     * Sets one or more properties on matching elements and dispatches input/change events.
      * @param {string} selector
-     * @param {StalkOptions & { value?: string }} [options]
+     * @param {StalkOptions & { prop?: string | Record<string, any>, value?: any }} [options]
      * @returns {() => void}
      */
-    input(selector, options = {}) {
-        this.guard("input", selector);
-        const { value = "" } = options;
-        return dom.stalk(selector, node => { node.value = value; }, { limit: 1, ...options });
+    prop(selector, options = {}) {
+        this.guard("prop", selector);
+        const { prop = "value", value = "" } = options;
+        return dom.stalk(selector, node => {
+            if (typeof prop === "string") {
+                node[prop] = value;
+                node.dispatchEvent(new Event("input", { bubbles: true }));
+                node.dispatchEvent(new Event("change", { bubbles: true }));
+                return;
+            }
+
+            if (typeof prop === "object") {
+                for (const [key, val] of Object.entries(prop)) {
+                    node[key] = val;
+                    node.dispatchEvent(new Event("input", { bubbles: true }));
+                    node.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+            }
+        }, { limit: 1, ...options });
+    },
+
+    /**
+     * Removes attributes from matching elements.
+     * Keeps watching, so attributes the page adds back are removed again.
+     * @param {string} selector
+     * @param {string|string[]} names Attribute name(s).
+     * @param {StalkOptions} [options]
+     * @returns {() => void}
+     */
+    removeAttr(selector, names, options = {}) {
+        this.guard("removeAttr", selector);
+
+        const list = [names].flat();
+
+        return dom.stalk(selector, node => {
+            for (const name of list) node.removeAttribute(name);
+            return { continue: true };
+        }, options);
     },
 
     /**
@@ -1586,6 +1620,7 @@ const bypass = {
     /** @type {Record<string, RegExp>} */
     gatePatterns: {
         "clksz.com": /^\/r\/[^/]+\/.+$/,
+        "srnky.com": /^\/r\/[^/]+\/.+$/,
     },
     /** @type {(string|RegExp)[]} */
     finalDomains: [
@@ -1637,7 +1672,10 @@ const bypass = {
     async cache(href) {
         const cacheLocal = storage.global().get("bypass-local", {});
         const destCached = cacheLocal[href];
-        if (destCached) return navigation.navigate(destCached, { info: "bypass_link" });
+        if (destCached) {
+            navigation.navigate(destCached, { info: "bypass_link" });
+            return;
+        }
 
         const { response } = await worker.links.find(href);
         console.log("res", response);
@@ -1692,7 +1730,7 @@ const bypass = {
      * @returns {Promise<void>}
      */
     async follow(href, destination) {
-        const { finalUrl } = await net.get(destination, {
+        const res = await net.get(destination, {
             headers: {
                 Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 Host: location.hostname,
@@ -1875,35 +1913,35 @@ const generics = {
                 return target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
             });
 
-            patch.apply(win.performance, "getEntriesByName", (target, thisArg, argArray) => {
-                const [name] = argArray;
-                if (typeof name === "string" && AD_REGEX.test(name)) {
-                    return [{
-                        name,
-                        entryType: "resource",
-                        startTime: 0,
-                        duration: 100,
-                        initiatorType: "fetch",
-                        nextHopProtocol: "h2",
-                        workerStart: 0,
-                        redirectStart: 0,
-                        redirectEnd: 0,
-                        fetchStart: 0,
-                        domainLookupStart: 0,
-                        domainLookupEnd: 0,
-                        connectStart: 0,
-                        connectEnd: 0,
-                        secureConnectionStart: 0,
-                        requestStart: 1,
-                        responseStart: 10,
-                        responseEnd: 100,
-                        transferSize: 145_000,
-                        encodedBodySize: 145_000,
-                        decodedBodySize: 145_000,
-                    }];
-                }
-                return Reflect.apply(target, thisArg, argArray);
-            });
+            // patch.apply(win.performance, "getEntriesByName", (target, thisArg, argArray) => {
+            //     const [name] = argArray;
+            //     if (typeof name === "string" && AD_REGEX.test(name)) {
+            //         return [{
+            //             name,
+            //             entryType: "resource",
+            //             startTime: 0,
+            //             duration: 100,
+            //             initiatorType: "fetch",
+            //             nextHopProtocol: "h2",
+            //             workerStart: 0,
+            //             redirectStart: 0,
+            //             redirectEnd: 0,
+            //             fetchStart: 0,
+            //             domainLookupStart: 0,
+            //             domainLookupEnd: 0,
+            //             connectStart: 0,
+            //             connectEnd: 0,
+            //             secureConnectionStart: 0,
+            //             requestStart: 1,
+            //             responseStart: 10,
+            //             responseEnd: 100,
+            //             transferSize: 145_000,
+            //             encodedBodySize: 145_000,
+            //             decodedBodySize: 145_000,
+            //         }];
+            //     }
+            //     return Reflect.apply(target, thisArg, argArray);
+            // });
 
             patch.apply(win.Node.prototype, "appendChild", (target, thisArg, argArray) => {
                 const [node] = argArray;
