@@ -9,6 +9,9 @@
 [![Licença](https://img.shields.io/github/license/andradeatdev/auto-continue-shortlinks?style=flat-square&logo=gnu)](LICENSE)
 [![Hosts suportados](https://img.shields.io/badge/hosts-78%20suportados-2EA44F?style=flat-square)](HOSTS.md)
 
+> **Want support for a new site?** Comment on the [Site requests thread](https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10) with at least 3 links and the steps.
+> Something stopped working? Use **Report URL issue** in the script menu.
+
 ## Índice
 
 - [Pahe - Auto Continue Links](#pahe---auto-continue-links)
