@@ -1700,7 +1700,7 @@ const bypass = {
         const final = new URL(finalUrl);
         if (!this.trusted(final.hostname)) return;
 
-        this.save(href, final);
+        this.save(href, final.href);
     },
 
     /**
@@ -1710,6 +1710,11 @@ const bypass = {
      * @returns {Promise<void>}
      */
     async save(href, destination) {
+        if (typeof href !== "string" || typeof destination !== "string") {
+            console.error("Can't save shortlink, 'href' and 'destination' args need be a string");
+            return;
+        }
+
         storage.global().merge("bypass-local", { [href]: destination });
 
         const { response } = await worker.links.save(href, destination);
