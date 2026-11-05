@@ -156,8 +156,9 @@
 // you may copy, modify and redistribute it only under the GNU General Public
 // License v3. Source and this notice must be kept intact (GPL-3.0, §4–§5).
 
-/** @type {Window & typeof globalThis} */
-const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
+const win = /** @type {Window & typeof globalThis} */ (
+    typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow
+);
 
 /**
  * @typedef {Object} MatchOptions
@@ -185,7 +186,7 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
  */
 
 /**
- * @typedef {Object} ScrollOptions
+ * @typedef {Object} ScrollConfig
  * @property {ScrollBehavior} [behavior="smooth"]
  * @property {ScrollLogicalPosition} [block="center"]
  * @property {ScrollLogicalPosition} [inline="center"]
@@ -194,10 +195,12 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
 /**
  * @typedef {StalkOptions & {
  *   wait?: number,
- *   scroll?: false|ScrollOptions,
+ *   scroll?: false|ScrollConfig,
  *   count?: number,
  *   times?: number,
  *   bubbles?: boolean,
+ *   cancelable?: boolean, 
+ *   composed?: boolean
  * }} ClickOptions
  */
 
@@ -205,8 +208,8 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
  * @typedef {Object} StorageScope
  * @property {(key: string, defaultValue?: *) => *} get
  * @property {(key: string, value: *) => void} set
- * @property {(key: string, value: Object) => void} merge
- * @property {(key: string, callback: (after: *, before: *, remote: boolean) => void) => number} watch
+ * @property {(key: string, value: Json) => void} merge
+ * @property {(key: string, callback: (after: *, before: *, remote: boolean) => void) => string} watch
  */
 
 /**
@@ -216,7 +219,7 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
  * @property {*} [data]
  * @property {number} [timeout]
  * @property {string} [overrideMimeType]
- * @property {XMLHttpRequestResponseType} [responseType="text"]
+ * @property {VMScriptResponseType} [responseType="text"]
  * @property {"follow"|"error"|"manual"} [redirect]
  * @property {boolean} [anonymous]
  */
@@ -260,6 +263,8 @@ const win = typeof unsafeWindow === "undefined" ? globalThis : unsafeWindow;
  */
 
 /** @typedef {string|RegExp|((actual: *) => boolean)|*} ValueMatcher */
+
+/** @typedef {Record<string, *>} Json */
 
 const config = {
     /**
@@ -387,12 +392,12 @@ const storage = {
              * Calls back when the value at `key` changes (also from other tabs).
              * @param {string} key
              * @param {(after: *, before: *, remote: boolean) => void} callback
-             * @returns {number} Listener id.
+             * @returns {string} Listener id.
              */
             watch(key, callback) {
                 const pick = (root) => (bucket === undefined ? root : root?.[bucket])?.[key];
 
-                return GM_addValueChangeListener(ns, (name, oldRoot, newRoot, remote) => {
+                return GM_addValueChangeListener(ns, (_name, oldRoot, newRoot, remote) => {
                     const before = pick(oldRoot);
                     const after = pick(newRoot);
 
@@ -476,7 +481,7 @@ const commands = {
      */
     registerMenuCommand(name, cmd) {
         if (cmd.action) {
-            GM_registerMenuCommand(`▶  ${cmd.name}`, () => cmd.action());
+            GM_registerMenuCommand(`▶  ${cmd.name}`, () => cmd.action?.());
             return;
         }
 
@@ -611,7 +616,7 @@ const safe = {
     /**
      * Runs `fn` and never throws. Sync and async errors go to `onError`.
      * @template T
-     * @param {() => T} fn
+     * @param {() => *} fn
      * @param {(error: unknown) => void} [onError=console.error] Pass `() => {}` to ignore errors.
      * @returns {T|Promise<T|undefined>|undefined} The result, or `undefined` if it failed.
      */
@@ -637,11 +642,9 @@ const ctxs = {
      * @returns {Record<string, *>}
      */
     of(name) {
-        if (!this.ctxs.has(name)) {
-            this.ctxs.set(name, {});
-        }
-
-        return this.ctxs.get(name);
+        const ctx = this.ctxs.get(name) || {};
+        this.ctxs.set(name, ctx);
+        return ctx;
     },
 };
 
@@ -866,7 +869,7 @@ const dom = {
      */
     query(selector, options = {}) {
         this.guard("query", selector);
-        const { timeout } = options;
+        const { timeout = 0 } = options;
 
         return new Promise((resolve, reject) => {
             let timer;
@@ -974,7 +977,7 @@ const dom = {
     /**
      * Matches `textContent`.
      * @param {Element} node
-     * @param {string|RegExp|Function} [text]
+     * @param {TextMatcher} [text]
      * @returns {boolean}
      */
     text(node, text) {
@@ -1006,7 +1009,7 @@ const dom = {
             attr.lastIndex = 0;
             const name = node.getAttributeNames().find(n => attr.test(n));
             // No matching attribute: `name` is undefined, and `getAttribute` returns null.
-            return node.getAttribute(name);
+            return node.getAttribute(name ?? "");
         }
     },
 
@@ -1104,7 +1107,7 @@ const act = {
     /**
      * Scrolls matching elements into view.
      * @param {string} selector
-     * @param {StalkOptions & ScrollOptions} [options]
+     * @param {StalkOptions & ScrollConfig} [options]
      * @returns {() => void}
      */
     scroll(selector, options = {}) {
@@ -1159,7 +1162,7 @@ const act = {
     /**
      * Hides matching elements with injected CSS.
      * @param {string} selector
-     * @param {{ root?: Node }} [options]
+     * @param {{ root?: ParentNode }} [options]
      * @returns {() => void} Function that undoes the hiding.
      */
     hide(selector, options = {}) {
@@ -1177,14 +1180,18 @@ const act = {
     /**
      * Navigates to the URL found in an attribute of the matching element.
      * @param {string} selector
-     * @param {StalkOptions & { attr?: string|RegExp }} [options]
+     * @param {StalkOptions & { attr?: string }} [options]
      * @returns {() => void}
      */
     redirect(selector, options = {}) {
         this.guard("redirect", selector);
 
         const { attr = "href" } = options;
-        return dom.stalk(selector, node => location.assign(node.getAttribute(attr)), {
+        return dom.stalk(selector, node => {
+            const value = node.getAttribute(attr);
+            if (value === null) return;
+            location.assign(value);
+        }, {
             limit: 1,
             ...options,
             attrs: { [attr]: true, ...options.attrs },
@@ -1222,7 +1229,7 @@ const net = {
     request(url, options = {}) {
         if (typeof url !== "string") throw new TypeError("[net.request] Missing `url` argument");
 
-        const { method = "GET", headers = {}, data, timeout, overrideMimeType, responseType = "text", redirect, anonymous } = options;
+        const { method = "GET", headers = {}, data, timeout, overrideMimeType, responseType = "text", anonymous } = options;
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method,
@@ -1232,7 +1239,6 @@ const net = {
                 data,
                 timeout,
                 overrideMimeType,
-                redirect,
                 anonymous,
                 onload: resolve,
                 onerror: reject,
@@ -1247,7 +1253,7 @@ const net = {
      * @param {string} method
      * @param {string} url
      * @param {Object} [body]
-     * @returns {Promise<Object>}
+     * @returns {Promise<Json>}
      */
     json(method, url, body) {
         return this.request(url, {
@@ -1266,7 +1272,7 @@ const worker = {
         /**
          * Looks up a saved destination for a shortlink.
          * @param {string} href
-         * @returns {Promise<Object>}
+         * @returns {Promise<Json>}
          */
         find(href) {
             return net.json("GET", `${worker.url}/api/check?url=${encodeURIComponent(href)}`);
@@ -1276,7 +1282,7 @@ const worker = {
          * Saves a shortlink and its destination.
          * @param {string} href
          * @param {string} destination
-         * @returns {Promise<Object>}
+         * @returns {Promise<Json>}
          */
         save(href, destination) {
             return net.json("POST", `${worker.url}/api/save`, { shortlink: href, destination });
@@ -1287,7 +1293,7 @@ const worker = {
          * Saves download links for a title.
          * @param {string} title
          * @param {string[]} links
-         * @returns {Promise<Object>}
+         * @returns {Promise<Json>}
          */
         save(title, links) {
             return net.json("POST", `${worker.url}/api/titles`, { title, links });
@@ -1296,7 +1302,7 @@ const worker = {
         /**
          * Looks up saved links for several titles.
          * @param {string[]} titles
-         * @returns {Promise<Object>}
+         * @returns {Promise<Json>}
          */
         find(titles) {
             return net.json("POST", `${worker.url}/api/titles/lookup`, { titles });
@@ -1370,7 +1376,7 @@ const patch = {
      * Intercepts calls to a function.
      * @param {Object} owner
      * @param {string} property
-     * @param {(target: Function, thisArg: *, args: any[]) => *} applyFn
+     * @param {(target: Function, thisArg: *, args: *[]) => *} applyFn
      */
     apply(owner, property, applyFn) {
         return this.hook(owner, property, { apply: applyFn });
@@ -1380,7 +1386,7 @@ const patch = {
      * Intercepts `new` on a constructor.
      * @param {Object} owner
      * @param {string} property
-     * @param {(target: Function, args: any[], newTarget: Function) => Object} constructFn
+     * @param {(target: Function, args: *[], newTarget: Function) => Object} constructFn
      */
     construct(owner, property, constructFn) {
         return this.hook(owner, property, { construct: constructFn });
@@ -1390,7 +1396,7 @@ const patch = {
      * Overrides a property with custom getter/setter that can call the original behavior.
      * @param {Object} owner
      * @param {string} property
-     * @param {{ get?: Function, set?: Function }} accessors
+     * @param {{ get?: (this: *, getter: () => *) => *, set?: (this: *, v: *, setter: (v: *) => void) => void }} accessors
      */
     define(owner, property, { get, set }) {
         const descriptor = Object.getOwnPropertyDescriptor(owner, property) || {};
@@ -1670,11 +1676,11 @@ const bypass = {
     /**
      * Whether the destination is an intermediate gate page that must be followed.
      * @param {URL} dest
-     * @returns {boolean|undefined}
+     * @returns {boolean}
      */
     gate(dest) {
         const pattern = this.gatePatterns[dest.hostname];
-        if (!pattern) return;
+        if (!pattern) return false;
 
         return pattern.test(dest.pathname + dest.search);
     },
@@ -1697,16 +1703,13 @@ const bypass = {
             },
         });
 
-        const final = new URL(finalUrl);
-        if (!this.trusted(final.hostname)) return;
-
-        this.save(href, final.href);
+        this.save(href, res.finalUrl);
     },
 
     /**
      * Saves a destination locally and on the worker, then navigates to it.
      * @param {string} href
-     * @param {string|URL} destination
+     * @param {string} destination
      * @returns {Promise<void>}
      */
     async save(href, destination) {
@@ -1754,15 +1757,15 @@ const bypass = {
     /**
      * Fetches saved links for titles from the worker.
      * @param {string[]} titles
-     * @returns {Promise<Object[]|undefined>}
+     * @returns {Promise<Object[]>}
      */
     async lookup(titles) {
         const { response } = await worker.titles.find(titles);
 
         if (response?.status !== "ok") console.error(response);
-        if (!response?.results) return console.error("Titles undefined");
+        if (!response?.results) console.error("Titles undefined");
 
-        return response.results;
+        return response.results || [];
     },
 };
 
@@ -1933,14 +1936,13 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], {
     patcher() {
         generics.antiAdbCore.patcher();
         generics.pahe.patcher();
+        act.removeAttr(":is(html, body)[style]", "style", { limit: 20 });
         patch.apply(win.Object, "getOwnPropertyDescriptor", (target, thisArg, argArray) => {
             const [obj, prop] = argArray;
             const desc = Reflect.apply(target, thisArg, argArray);
-
             if (prop === "isTrusted" && obj instanceof Event) {
                 return { ...desc, get: () => true };
             }
-
             return desc;
         });
     },
@@ -2341,7 +2343,7 @@ domains.add("coinclix.co", {
         });
 
         storage.global().watch("geekgrove-return-key", async (newValue) => {
-            act.input("#link-card input#verificationCode", { value: newValue });
+            act.prop("#link-card input#verificationCode", { value: newValue });
             act.click("#link-card button#btnVerification");
         });
     },
@@ -2680,10 +2682,10 @@ domains.add("psa.wf", {
             if (!link.found) continue;
 
             dom.stalk(".sp-head", n => {
-                const downloadIcon = n.nextElementSibling.querySelector(".fa-download");
-                const body = downloadIcon.closest(".sp-body");
+                const downloadIcon = n.nextElementSibling?.querySelector(".fa-download");
+                const body = downloadIcon?.closest(".sp-body");
                 const nodeLinks = link.links.map(l => `<a href="${l}">${l}</a>`).join("<br>");
-                body.insertAdjacentHTML("afterbegin", `<p>${nodeLinks}</p>`);
+                body?.insertAdjacentHTML("afterbegin", `<p>${nodeLinks}</p>`);
             }, { text: link.title });
         }
     },
