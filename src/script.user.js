@@ -1444,39 +1444,20 @@ const bypass = {
         "mxdrop.click",
         "uploadhaven.com",
         "flycutlink.com",
+        "drive.google.com",
     ],
 
-    /**
-     * Starts cache lookup and navigation tracking if the current URL is a known shortlink.
-     * @param {string} hostname
-     * @param {string} href
-     * @param {string} pathname
-     * @param {string} search
-     */
     exec(hostname, href, pathname, search) {
         if (!worker.url) return;
 
         const pattern = this.shortenerPatterns[hostname];
         if (!pattern?.test(pathname + search)) return;
 
-        if (config.useCache) this.cache(href);
+        this.cache(href);
         this.listener(href);
-        this.clear();
     },
 
-    /**
-     * Redirects to a known destination (local cache first, then worker).
-     * @param {string} href
-     * @returns {Promise<void>}
-     */
     async cache(href) {
-        // const cacheLocal = storage.global().get("bypass-local", {});
-        // const destCached = cacheLocal[href];
-        // if (destCached) {
-        //     navigation.navigate(destCached, { info: "bypass_link" });
-        //     return;
-        // }
-
         const { response } = await worker.links.find(href);
         if (response?.status !== "ok" || !response.destination) return;
 
@@ -1541,80 +1522,45 @@ const bypass = {
         });
 
         const final = new URL(res.finalUrl);
-        if (this.trusted(final.hostname)) await this.save(href, final.href);
-        navigation.navigate(final.href, { info: "bypass_link" });
+        if (!this.trusted(final.hostname)) {
+            navigation.navigate(final.href, { info: "bypass_link" });
+            return;
+        }
+        await this.save(href, final.href);
     },
 
-    /**
-     * Saves a destination locally and on the worker, then navigates to it.
-     * @param {string} href
-     * @param {string} destination
-     * @returns {Promise<void>}
-     */
     async save(href, destination) {
         if (typeof href !== "string" || typeof destination !== "string") {
             console.error("Can't save shortlink, 'href' and 'destination' args need be a string");
             return;
         }
 
-        // storage.global().merge("bypass-local", { [href]: destination });
-
-        const { response } = await worker.links.save(href, destination);
-        if (response?.status !== "ok") { console.error(response); }
-        navigation.navigate(destination, { info: "bypass_link" });
+        const res = worker.links.save(href, destination).catch(console.error);
+        const result = await Promise.race([res, act.sleep(1500)]);
+        if (result && result.response?.status !== "ok") console.error(result.response);
+        navigation.navigate(destination, { info: "bypass_link", history: "replace" });
     },
 
-    /** Resets the local cache when it exceeds `cacheMaxEntries`. */
-    clear() {
-        const cacheLocal = storage.global().get("bypass-local", {});
-        const entries = Object.entries(cacheLocal);
-        if (entries.length <= this.cacheMaxEntries) return;
-
-        storage.global().set("bypass-local", {});
-    },
-
-    /**
-     * Whether the hostname is a trusted final destination.
-     * @param {string} hostname
-     * @returns {boolean|undefined}
-     */
     trusted(hostname) {
         return this.finalDomains.some(domain => matcher.value(hostname, domain, { exact: true }));
     },
 
-    /**
-     * Saves download links for a title on the worker.
-     * @param {string} title
-     * @param {string[]} links
-     * @returns {Promise<void>}
-     */
     async title(title, links) {
         const { response } = await worker.titles.save(title, links);
         if (response?.status !== "ok") console.error(response);
     },
 
-    /**
-     * Fetches saved links for titles from the worker.
-     * @param {string[]} titles
-     * @returns {Promise<Object[]>}
-     */
     async lookup(titles) {
         const { response } = await worker.titles.find(titles);
 
         if (response?.status !== "ok") console.error(response);
         if (!response?.results) console.error("Titles undefined");
 
-        return response.results || [];
+        return response?.results || [];
     },
 };
 
 const domains = {
-    /**
-     * Runs one stage (`patcher`/`continue`) of a handler, catching sync and async errors.
-     * @param {"patcher"|"continue"} stage
-     * @param {boolean} enabled
-     * @param {DomainHandler} handler
-     */
     exec(stage, enabled, handler) {
         const fn = handler[stage];
         if (!fn || !enabled) return;
