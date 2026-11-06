@@ -1322,9 +1322,8 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.antiAdbCore
     },
 });
 
-domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], {
+domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], generics.haste(), {
     patcher() {
-        patch.haste();
         act.hide("#masthead, aside, #content > :not(center, form), footer");
         act.remove("div", { match: { css: { position: "fixed" }, text: "detected" } });
     },
@@ -1334,20 +1333,17 @@ domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixb
     },
 });
 
-domains.add(["ouo.io", "ouo.press"], {
-    patcher() {
-        patch.haste();
-    },
+domains.add(["ouo.io", "ouo.press"], generics.haste(), {
     continue() {
         act.click("#btn-main:not(.disabled)");
-        act.click(dom.turnstile("#invisibleCaptchaShortlink"));
+        act.click(captcha.turnstile("#invisibleCaptchaShortlink"));
     },
 });
 
 domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], {
     continue() {
         act.click("#submit-button:not([disabled])", { extra: { count: 2 } });
-        act.click(dom.turnstile("#submit-button:not([disabled])"));
+        act.click(captcha.turnstile("#submit-button:not([disabled])"));
     },
 });
 
@@ -1403,10 +1399,9 @@ domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], 
     },
 });
 
-domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], {
+domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], generics.getLink, {
     continue() {
         act.click("#sl-primary:not([disabled])", { match: { visible: true } });
-        act.click(".get-link:not(.disabled)");
     },
 });
 
@@ -1415,8 +1410,8 @@ domains.add(["fc-lc.xyz", "oii.io"], {
         patch.define(win, "AdscoreInit", { get: () => () => { } });
     },
     async continue() {
-        act.click(dom.hcaptcha("button#hCaptchaShortlink"));
-        act.click(dom.turnstile("button#submitBtn"));
+        act.click(captcha.hcaptcha("button#hCaptchaShortlink"));
+        act.click(captcha.turnstile("button#submitBtn"));
 
         setInterval(() => document.dispatchEvent(new MouseEvent("mousemove")), 100);
     },
@@ -1439,41 +1434,29 @@ domains.add(["premium.hairmova.com", "product.hairmova.com"], {
     },
 });
 
-domains.add("pahe.ink", {
-    patcher() {
-        generics.antiAdbCore.patcher();
-        generics.pahe.patcher();
-    },
-});
+domains.add("pahe.ink", generics.antiAdbCore, generics.pahe);
 
-domains.add("linegee.net", {
-    patcher() {
-        generics.antiAdbCore.patcher();
-        generics.pahe.patcher();
-    },
+domains.add("linegee.net", generics.antiAdbCore, generics.pahe, {
     continue() {
         act.click(".btn-primary", { extra: { wait: 4000 } });
     },
 });
 
-domains.add("pahe.plus", {
+domains.add("pahe.plus", generics.antiAdbCore, generics.pahe, {
+    shortlink: bypass.SLUG_PATTERN,
     patcher() {
-        generics.antiAdbCore.patcher();
-        generics.pahe.patcher();
         patch.listener({ type: "click", target: { not: "#invisibleCaptchaShortlink" } });
         act.hide(".banner, body > [style*='fixed'], html > div");
     },
     continue() {
-        act.click(dom.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"), { extra: { event: { bubbles: false } } });
+        act.click(captcha.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"), { extra: { event: { bubbles: false } } });
         act.follow(".get-link[href^='https://']:not(.disabled)");
     },
 });
 
-domains.add("intercelestial.com", {
+domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
+    shortlink: /^\/\?ht=[a-zA-Z0-9%]+$/,
     patcher() {
-        generics.antiAdbCore.patcher();
-        generics.pahe.patcher();
-
         patch.listener({ type: "click", target: { not: ".myButton" } });
         patch.apply(win, "open", () => { });
         patch.define(win, "LLct", { get: () => "1" });
@@ -1485,8 +1468,7 @@ domains.add("intercelestial.com", {
         act.click(".myButton", { extra: { count: 3, event: { bubbles: false } } });
     },
     async cache() {
-        const pattern = bypass.shortenerPatterns[location.hostname];
-        if (pattern?.test(location.pathname + location.search)) bypass.cache(location.href);
+        if (this.shortlink.test(location.pathname + location.search)) bypass.cache(location.href);
 
         if (/^\?ht=[a-zA-Z0-9%]+$/.test(location.search)) {
             sessionStorage.setItem("acs-shortlink", location.href);
@@ -1507,29 +1489,21 @@ domains.add("vexfile.com", {
     },
 });
 
-domains.add("filespayouts.com", {
-    patcher() {
-        patch.haste({ text: "tick" });
-    },
+domains.add("filespayouts.com", generics.haste({ text: "tick" }), {
     continue() {
         act.click("#method_free");
-        act.click(dom.turnstile("#downloadbtn"));
+        act.click(captcha.turnstile("#downloadbtn"));
     },
 });
 
-domains.add("modsfire.com", {
-    patcher() {
-        patch.haste();
-    },
-    continue() {
-        act.click(".download-button");
-    },
+domains.add("modsfire.com", generics.haste(), {
+    continue() { act.click(".download-button"); },
 });
 
 domains.add("www.file-upload.org", {
     continue() {
         act.click("button[name='method_free']");
-        act.click(dom.hcaptcha("#downloadbtn:not([disabled])"));
+        act.click(captcha.hcaptcha("#downloadbtn:not([disabled])"));
     },
 });
 
@@ -1541,12 +1515,9 @@ domains.add("upfilesgo.com", {
     },
 });
 
-domains.add("safefileku.com", {
-    patcher() {
-        patch.haste();
-    },
+domains.add("safefileku.com", generics.haste(), {
     continue() {
-        act.click(dom.turnstile("button[type='submit']"));
+        act.click(captcha.turnstile("button[type='submit']"));
     },
 });
 
@@ -1558,10 +1529,9 @@ domains.add("uploadrar.com", {
     },
 });
 
-domains.add("shrinkme.click", {
+domains.add("shrinkme.click", generics.getLink, {
     continue() {
-        act.click(dom.turnstile(".btn-primary:not([disabled])"));
-        act.click(".get-link:not(.disabled)");
+        act.click(captcha.turnstile(".btn-primary:not([disabled])"));
     },
 });
 
@@ -1577,15 +1547,12 @@ domains.add("themezon.net", {
     },
 });
 
-domains.add(["en.mrproblogger.com", "horrorpay.online", "icutlink.com"], {
-    continue() {
-        act.click(".get-link:not(.disabled)");
-    },
-});
+domains.add("en.mrproblogger.com", generics.getLink, { shortlink: bypass.SLUG_PATTERN });
 
-domains.add("aradmag.online", {
+domains.add(["horrorpay.online", "icutlink.com"], generics.getLink);
+
+domains.add("aradmag.online", generics.haste(), {
     patcher() {
-        patch.haste();
         patch.apply(win, "open", () => { });
     },
     continue() {
@@ -1615,7 +1582,7 @@ domains.add("www.up-4ever.net", {
 
         act.click("#downloadbtn");
 
-        act.click(dom.turnstile("[type='submit']:not([disabled])"));
+        act.click(captcha.turnstile("[type='submit']:not([disabled])"));
         act.click("#dl2btn");
     },
 });
@@ -1635,13 +1602,13 @@ domains.add("jobzhub.store", {
         act.click("#next", { match: { visible: true } });
         act.click("#scroll", { match: { visible: true } });
         act.click("#glink", { match: { visible: true } });
-        act.click(dom.turnstile("#surl:not(.disabled)"));
+        act.click(captcha.turnstile("#surl:not(.disabled)"));
     },
 });
 
 domains.add("aii.sh", {
     continue() {
-        act.click(dom.turnstile("button#continue"));
+        act.click(captcha.turnstile("button#continue"));
         act.click(".btn-primary[href]:not(.disabled)");
     },
 });
@@ -1650,7 +1617,7 @@ domains.add("aknewz.xyz", {
     continue() {
         act.click("#next");
         act.click("#scroll:not(.hidden)", { extra: { count: 2 } });
-        act.click(dom.turnstile("#surl"));
+        act.click(captcha.turnstile("#surl"));
     },
 });
 
@@ -1663,13 +1630,9 @@ domains.add("toolskitpro.net", {
     },
 });
 
-domains.add("lnbz.la", {
-    patcher() {
-        generics.antiAdbCore.patcher();
-    },
+domains.add("lnbz.la", generics.antiAdbCore, generics.getLink, {
     continue() {
-        act.click(dom.turnstile("#continue"));
-        act.click(".get-link:not(.disabled)");
+        act.click(captcha.turnstile("#continue"));
     },
 });
 
@@ -1700,7 +1663,7 @@ domains.add("cloudfam.io", {
 domains.add("uiil.ink", {
     continue() {
         act.click("#form-continue [type='submit']");
-        act.click(dom.turnstile("#invisibleCaptchaShortlink"));
+        act.click(captcha.turnstile("#invisibleCaptchaShortlink"));
         act.click(`#multiLinkBtn:not(.disabled)`);
     },
 });
@@ -1721,7 +1684,7 @@ domains.add("coinclix.co", {
         });
 
         storage.global().watch("geekgrove-return-key", async (newValue) => {
-            act.prop("#link-card input#verificationCode", { values: { value: newValue } });
+            prop.set("#link-card input#verificationCode", { extra: { values: { value: newValue } } });
             act.click("#link-card button#btnVerification");
         });
     },
@@ -1790,11 +1753,7 @@ domains.add("inshorturl.in", {
     },
 });
 
-domains.add("blog.adlink.click", {
-    continue() {
-        act.click(".btn.get-link:not(.disabled)");
-    },
-});
+domains.add("blog.adlink.click", generics.getLink);
 
 domains.add("bit.ly", {
     continue() {
@@ -1809,6 +1768,7 @@ domains.add("adfoc.us", {
 });
 
 domains.add("speedy-links.com", {
+    shortlink: /^\/s\?[A-Za-z0-9_-]{3,}$/,
     patcher() {
         patch.apply(win, "fetch", async (target, thisArg, argArray) => {
             const [, init] = argArray;
@@ -1845,7 +1805,7 @@ domains.add("speedy-links.com", {
 
 domains.add("nerventualken.com", {
     continue() {
-        act.click(dom.turnstile("#go"));
+        act.click(captcha.turnstile("#go"));
     },
 });
 
@@ -1899,26 +1859,20 @@ domains.add("sfl.gl", {
     },
 });
 
-domains.add("link4m.net", {
+domains.add("link4m.net", generics.getLink, {
     patcher() {
         act.remove("body > div", { match: { text: "Adblock" } });
-    },
-    continue() {
-        act.click(".get-link:not(.disabled)");
     },
 });
 
 domains.add("gplinks.co", {
     continue() {
         act.follow(".gate-btn-skip[href]");
-        act.follow(dom.turnstile("#captchaButton[href]:not(.disabled)"));
+        act.follow(captcha.turnstile("#captchaButton[href]:not(.disabled)"));
     },
 });
 
-domains.add("skrresults.com", {
-    patcher() {
-        patch.haste({ factor: 0.01 });
-    },
+domains.add("skrresults.com", generics.haste({ factor: 0.01 }), {
     continue() {
         act.click("#VerifyBtn", { match: { visible: true } });
         act.click("#NextBtn", { match: { visible: true } });
@@ -1968,14 +1922,12 @@ domains.add("f95zone.to", {
         bypass.listener(url);
     },
     continue() {
-        act.click(dom.hcaptcha(".f95dl-go button"));
+        act.click(captcha.hcaptcha(".f95dl-go button"));
     },
 });
 
-domains.add("online-fix.me", {
-    patcher() {
-        patch.haste();
-    },
+domains.add("online-fix.me", generics.haste(), {
+    shortlink: /^\/ext\/.+$/,
     continue() {
         act.click(".dl_content button[onclick]");
     },
@@ -2006,7 +1958,7 @@ domains.add("katfile.co", {
     },
     continue() {
         act.click(".kfd-slow", { extra: { wait: 1000, count: 2 } });
-        act.click(dom.turnstile(".downloadbtn"));
+        act.click(captcha.turnstile(".downloadbtn"));
         act.follow("a#dlink[href]");
     },
 });
@@ -2014,14 +1966,14 @@ domains.add("katfile.co", {
 domains.add("datavaults.co", {
     continue() {
         act.click("#original");
-        act.click(dom.recaptcha("#downloadbtn:not([disabled])"));
+        act.click(captcha.recaptcha("#downloadbtn:not([disabled])"));
     },
 });
 
-domains.add("link.snipcash.com", {
+domains.add("link.snipcash.com", generics.getLink, {
+    shortlink: bypass.SLUG_PATTERN,
     continue() {
-        act.click(dom.recaptcha("#invisibleCaptchaShortlink:not([disabled])"));
-        act.click(".get-link:not(.disabled)");
+        act.click(captcha.recaptcha("#invisibleCaptchaShortlink:not([disabled])"));
     },
 });
 
@@ -2040,10 +1992,7 @@ domains.add("topshare.in", {
     },
 });
 
-domains.add("dailyuploads.net", {
-    patcher() {
-        patch.haste();
-    },
+domains.add("dailyuploads.net", generics.haste(), {
     continue() {
         act.click(".du-dl-opt.is-free");
         act.click("#downloadbtn:not([disabled])");
@@ -2148,10 +2097,7 @@ domains.add("astrorede.com", {
     },
 });
 
-domains.add("app.lovemodz.space", {
-    patcher() {
-        patch.haste();
-    },
+domains.add("app.lovemodz.space", generics.haste(), {
     continue() {
         act.click("#sl-g1");
         act.click("#sl-g3", { match: { visible: true } });
