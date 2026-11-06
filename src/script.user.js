@@ -637,29 +637,40 @@ const dom = {
     *select(selector, options = {}) {
         for (const node of this.find(selector)) if (matcher.node(node, options)) yield node;
     },
-
-    turnstile(selector) {
-        return `:has([name="cf-turnstile-response"][value]) ${selector}`;
-    },
-
-    hcaptcha(selector) {
-        return `:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) ${selector}`;
-    },
-
-    recaptcha(selector) {
-        const poll = (node) => {
-            if (node.value === "") return setTimeout(() => poll(node), 500);
-            node.dataset.recaptchaSolved = "";
-        };
-
-        this.stalk("#g-recaptcha-response", (node) => {
-            setTimeout(() => poll(node), 500);
-            return { stop: true };
-        });
-
-        return `:has(#g-recaptcha-response[data-recaptcha-solved]) ${selector}`;
-    },
 };
+
+const accessor = ({ read, write, erase }) => ({
+    get(selector, { extra = {}, match = {} } = {}) {
+        const { name } = extra;
+        return dom.query(selector, match).then(node => read(node, name));
+    },
+
+    set(selector, { extra = {}, match = {} } = {}) {
+        const { values = {} } = extra;
+        return dom.stalk(selector, node => {
+            for (const [key, value] of Object.entries(values)) write(node, key, value);
+        }, { limit: 1, ...match });
+    },
+
+    remove(selector, { extra = {}, match = {} } = {}) {
+        const names = [extra.names].flat();
+        return dom.stalk(selector, node => {
+            for (const name of names) erase(node, name);
+        }, { limit: 1, ...match });
+    },
+});
+
+const attr = accessor({
+    read: (node, key) => node.getAttribute(key),
+    write: (node, key, value) => node.setAttribute(key, value),
+    erase: (node, key) => node.removeAttribute(key),
+});
+
+const prop = accessor({
+    read: (node, key) => node[key],
+    write: (node, key, value) => { node[key] = value; },
+    erase: (node, key) => { delete node[key]; },
+});
 
 const act = {
     sleep(ms) {
@@ -688,19 +699,6 @@ const act = {
     scroll(selector, { extra = {}, match = {} } = {}) {
         const { behavior = "smooth", block = "center", inline = "center" } = extra;
         return dom.stalk(selector, node => node.scrollIntoView({ behavior, block, inline }), { limit: 1, ...match });
-    },
-
-    prop(selector, { values = {}, match = {} } = {}) {
-        return dom.stalk(selector, node => {
-            for (const [k, val] of Object.entries(values)) node[k] = val;
-        }, { limit: 1, ...match });
-    },
-
-    removeAttr(selector, { extra = {}, match = {} } = {}) {
-        const list = [extra.names].flat();
-        return dom.stalk(selector, node => {
-            for (const name of list) node.removeAttribute(name);
-        }, { limit: 1, ...match });
     },
 
     remove(selector, { match = {} } = {}) {
@@ -739,6 +737,30 @@ const act = {
             if (!href) return { continue: true };
             location.assign(href);
         }, { limit: 1, attrs: { [attr]: true }, ...match });
+    },
+};
+
+const captcha = {
+    turnstile(selector) {
+        return `:has([name="cf-turnstile-response"][value]) ${selector}`;
+    },
+
+    hcaptcha(selector) {
+        return `:has([data-hcaptcha-response]:not([data-hcaptcha-response=''])) ${selector}`;
+    },
+
+    recaptcha(selector) {
+        const poll = (node) => {
+            if (node.value === "") return setTimeout(() => poll(node), 500);
+            node.dataset.recaptchaSolved = "";
+        };
+
+        dom.stalk("#g-recaptcha-response", (node) => {
+            setTimeout(() => poll(node), 500);
+            return { stop: true };
+        });
+
+        return `:has(#g-recaptcha-response[data-recaptcha-solved]) ${selector}`;
     },
 };
 
