@@ -1326,10 +1326,11 @@ domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixb
     patcher() {
         act.hide("#masthead, aside, #content > :not(center, form), footer");
         act.remove("div", { match: { css: { position: "fixed" }, text: "detected" } });
+        patch.listener({ type: "click", target: { not: "#startButton, #getnewlink" } });
     },
     continue() {
-        act.click("#startButton", { extra: { wait: 2000 } });
-        act.click("#getnewlink", { match: { visible: true } });
+        act.click("#startButton:not([style])", { match: { limit: 20 }, extra: { wait: 500 } });
+        act.click("#getnewlink", { match: { visible: true }, extra: { wait: 2500 } });
     },
 });
 
