@@ -631,17 +631,19 @@ const safe = {
             fail(error);
         }
     },
+
+    url(value, base = location.href) {
+        if (typeof value !== "string" || !value) return;
+        return this.run(() => {
+            const url = new URL(value, base);
+            return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
+        }, () => { });
+    },
 };
 
 const ctxs = {
-    /** @type {Map<string, Record<string, *>>} */
     ctxs: new Map(),
 
-    /**
-     * Returns a persistent object for `name`, creating it if needed. Used to share state between patches.
-     * @param {string} name
-     * @returns {Record<string, *>}
-     */
     of(name) {
         const ctx = this.ctxs.get(name) || {};
         this.ctxs.set(name, ctx);
