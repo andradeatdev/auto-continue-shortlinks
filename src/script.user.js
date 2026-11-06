@@ -1243,9 +1243,7 @@ const generics = {
                         "Sec-Fetch-Mode": "no-cors",
                         "Sec-Fetch-Site": "same-origin",
                     },
-                })
-                    .then((res) => console.log("Res", res))
-                    .catch((error) => console.log("Error", error));
+                });
             };
 
             document.addEventListener("error", event => {
