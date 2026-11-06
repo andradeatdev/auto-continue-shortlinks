@@ -1083,10 +1083,11 @@ const bypass = {
         const url = new URL(response.destination);
         if (url.protocol !== "https:" || !this.trusted(url.hostname)) return;
 
-        navigation.navigate(url.href, { info: "bypass_link" });
+        this.navigate(url.href);
     },
 
     listener(href) {
+        if (typeof navigation === "undefined") return;
         navigation.addEventListener("navigate", (event) => {
             if (event.info === "bypass_link") return;
 
@@ -1113,6 +1114,11 @@ const bypass = {
         return pattern.test(dest.pathname + dest.search);
     },
 
+    navigate(destination) {
+        if (typeof navigation === "undefined" || destination === location.href) return;
+        navigation.navigate(destination, { info: "bypass_link" });
+    },
+
     async follow(href, destination) {
         const res = await net.get(destination, {
             headers: {
@@ -1126,7 +1132,7 @@ const bypass = {
         });
 
         const final = new URL(res.finalUrl);
-        if (!this.trusted(final.hostname)) { navigation.navigate(final.href, { info: "bypass_link" }); return; }
+        if (!this.trusted(final.hostname)) { this.navigate(destination); return; }
         await this.save(href, final.href);
     },
 
@@ -1139,7 +1145,7 @@ const bypass = {
         const res = worker.links.save(href, destination).catch(console.error);
         const result = await Promise.race([res, act.sleep(1500)]);
         if (result && result.response?.status !== "ok") console.error(result.response);
-        navigation.navigate(destination, { info: "bypass_link", history: "replace" });
+        this.navigate(destination);
     },
 
     async title(title, links) {
