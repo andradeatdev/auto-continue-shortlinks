@@ -1235,19 +1235,14 @@ const worker = {
 };
 
 const patch = {
-    /**
-     * Makes a fake function look native when `toString` is called.
-     * @param {Function} fake
-     * @param {Function} original
-     */
     conceal(fake, original) {
         const ctx = ctxs.of("conceal");
 
         ctx.originals ??= new WeakMap();
         ctx.originals.set(fake, ctx.originals.get(original) ?? original);
 
-        if (ctx.concealed) return;
-        ctx.concealed = true;
+        if (ctx.patched) return;
+        ctx.patched = true;
 
         const proto = win.Function.prototype;
         const native = proto.toString;
@@ -1341,21 +1336,15 @@ const patch = {
             enumerable: true,
             get() {
                 if (get) return get.call(this, () => getter(this));
-                if (descriptor.get) return descriptor.get.call(this);
-                return value;
+                return getter(this);
             },
             set(v) {
-                if (set) set.call(this, v, (outV) => setter(this, outV));
-                if (descriptor.set) descriptor.set.call(this, v);
-                value = v;
+                if (set) { set.call(this, v, (outV) => setter(this, outV)); return; }
+                setter(this, v);
             },
         });
     },
 
-    /**
-     * Speeds up timers (`setTimeout`, `setInterval`, `Date`, `performance.now`).
-     * @param {HasteOptions} [options]
-     */
     haste(options = {}) {
         const { factor = 0.005, text, ms, when } = options;
 
@@ -1455,17 +1444,12 @@ const patch = {
             if (!matcher.isNil(text) && !matcher.text(sourceOf(listener), text)) return original();
         });
     },
-    /**
-     * Fakes `getComputedStyle` results for nodes matching `selector`.
-     * @param {string} selector
-     * @param {Record<string, string>} styles
-     * @param {MatchOptions} [options]
-     */
-    mask(selector, styles, options) {
+
+    mask(selector, { extra = {}, options = {} } = {}) {
         const ctx = ctxs.of("mask");
 
         ctx.map ??= new Map();
-        ctx.map.set(selector, { styles, options });
+        ctx.map.set(selector, { styles: extra.styles, options });
 
         if (ctx.patched) return;
         ctx.patched = true;
@@ -1482,7 +1466,11 @@ const patch = {
             if (!match) return result;
 
             return new Proxy(result, {
-                get: (t, prop) => Object.hasOwn(match.styles, prop) ? match.styles[prop] : t[prop],
+                get(t, prop) {
+                    if (Object.hasOwn(match.styles, prop)) return match.styles[prop];
+                    const value = Reflect.get(t, prop, t);
+                    return typeof value === "function" ? value.bind(t) : value;
+                },
             });
         });
     },
