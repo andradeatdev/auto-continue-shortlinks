@@ -1467,10 +1467,7 @@ domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
     },
     async cache() {
         if (this.shortlink.test(location.pathname + location.search)) bypass.cache(location.href);
-
-        if (/^\?ht=[a-zA-Z0-9%]+$/.test(location.search)) {
-            sessionStorage.setItem("acs-shortlink", location.href);
-        };
+        if (/^\?ht=[a-zA-Z0-9%]+$/.test(location.search)) sessionStorage.setItem("acs-shortlink", location.href);
 
         const xxc = await dom.query("#xxc[href]");
         const shortlink = sessionStorage.getItem("acs-shortlink");
