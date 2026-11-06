@@ -984,12 +984,7 @@ const dom = {
 };
 
 const act = {
-    /**
-     * Resolves after `ms` milliseconds.
-     * @param {number} ms
-     * @returns {Promise<void>}
-     */
-    wait(ms) {
+    sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     },
 
@@ -1001,7 +996,7 @@ const act = {
 
         return dom.stalk(selector, async (node) => {
             if (wait > 0) {
-                await act.wait(wait);
+                await act.sleep(wait);
                 if (!node.isConnected || !matcher.node(node, match)) return { continue: true };
             }
 
@@ -1012,97 +1007,45 @@ const act = {
         }, match);
     },
 
-    /**
-     * Scrolls matching elements into view.
-     * @param {string} selector
-     * @param {StalkOptions & ScrollConfig} [options]
-     * @returns {() => void}
-     */
-    scroll(selector, options = {}) {
-        const { behavior = "smooth", block = "center", inline = "center" } = options;
-        return dom.stalk(selector, node => node.scrollIntoView({ behavior, block, inline }), { limit: 1, ...options });
+    scroll(selector, { extra = {}, match = {} } = {}) {
+        const { behavior = "smooth", block = "center", inline = "center" } = extra;
+        return dom.stalk(selector, node => node.scrollIntoView({ behavior, block, inline }), { limit: 1, ...match });
     },
 
-    /**
-     * Sets one or more properties on matching elements and dispatches input/change events.
-     * @param {string} selector
-     * @param {StalkOptions & { prop?: string | Record<string, any>, value?: any }} [options]
-     * @returns {() => void}
-     */
-    prop(selector, options = {}) {
-        const { prop = "value", value = "" } = options;
+    prop(selector, { values = {}, match = {} } = {}) {
         return dom.stalk(selector, node => {
-            if (typeof prop === "string") {
-                node[prop] = value;
-                node.dispatchEvent(new Event("input", { bubbles: true }));
-                node.dispatchEvent(new Event("change", { bubbles: true }));
-                return;
-            }
-
-            if (typeof prop === "object") {
-                for (const [key, val] of Object.entries(prop)) {
-                    node[key] = val;
-                    node.dispatchEvent(new Event("input", { bubbles: true }));
-                    node.dispatchEvent(new Event("change", { bubbles: true }));
-                }
-            }
-        }, { limit: 1, ...options });
+            for (const [k, val] of Object.entries(values)) node[k] = val;
+        }, { limit: 1, ...match });
     },
 
-    /**
-     * Removes attributes from matching elements.
-     * Keeps watching, so attributes the page adds back are removed again.
-     * @param {string} selector
-     * @param {string|string[]} names Attribute name(s).
-     * @param {StalkOptions} [options]
-     * @returns {() => void}
-     */
-    removeAttr(selector, names, options = {}) {
-        const list = [names].flat();
-
+    removeAttr(selector, { extra = {}, match = {} } = {}) {
+        const list = [extra.names].flat();
         return dom.stalk(selector, node => {
             for (const name of list) node.removeAttribute(name);
-            return { continue: true };
-        }, options);
+        }, { limit: 1, ...match });
     },
 
-    /**
-     * Removes matching elements.
-     * @param {string} selector
-     * @param {StalkOptions} [options]
-     * @returns {() => void}
-     */
-    remove(selector, options = {}) {
-        return dom.stalk(selector, node => node.remove(), options);
+    remove(selector, { match = {} } = {}) {
+        return dom.stalk(selector, node => node.remove(), match);
     },
 
-    /**
-     * Moves matching elements into an invisible wrapper.
-     * @param {string} selector
-     * @param {StalkOptions} [options]
-     * @returns {() => void}
-     */
-    stash(selector, options = {}) {
+    stash(selector, { match = {} } = {}) {
         return dom.stalk(selector, node => {
             const wrapper = document.createElement("div");
+
             wrapper.style.cssText = `
-            visibility: hidden !important;
-            pointer-events: none !important;
-            opacity: 0 !important;
-        `;
+                visibility: hidden !important;
+                pointer-events: none !important;
+                opacity: 0 !important;
+            `;
+
             document.body.append(wrapper);
             wrapper.append(node);
-        }, { limit: 1, ...options });
+        }, { limit: 1, ...match });
     },
 
-    /**
-     * Hides matching elements with injected CSS.
-     * @param {string} selector
-     * @param {{ root?: ParentNode }} [options]
-     * @returns {() => void} Function that undoes the hiding.
-     */
-    hide(selector, options = {}) {
-        const { root = document.documentElement } = options;
+    hide(selector, { extra = {} } = {}) {
+        const { root = document.documentElement } = extra;
         const style = document.createElement("style");
 
         style.textContent = `${selector} { display: none !important; }`;
@@ -1111,45 +1054,25 @@ const act = {
         return () => style.remove();
     },
 
-    /**
-     * Navigates to the URL found in an attribute of the matching element.
-     * @param {string} selector
-     * @param {StalkOptions & { attr?: string }} [options]
-     * @returns {() => void}
-     */
-    redirect(selector, options = {}) {
-        const { attr = "href" } = options;
-        return dom.stalk(selector, node => location.assign(node.getAttribute(attr)), { limit: 1, attrs: { [attr]: true } });
+    follow(selector, { extra = {}, match = {} } = {}) {
+        const { attr = "href" } = extra;
+        return dom.stalk(selector, node => {
+            const href = safe.url(node.getAttribute(attr));
+            if (!href) return { continue: true };
+            location.assign(href);
+        }, { limit: 1, attrs: { [attr]: true }, ...match });
     },
 };
 
 const net = {
-    /**
-     * GET request.
-     * @param {string} url
-     * @param {RequestOptions} [options]
-     * @returns {Promise<Object>} GM response.
-     */
     get(url, options = {}) {
         return this.request(url, options);
     },
 
-    /**
-     * POST request.
-     * @param {string} url
-     * @param {*} body
-     * @returns {Promise<Object>}
-     */
     post(url, body) {
         return this.request(url, { data: body });
     },
 
-    /**
-     * Promise wrapper around GM_xmlhttpRequest.
-     * @param {string} url
-     * @param {RequestOptions} [options]
-     * @returns {Promise<Object>}
-     */
     request(url, options = {}) {
         if (typeof url !== "string") throw new TypeError("[net.request] Missing `url` argument");
 
