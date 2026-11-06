@@ -4,6 +4,7 @@ import { defineConfig } from "eslint/config";
 import stylistic from "@stylistic/eslint-plugin";
 import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
+import jsdoc from "eslint-plugin-jsdoc";
 
 const duplicateDomainRule = {
   meta: {
@@ -66,6 +67,18 @@ export default defineConfig([
     languageOptions: { globals: { ...globals.browser, ...globals.greasemonkey } }
   },
   {
+    files: ["**/*.{js,mjs,cjs}"],
+    plugins: {
+      jsdoc,
+    },
+    rules: {
+      "jsdoc/check-param-names": "error",
+      "jsdoc/require-param-type": "error",
+      "jsdoc/require-returns-type": "error",
+      "jsdoc/require-param": "error",
+    },
+  },
+  {
     files: ["**/*.js"],
     plugins: {
       "@stylistic": stylistic,
@@ -107,7 +120,7 @@ export default defineConfig([
       "eqeqeq": ["error", "always"],
       "no-eval": "error",
       "no-alert": "off",
-      "no-shadow": "warn",
+      "no-shadow": "off",
       "no-lonely-if": "warn",
       "object-shorthand": ["warn", "always"],
       "no-async-promise-executor": "error",

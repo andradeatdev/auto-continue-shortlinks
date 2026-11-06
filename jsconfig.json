@@ -1,9 +1,12 @@
 {
   "compilerOptions": {
-    "types": ["@violentmonkey/types"],
-    "lib": ["ESNext", "DOM"]
+    // "checkJs": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "noUnusedParameters": true,
+    "target": "ES2023",
+    "lib": ["ES2023", "ESNext.Iterator", "DOM", "DOM.Iterable"],
+    "types": ["@violentmonkey/types"]
   },
-  "typeAcquisition": {
-    "include": ["@violentmonkey/types"]
-  }
+  "include": ["src"]
 }

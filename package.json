@@ -27,6 +27,7 @@
     "@violentmonkey/types": "^0.3.4",
     "concurrently": "^10.0.5",
     "eslint": "^10.10.0",
+    "eslint-plugin-jsdoc": "^65.4.3",
     "globals": "^17.11.0",
     "http-server": "^14.1.1",
     "rollup": "^4.28.0"
