@@ -1218,8 +1218,20 @@ const generics = {
     },
     pahe: {
         patcher() {
+            dom.query("link[href*='120x600-']").then(n => { n.href = "data:text/css,/120x600-x"; });
+
             patch.apply(win.EventTarget.prototype, "dispatchEvent", (target, thisArg, argArray) => {
                 if (argArray[0].type === "DOMContentLoaded") return;
+                return Reflect.apply(target, thisArg, argArray);
+            });
+
+            patch.apply(win.performance, "getEntriesByName", (target, thisArg, argArray) => {
+                const name = argArray[0];
+
+                if (typeof name === "string" && /gpt(?:%2E|[.])js/i.test(name)) {
+                    return [{ name, entryType: "resource", encodedBodySize: 1, decodedBodySize: 32_768 }];
+                }
+
                 return Reflect.apply(target, thisArg, argArray);
             });
 
