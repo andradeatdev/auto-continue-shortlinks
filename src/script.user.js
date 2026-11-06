@@ -566,14 +566,15 @@ const watch = {
         this.observer.takeRecords();
     },
 
-    /** Schedules a single flush on the next animation frame. */
     schedule() {
         if (this.isScheduled) return;
         this.isScheduled = true;
-        requestAnimationFrame(() => this.flush());
+
+        const run = () => { if (this.isScheduled) this.flush(); };
+        requestAnimationFrame(run);
+        setTimeout(run, 200);
     },
 
-    /** Starts the shared MutationObserver (no-op if already started). */
     observe() {
         if (this.running) return;
         this.running = true;
