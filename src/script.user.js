@@ -1677,7 +1677,7 @@ const generics = {
                 }
 
                 if (node.nodeName === "SLOT") {
-                    act.hide(":not(slot)", { root: node.getRootNode() });
+                    act.hide(":not(slot)", { extra: { root: node.getRootNode() } });
                     return;
                 }
 
@@ -1691,7 +1691,7 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], {
     patcher() {
         generics.antiAdbCore.patcher();
         generics.pahe.patcher();
-        act.removeAttr(":is(html, body)[style]", "style", { limit: 20 });
+        act.removeAttr(":is(html, body)[style]", { extra: { names: "style" }, match: { limit: 20 } });
         patch.apply(win.Object, "getOwnPropertyDescriptor", (target, thisArg, argArray) => {
             const [obj, prop] = argArray;
             const desc = Reflect.apply(target, thisArg, argArray);
@@ -1711,7 +1711,7 @@ domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixb
     patcher() {
         patch.haste();
         act.hide("#masthead, aside, #content > :not(center, form), footer");
-        act.remove("div", { css: { position: "fixed" }, text: "detected" });
+        act.remove("div", { match: { css: { position: "fixed" }, text: "detected" } });
     },
     continue() {
         act.click("#startButton", { extra: { wait: 2000 } });
@@ -1748,8 +1748,8 @@ domains.add(["boost.ink", "bst.gg"], {
         const match = /unlock.js.+[a-z]+="([^"]+)"/.exec(res.response);
         if (!match) return;
 
-        const decoded = atob(match[1]);
-        location.assign(decoded);
+        const target = safe.url(atob(match[1]));
+        location.assign(target);
     },
 });
 
@@ -1824,12 +1824,20 @@ domains.add(["premium.hairmova.com", "product.hairmova.com"], {
     },
 });
 
-domains.add("pahe.ink", generics.pahe);
+domains.add("pahe.ink", {
+    patcher() {
+        generics.antiAdbCore.patcher();
+        generics.pahe.patcher();
+    },
+});
 
 domains.add("linegee.net", {
-    ...generics.pahe,
+    patcher() {
+        generics.antiAdbCore.patcher();
+        generics.pahe.patcher();
+    },
     continue() {
-        act.click(".btn-primary", { wait: 4000 });
+        act.click(".btn-primary", { extra: { wait: 4000 } });
     },
 });
 
@@ -1842,7 +1850,7 @@ domains.add("pahe.plus", {
     },
     continue() {
         act.click(dom.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"), { extra: { event: { bubbles: false } } });
-        act.redirect(".get-link[href^='https://']:not(.disabled)");
+        act.follow(".get-link[href^='https://']:not(.disabled)");
     },
 });
 
@@ -1861,14 +1869,15 @@ domains.add("intercelestial.com", {
     continue() {
         act.click(".myButton", { extra: { count: 3, event: { bubbles: false } } });
     },
-    cache() {
-        bypass.cache(location.href);
+    async cache() {
+        const pattern = bypass.shortenerPatterns[location.hostname];
+        if (pattern?.test(location.pathname + location.search)) bypass.cache(location.href);
 
         if (/^\?ht=[a-zA-Z0-9%]+$/.test(location.search)) {
             sessionStorage.setItem("acs-shortlink", location.href);
         };
 
-        const xxc = document.querySelector("#xxc[href]");
+        const xxc = await dom.query("#xxc[href]");
         const shortlink = sessionStorage.getItem("acs-shortlink");
         if (xxc && shortlink) {
             window.stop();
@@ -1879,7 +1888,7 @@ domains.add("intercelestial.com", {
 
 domains.add("vexfile.com", {
     continue() {
-        act.redirect(".generate-link[href]:not(.blocked)");
+        act.follow(".generate-link[href]:not(.blocked)");
     },
 });
 
@@ -2002,7 +2011,7 @@ domains.add("cloud.unblockedgames.world", {
         act.click("#verify_button2");
         act.click("#verify_button");
 
-        act.redirect("#two_steps_btn[href]");
+        act.follow("#two_steps_btn[href]");
     },
 });
 
@@ -2032,7 +2041,7 @@ domains.add("aknewz.xyz", {
 
 domains.add("toolskitpro.net", {
     continue() {
-        act.remove("div", { css: { position: "fixed" } });
+        act.remove("div", { match: { css: { position: "fixed" } } });
         act.click(".show #afterBtn");
         act.click("#nxt");
         act.click("#getl");
@@ -2066,10 +2075,10 @@ domains.add("zdrive.to", {
 
 domains.add("cloudfam.io", {
     continue() {
-        act.redirect("#btn-clean-continue[href]");
-        act.redirect("#cf-btn-free[href]");
-        act.redirect("#free-btn[href]");
-        act.redirect("#cf-dl-btn[href]");
+        act.follow("#btn-clean-continue[href]");
+        act.follow("#cf-btn-free[href]");
+        act.follow("#free-btn[href]");
+        act.follow("#cf-dl-btn[href]");
     },
 });
 
@@ -2084,7 +2093,7 @@ domains.add("uiil.ink", {
 domains.add("coinclix.co", {
     async continue() {
         act.click("#link-card > #btnVerification");
-        act.redirect("#link-card > .btn-primary[href]");
+        act.follow("#link-card > .btn-primary[href]");
 
         const linkInstructions = await dom.query("#link-instructions-body");
         const keys = linkInstructions.querySelectorAll("kbd");
@@ -2097,7 +2106,7 @@ domains.add("coinclix.co", {
         });
 
         storage.global().watch("geekgrove-return-key", async (newValue) => {
-            act.prop("#link-card input#verificationCode", { value: newValue });
+            act.prop("#link-card input#verificationCode", { values: { value: newValue } });
             act.click("#link-card button#btnVerification");
         });
     },
@@ -2125,7 +2134,8 @@ domains.add("geekgrove.net", {
             const match = /href=\\"([^\\]+)/.exec(text);
             if (!match) return;
 
-            location.assign(match[1]);
+            const target = safe.url(match[1]);
+            if (target) location.assign(target);
         };
 
         act.click("#btnLinkStart", { match: { text: "Start" } });
@@ -2141,13 +2151,13 @@ domains.add("geekgrove.net", {
 
 domains.add("www.google.com", {
     continue() {
-        act.redirect("a[href^='https://'], a[href^='/goto?url=']");
+        act.follow("a[href^='https://'], a[href^='/goto?url=']");
     },
 });
 
 domains.add("toolkit.inshorturl.com", {
     continue() {
-        act.redirect("#lkActions a[href]");
+        act.follow("#lkActions a[href]");
     },
 });
 
@@ -2155,13 +2165,13 @@ domains.add("mahitimanch.in", {
     continue() {
         act.click("#link");
         act.click("#linkx");
-        act.redirect("#gtelinkbtn[href]");
+        act.follow("#gtelinkbtn[href]");
     },
 });
 
 domains.add("inshorturl.in", {
     continue() {
-        act.redirect("#ts-get-link[href^='https']");
+        act.follow("#ts-get-link[href^='https']");
     },
 });
 
@@ -2254,7 +2264,7 @@ domains.add("linkvertise.com", {
         });
     },
     continue() {
-        act.redirect("a[href]:has(> button)", { text: "Get access" });
+        act.follow("a[href]:has(> button)", { match: { text: "Get access" } });
         act.click("ui-divider + lv-membership-plan-option");
         act.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
         act.click(".skip-button > *", { extra: { count: 4 } });
@@ -2285,8 +2295,8 @@ domains.add("link4m.net", {
 
 domains.add("gplinks.co", {
     continue() {
-        act.redirect(".gate-btn-skip[href]");
-        act.redirect(dom.turnstile("#captchaButton[href]:not(.disabled)"));
+        act.follow(".gate-btn-skip[href]");
+        act.follow(dom.turnstile("#captchaButton[href]:not(.disabled)"));
     },
 });
 
@@ -2322,7 +2332,7 @@ domains.add("safelinkearn.com", {
 domains.add("www.mirrored.to", {
     continue() {
         act.click(".get_btn");
-        act.redirect(".highlight a[href]:has(.get_btn)");
+        act.follow(".highlight a[href]:has(.get_btn)");
     },
 });
 
@@ -2358,7 +2368,7 @@ domains.add("online-fix.me", {
 
 domains.add("anon.to", {
     continue() {
-        act.redirect("a#continue[href]");
+        act.follow("a#continue[href]");
     },
 });
 
@@ -2382,7 +2392,7 @@ domains.add("katfile.co", {
     continue() {
         act.click(".kfd-slow", { extra: { wait: 1000, count: 2 } });
         act.click(dom.turnstile(".downloadbtn"));
-        act.redirect("a#dlink[href]");
+        act.follow("a#dlink[href]");
     },
 });
 
