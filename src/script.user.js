@@ -1218,6 +1218,11 @@ const generics = {
     },
     pahe: {
         patcher() {
+            patch.apply(win.EventTarget.prototype, "dispatchEvent", (target, thisArg, argArray) => {
+                if (argArray[0].type === "DOMContentLoaded") return;
+                return Reflect.apply(target, thisArg, argArray);
+            });
+
             const mirror = (url, dest) => {
                 net.request(url, {
                     headers: {
@@ -1243,10 +1248,17 @@ const generics = {
 
             patch.construct(win, "Image", (target, argArray, newTarget) => {
                 const img = Reflect.construct(target, argArray, newTarget);
-                img.addEventListener("error", () => {
+                img.addEventListener("error", event => {
+                    if (img.src.includes("antiadblockcore.com")) {
+                        event.stopImmediatePropagation();
+                        img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                        return;
+                    }
+
                     if (!img.src.includes("ads/banner")) return;
+
                     mirror(img.src, "image");
-                });
+                }, { capture: true });
                 return img;
             });
 
