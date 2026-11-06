@@ -744,9 +744,9 @@ const matcher = {
 
         const checks = [
             [!this.isNil(is), () => !this.is(node, is)],
-            [!this.isNil(not), () => this.is(not)],
+            [!this.isNil(not), () => this.is(node, not)],
             [!this.isNil(attrs), () => !this.attrs(node, attrs)],
-            [!this.isNil(props), () => !this.props(props)],
+            [!this.isNil(props), () => !this.props(node, props)],
             [!this.isNil(text), () => !this.text(node.textContent, text)],
             [typeof visible === "boolean", () => !this.visibility(node, visible)],
             [!this.isNil(css), () => !this.css(node, css)],
