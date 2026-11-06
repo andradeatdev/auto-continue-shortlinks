@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Pahe - Auto continue links
 // @namespace          https://greasyfork.org/users/821661
-// @version            1.23.10
+// @version            1.23.11
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
@@ -146,6 +146,7 @@
 // @connect            shortlinks.zencore.fun
 // @connect            intercelestial.com
 // @connect            clksz.com
+// @connect            srnky.com
 //
 // @copyright          2024-2026 hdyzen (andradeatdev) — https://github.com/andradeatdev/auto-continue-shortlinks/
 // @license            GPL-3.0
