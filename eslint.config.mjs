@@ -120,7 +120,7 @@ export default defineConfig([
       "eqeqeq": ["error", "always"],
       "no-eval": "error",
       "no-alert": "off",
-      "no-shadow": "off",
+      // "no-shadow": "off",
       "no-lonely-if": "warn",
       "object-shorthand": ["warn", "always"],
       "no-async-promise-executor": "error",
