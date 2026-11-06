@@ -1583,7 +1583,7 @@ const domains = {
 
         if (config.useCache && handler.cache) {
             handler.cache();
-        } else {
+        } else if (config.useCache) {
             bypass.exec(hostname, href, pathname, search);
         }
 
