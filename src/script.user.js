@@ -733,9 +733,9 @@ const act = {
     follow(selector, { extra = {}, match = {} } = {}) {
         const { attr = "href" } = extra;
         return dom.stalk(selector, node => {
-            const href = safe.url(node.getAttribute(attr));
-            if (!href) return { continue: true };
-            location.assign(href);
+            const value = safe.url(node.getAttribute(attr));
+            if (!value || value === location.href) return { continue: true };
+            location.assign(value);
         }, { limit: 1, attrs: { [attr]: true }, ...match });
     },
 };
