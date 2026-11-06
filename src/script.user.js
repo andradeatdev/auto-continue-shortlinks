@@ -1116,20 +1116,17 @@ const bypass = {
     async follow(href, destination) {
         const res = await net.get(destination, {
             headers: {
-                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                Host: location.hostname,
                 Referer: location.href,
                 Cookie: document.cookie,
                 "Sec-Fetch-Dest": "document",
                 "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
             },
         });
 
         const final = new URL(res.finalUrl);
-        if (!this.trusted(final.hostname)) {
-            navigation.navigate(final.href, { info: "bypass_link" });
-            return;
-        }
+        if (!this.trusted(final.hostname)) { navigation.navigate(final.href, { info: "bypass_link" }); return; }
         await this.save(href, final.href);
     },
 
