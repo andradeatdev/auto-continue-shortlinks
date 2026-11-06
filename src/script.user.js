@@ -1035,22 +1035,8 @@ const patch = {
     },
 };
 
-const SLUG = /^\/[A-Za-z0-9_-]{3,}$/;
-
 const bypass = {
-    cacheMaxEntries: 50,
-    shortenerPatterns: {
-        "tpi.li": SLUG,
-        "oii.la": SLUG,
-        "srnky.com": SLUG,
-        "clksz.com": SLUG,
-        "pahe.plus": SLUG,
-        "en.mrproblogger.com": SLUG,
-        "link.snipcash.com": SLUG,
-        "intercelestial.com": /^\/\?ht=[a-zA-Z0-9%]+$/,
-        "speedy-links.com": /^\/s\?[A-Za-z0-9_-]{3,}$/,
-        "online-fix.me": /^\/ext\/.+$/,
-    },
+    SLUG_PATTERN: /^\/[A-Za-z0-9_-]{3,}$/,
     gatePatterns: {
         "clksz.com": /^\/r\/[^/]+\/.+$/,
         "srnky.com": /^\/r\/[^/]+\/.+$/,
@@ -1079,14 +1065,15 @@ const bypass = {
         "drive.google.com",
     ],
 
-    exec(hostname, href, pathname, search) {
-        if (!worker.url) return;
-
-        const pattern = this.shortenerPatterns[hostname];
-        if (!pattern?.test(pathname + search)) return;
+    exec(href, pathname, search, pattern) {
+        if (!worker.url || !pattern.test(pathname + search)) return;
 
         this.cache(href);
         this.listener(href);
+    },
+
+    trusted(hostname) {
+        return this.finalDomains.some(domain => matcher.value(hostname, domain, { exact: true }));
     },
 
     async cache(href) {
@@ -1158,10 +1145,6 @@ const bypass = {
         navigation.navigate(destination, { info: "bypass_link", history: "replace" });
     },
 
-    trusted(hostname) {
-        return this.finalDomains.some(domain => matcher.value(hostname, domain, { exact: true }));
-    },
-
     async title(title, links) {
         const { response } = await worker.titles.save(title, links);
         if (response?.status !== "ok") console.error(response);
@@ -1178,6 +1161,8 @@ const bypass = {
 };
 
 const domains = {
+    STAGES: ["cache", "patcher", "continue"],
+
     exec(stage, enabled, handler) {
         const fn = handler[stage];
         if (!fn || !enabled) return;
@@ -1185,31 +1170,52 @@ const domains = {
         safe.run(() => fn.call(handler), error => console.error(`[${stage}]`, error));
     },
 
-    add(hosts, handler) {
-        if (!handler) return;
+    add(hosts, ...parts) {
         if (![hosts].flat().includes(location.hostname)) return;
 
-        const { hostname, href, pathname, search } = location;
+        const handler = this.compose(...parts.filter(Boolean));
+        const { href, pathname, search } = location;
 
         commands.exec();
 
         if (config.useCache && handler.cache) {
             handler.cache();
-        } else if (config.useCache) {
-            bypass.exec(hostname, href, pathname, search);
+        } else if (config.useCache && handler.shortlink) {
+            bypass.exec(href, pathname, search, handler.shortlink);
         }
 
         this.exec("patcher", config.usePatcher, handler);
         this.exec("continue", config.useContinue, handler);
     },
+
+    compose(...parts) {
+        const merged = Object.assign({}, ...parts);
+
+        for (const stage of this.STAGES) {
+            const fns = parts.map(part => part[stage]).filter(Boolean);
+            if (fns.length === 0) continue;
+
+            merged[stage] = function () {
+                return Promise.all(fns.map(fn =>
+                    safe.run(() => fn.call(this), error => console.error(`[${stage}]`, error)),
+                ));
+            };
+        }
+
+        return merged;
+    },
 };
 
 const generics = {
+    haste: (options) => ({ patcher() { patch.haste(options); } }),
+    getLink: {
+        continue() {
+            act.click(".get-link:not(.disabled)");
+        },
+    },
     pahe: {
         patcher() {
             const mirror = (url, dest) => {
-                // console.log("url", url, "| dest", dest);
-
                 net.request(url, {
                     headers: {
                         "Referer": `${location.origin}/`,
@@ -1297,11 +1303,10 @@ const generics = {
     },
 };
 
-domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], {
+domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.antiAdbCore, generics.pahe, {
+    shortlink: bypass.SLUG_PATTERN,
     patcher() {
-        generics.antiAdbCore.patcher();
-        generics.pahe.patcher();
-        act.removeAttr(":is(html, body)[style]", { extra: { names: "style" }, match: { limit: 20 } });
+        attr.remove(":is(html, body)[style]", { extra: { names: "style" }, match: { limit: 20 } });
         patch.apply(win.Object, "getOwnPropertyDescriptor", (target, thisArg, argArray) => {
             const [obj, prop] = argArray;
             const desc = Reflect.apply(target, thisArg, argArray);
