@@ -1572,9 +1572,20 @@ domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
         patch.define(win, "LLct", { get: () => "1" });
         patch.define(win, "LLpd", { get: () => Date.now() - 284 });
 
+
         act.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
     },
     continue() {
+        frame.scope(w => {
+            patch.apply(w.Element.prototype, "attachShadow", (target, thisArg, argArray) => {
+                const root = Reflect.apply(target, thisArg, argArray);
+                watch.attach(root);
+                return root;
+            });
+        });
+
+        dom.query("div", { match: { text: "adblock" } });
+
         act.click(".myButton", { extra: { count: 3, event: { bubbles: false } } });
     },
     async cache() {
