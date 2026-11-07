@@ -711,7 +711,7 @@ const act = {
         const init = { bubbles: true, cancelable: true, composed: true, view: win, ...event };
         let remaining = count;
 
-        return dom.stalk(selector, async (node) => {
+        return dom.target(selector, async (node) => {
             if (wait > 0) {
                 await act.sleep(wait);
                 if (!node.isConnected || !matcher.node(node, match)) return { continue: true };
@@ -726,15 +726,15 @@ const act = {
 
     scroll(selector, { extra = {}, match = {} } = {}) {
         const { behavior = "smooth", block = "center", inline = "center" } = extra;
-        return dom.stalk(selector, node => node.scrollIntoView({ behavior, block, inline }), { limit: 1, ...match });
+        return dom.target(selector, node => node.scrollIntoView({ behavior, block, inline }), { limit: 1, ...match });
     },
 
     remove(selector, { match = {} } = {}) {
-        return dom.stalk(selector, node => node.remove(), match);
+        return dom.target(selector, node => node.remove(), match);
     },
 
     stash(selector, { match = {} } = {}) {
-        return dom.stalk(selector, node => {
+        return dom.target(selector, node => {
             const wrapper = document.createElement("div");
 
             wrapper.style.cssText = `
@@ -760,7 +760,7 @@ const act = {
 
     follow(selector, { extra = {}, match = {} } = {}) {
         const { attr = "href" } = extra;
-        return dom.stalk(selector, node => {
+        return dom.target(selector, node => {
             const value = safe.url(node.getAttribute(attr));
             if (!value || value === location.href) return { continue: true };
             location.assign(value);
@@ -783,7 +783,7 @@ const captcha = {
             node.dataset.recaptchaSolved = "";
         };
 
-        dom.stalk("#g-recaptcha-response", (node) => {
+        dom.target("#g-recaptcha-response", (node) => {
             setTimeout(() => poll(node), 500);
             return { stop: true };
         });
