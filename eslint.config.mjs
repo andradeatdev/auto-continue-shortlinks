@@ -101,6 +101,7 @@ export default defineConfig([
       "unicorn/single-line-block-comment-style": "off",
       "unicorn/no-array-method-this-argument": "off",
       "unicorn/no-unreadable-object-destructuring": 'off',
+      "unicorn/consistent-boolean-name": "off",
 
       "sonarjs/pseudo-random": "off",
       "sonarjs/super-linear-regex": "off",
