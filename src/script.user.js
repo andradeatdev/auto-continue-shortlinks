@@ -560,11 +560,18 @@ const frame = {
         const methods = [
             [win.Node.prototype, "appendChild"],
             [win.Node.prototype, "insertBefore"],
+            [win.Node.prototype, "replaceChild"],
+
             [win.Element.prototype, "append"],
             [win.Element.prototype, "prepend"],
             [win.Element.prototype, "replaceChildren"],
             [win.Element.prototype, "before"],
             [win.Element.prototype, "after"],
+            [win.Element.prototype, "replaceWith"],
+
+            [win.Element.prototype, "insertAdjacentElement"],
+
+            [win.Range.prototype, "insertNode"],
         ];
 
         const instrument = (node) => {
