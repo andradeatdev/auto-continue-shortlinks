@@ -5,7 +5,7 @@
     "noImplicitAny": false,
     "noUnusedParameters": true,
     "target": "ES2023",
-    "lib": ["ES2023", "ESNext.Iterator", "DOM", "DOM.Iterable"],
+    "lib": ["ES2025", "ESNext.Iterator", "DOM", "DOM.Iterable"],
     "types": ["@violentmonkey/types"]
   },
   "include": ["src"]

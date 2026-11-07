@@ -99,6 +99,8 @@ export default defineConfig([
       'unicorn/prefer-at': "off",
       "unicorn/no-array-callback-reference": "off",
       "unicorn/single-line-block-comment-style": "off",
+      "unicorn/no-array-method-this-argument": "off",
+      "unicorn/no-unreadable-object-destructuring": 'off',
 
       "sonarjs/pseudo-random": "off",
       "sonarjs/super-linear-regex": "off",
