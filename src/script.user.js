@@ -533,6 +533,62 @@ const shadow = {
     },
 };
 
+const frame = {
+    installers: new Set(),
+    seen: new WeakSet(),
+    isCapturing: false,
+
+    scope(install) {
+        safe.run(() => install(win));
+        this.installers.add(install);
+        this.capture();
+    },
+
+    visit(frameWin) {
+        if (!frameWin || frameWin === win) return;
+
+        const realm = frameWin.Function;
+        if (this.seen.has(realm)) return;
+
+        for (const install of this.installers) safe.run(() => install(frameWin));
+    },
+
+    capture() {
+        if (this.isCapturing) return;
+        this.isCapturing = true;
+
+        const methods = [
+            [win.Node.prototype, "appendChild"],
+            [win.Node.prototype, "insertBefore"],
+            [win.Element.prototype, "append"],
+            [win.Element.prototype, "prepend"],
+            [win.Element.prototype, "replaceChildren"],
+            [win.Element.prototype, "before"],
+            [win.Element.prototype, "after"],
+        ];
+
+        const instrument = (node) => {
+            if (node instanceof HTMLIFrameElement) frame(node);
+            if (typeof node.querySelectorAll !== "function") return;
+            for (const ifr of node.querySelectorAll("iframe")) frame(ifr);
+        };
+
+        const frame = (iframe) => {
+            if (!iframe.isConnected) return;
+            const frameWin = iframe.contentWindow;
+            this.visit(frameWin);
+        };
+
+        for (const [prototype, method] of methods) {
+            patch.apply(prototype, method, (target, thisArg, args) => {
+                const result = Reflect.apply(target, thisArg, args);
+                for (const arg of args) if (arg instanceof Node) instrument(arg);
+                return result;
+            });
+        }
+    },
+};
+
 const dom = {
     track(enumerate, handler, options = {}) {
         const { limit = Infinity } = options;
