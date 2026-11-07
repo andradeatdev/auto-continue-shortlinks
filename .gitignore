@@ -44,6 +44,7 @@ __pycache__/
 
 # Specific files
 TESTS.md
+src/backup.user.js
 
 # Agent instructions (local only)
 AGENTS.md
