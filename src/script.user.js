@@ -1271,14 +1271,10 @@ const domains = {
         const handler = this.compose(...parts.filter(Boolean));
         const { href, pathname, search } = location;
 
+        handler.cache ??= () => bypass.exec(href, pathname, search, handler.shortlink);
+
         commands.exec();
-
-        if (config.useCache && handler.cache) {
-            handler.cache();
-        } else if (config.useCache && handler.shortlink) {
-            bypass.exec(href, pathname, search, handler.shortlink);
-        }
-
+        this.exec("cache", config.useCache, handler);
         this.exec("patcher", config.usePatcher, handler);
         this.exec("continue", config.useContinue, handler);
     },
