@@ -1359,7 +1359,7 @@ const generics = {
 domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.antiAdbCore, generics.pahe, {
     shortlink: bypass.SLUG_PATTERN,
     patcher() {
-        attr.remove(":is(html, body)[style]", { extra: { names: "style" }, match: { limit: 20 } });
+        node.removeAttr(":is(html, body)[style]", { extra: { names: "style" }, match: { limit: 20 } });
         patch.apply(win.Object, "getOwnPropertyDescriptor", (target, thisArg, argArray) => {
             const [obj, prop] = argArray;
             const desc = Reflect.apply(target, thisArg, argArray);
@@ -1481,7 +1481,7 @@ domains.add(["premium.hairmova.com", "product.hairmova.com"], {
         act.scroll("#safegate-wait2", { match: { visible: true } });
         act.click("#safegate-go", { match: { visible: true } });
 
-        dom.stalk("#safegate-reveal-overlay > div > div > span", node => {
+        dom.target("#safegate-reveal-overlay > div > div > span", node => {
             storage.global().set("no-bots-allowed", node.textContent.trim());
             window.close();
         });
@@ -1735,7 +1735,7 @@ domains.add("coinclix.co", {
         });
 
         storage.global().watch("geekgrove-return-key", async (newValue) => {
-            prop.set("#link-card input#verificationCode", { extra: { values: { value: newValue } } });
+            node.setProp("#link-card input#verificationCode", { extra: { values: { value: newValue } } });
             act.click("#link-card button#btnVerification");
         });
     },
@@ -2060,7 +2060,7 @@ domains.add("psa.wf", {
         for (const link of links) {
             if (!link.found) continue;
 
-            dom.stalk(".sp-head", n => {
+            dom.target(".sp-head", n => {
                 const downloadIcon = n.nextElementSibling?.querySelector(".fa-download");
                 const body = downloadIcon?.closest(".sp-body");
                 const nodeLinks = link.links.map(l => `<a href="${l}">${l}</a>`).join("<br>");
@@ -2089,7 +2089,7 @@ domains.add("psa.wf", {
         const thumb = track.querySelector("#sg-thumb");
         drag(thumb, track);
 
-        dom.stalk("#sg-code-a", async (node) => {
+        dom.target("#sg-code-a", async (node) => {
             storage.global().set("no-bots-allowed", node.textContent.trim());
             GM_openInTab("https://no-bots-allowed.org", { active: true, insert: true });
 
@@ -2125,7 +2125,7 @@ domains.add("no-bots-allowed.org", {
     continue() {
         const code = storage.global().get("no-bots-allowed");
 
-        dom.stalk("input#nba-code", node => {
+        dom.target("input#nba-code", node => {
             if (!code) return { stop: true };
             node.value = code;
         });
