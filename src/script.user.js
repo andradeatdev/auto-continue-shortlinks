@@ -534,8 +534,8 @@ const shadow = {
 };
 
 const dom = {
-    stalk(selector, handler, opts = {}) {
-        const { limit = Infinity } = opts;
+    track(enumerate, handler, options = {}) {
+        const { limit = Infinity } = options;
         const seen = new WeakSet();
 
         let handled = 0;
@@ -555,7 +555,7 @@ const dom = {
         };
 
         const sweep = async () => {
-            for (const node of dom.select(selector, opts)) {
+            for (const node of enumerate()) {
                 if (isStopped) break;
                 await handle(node);
             }
@@ -577,6 +577,25 @@ const dom = {
 
         run();
         return stop;
+    },
+
+    stalk(selector, handler, options = {}) {
+        return dom.track(() => dom.select(selector, options), handler, options);
+    },
+
+    target(input, handler, options = {}) {
+        if (typeof input === "string") return dom.target(input, handler, options);
+
+        const nodes = input instanceof Node ? [input] : [...input ?? []].filter(Boolean);
+        if (nodes.length === 0) return () => { };
+
+        return dom.track(() => dom.pick(nodes, options), handler, { limit: nodes.length, ...options });
+    },
+
+    *pick(nodes, options = {}) {
+        for (const node of nodes) {
+            if (node.isConnected && matcher.node(node, options)) yield node;
+        }
     },
 
     *find(selector, root = document) {
@@ -608,12 +627,12 @@ const dom = {
         }
     },
 
-    query(selector, options = {}) {
+    query(target, options = {}) {
         const { timeout = 0 } = options;
         return new Promise((resolve, reject) => {
             let timer;
 
-            const done = dom.stalk(selector, node => {
+            const done = dom.target(target, node => {
                 clearTimeout(timer);
                 resolve(node);
                 return { stop: true };
@@ -622,7 +641,7 @@ const dom = {
             if (timeout > 0) {
                 timer = setTimeout(() => {
                     done();
-                    reject(new Error(`Timeout of ${timeout}ms reached waiting for: ${selector}`));
+                    reject(new Error(`Timeout of ${timeout}ms reached waiting for: ${typeof target === "string" ? target : "<element>"}`));
                 }, timeout);
             }
         });
@@ -635,43 +654,52 @@ const dom = {
     },
 
     *select(selector, options = {}) {
-        for (const node of this.find(selector)) if (matcher.node(node, options)) yield node;
+        const { root = document } = options;
+        for (const node of this.find(selector, root)) if (matcher.node(node, options)) yield node;
     },
 };
 
-const accessor = ({ read, write, erase }) => ({
-    get(selector, { extra = {}, match = {} } = {}) {
+const node = {
+    async getAttr(target, { extra = {}, match = {} } = {}) {
         const { name } = extra;
-        return dom.query(selector, match).then(node => read(node, name));
+        const node = await dom.query(target, match);
+        return node.getAttribute(name);
     },
 
-    set(selector, { extra = {}, match = {} } = {}) {
+    setAttr(target, { extra = {}, match = {} } = {}) {
         const { values = {} } = extra;
-        return dom.stalk(selector, node => {
-            for (const [key, value] of Object.entries(values)) write(node, key, value);
+        return dom.target(target, node => {
+            for (const [key, value] of Object.entries(values)) node.setAttribute(key, value);
         }, { limit: 1, ...match });
     },
 
-    remove(selector, { extra = {}, match = {} } = {}) {
+    removeAttr(target, { extra = {}, match = {} } = {}) {
         const names = [extra.names].flat();
-        return dom.stalk(selector, node => {
-            for (const name of names) erase(node, name);
+        return dom.target(target, node => {
+            for (const name of names) node.removeAttribute(name);
         }, { limit: 1, ...match });
     },
-});
 
-const attr = accessor({
-    read: (node, key) => node.getAttribute(key),
-    write: (node, key, value) => node.setAttribute(key, value),
-    erase: (node, key) => node.removeAttribute(key),
-});
+    async getProp(target, { extra = {}, match = {} } = {}) {
+        const { name } = extra;
+        const node = await dom.query(target, match);
+        return node[name];
+    },
 
-const prop = accessor({
-    read: (node, key) => node[key],
-    write: (node, key, value) => { node[key] = value; },
-    erase: (node, key) => { delete node[key]; },
-});
+    setProp(target, { extra = {}, match = {} } = {}) {
+        const { values = {} } = extra;
+        return dom.target(target, node => {
+            for (const [key, value] of Object.entries(values)) node[key] = value;
+        }, { limit: 1, ...match });
+    },
 
+    removeProp(target, { extra = {}, match = {} } = {}) {
+        const names = [extra.names].flat();
+        return dom.target(target, node => {
+            for (const name of names) delete node[name];
+        }, { limit: 1, ...match });
+    },
+};
 const act = {
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
