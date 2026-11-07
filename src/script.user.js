@@ -1158,7 +1158,7 @@ const bypass = {
     ],
 
     exec(href, pathname, search, pattern) {
-        if (!worker.url || !pattern.test(pathname + search)) return;
+        if (!worker.url || !pattern?.test(pathname + search)) return;
 
         this.cache(href);
         this.listener(href);
@@ -1174,6 +1174,7 @@ const bypass = {
 
         const url = new URL(response.destination);
         if (url.protocol !== "https:" || !this.trusted(url.hostname)) return;
+        if (url.href === location.href) return;
 
         this.navigate(url.href);
     },
@@ -1207,7 +1208,7 @@ const bypass = {
     },
 
     navigate(destination) {
-        if (typeof navigation === "undefined" || destination === location.href) return;
+        if (typeof navigation === "undefined") return;
         navigation.navigate(destination, { info: "bypass_link" });
     },
 
@@ -1229,8 +1230,8 @@ const bypass = {
     },
 
     async save(href, destination) {
-        if (typeof href !== "string" || typeof destination !== "string") {
-            console.error("Can't save shortlink, 'href' and 'destination' args need be a string");
+        if (typeof href !== "string" || typeof destination !== "string" || href === destination) {
+            console.error("Can't save shortlink, 'href' and 'destination' args need be a string and diferent");
             return;
         }
 
