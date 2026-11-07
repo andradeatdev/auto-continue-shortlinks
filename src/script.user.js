@@ -862,7 +862,7 @@ const net = {
     },
 
     post(url, body) {
-        return this.request(url, { data: body });
+        return this.request(url, { method: "POST", data: body });
     },
 
     request(url, options = {}) {
