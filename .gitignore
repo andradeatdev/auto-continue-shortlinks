@@ -57,3 +57,9 @@ tools/
 # .md
 SHORTLINK-CANDIDATES.md
 BACKUPS.md
+
+# Local only
+docs_internal/
+
+# Git worktrees (isolated refactor workspaces)
+.worktrees/
