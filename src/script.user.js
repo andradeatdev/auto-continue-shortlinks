@@ -524,9 +524,9 @@ const shadow = {
         if (this.isCapturing) return;
         this.isCapturing = true;
 
-        patch.apply(win.Element.prototype, "attachShadow", (target, thisArg, argArray) => {
-            const root = Reflect.apply(target, thisArg, argArray);
-            this.roots.set(thisArg, root);
+        patch.apply(win.Element.prototype, "attachShadow", ({ self, call }) => {
+            const root = call();
+            this.roots.set(self, root);
             watch.attach(root);
             return root;
         });
@@ -588,8 +588,8 @@ const frame = {
         };
 
         for (const [prototype, method] of methods) {
-            patch.apply(prototype, method, (target, thisArg, args) => {
-                const result = Reflect.apply(target, thisArg, args);
+            patch.apply(prototype, method, ({ args, call }) => {
+                const result = call();
                 for (const arg of args) if (arg instanceof Node) instrument(arg);
                 return result;
             });
@@ -919,6 +919,70 @@ const worker = {
     },
 };
 
+const accessor = {
+    base(owner, property) {
+        let desc;
+        for (let o = owner; o && !desc; o = Object.getPrototypeOf(o)) {
+            desc = Object.getOwnPropertyDescriptor(o, property);
+        }
+
+        const store = new WeakMap();
+
+        return {
+            desc,
+            get(self) {
+                if (desc?.get) return desc.get.call(self);
+                return store.has(self) ? store.get(self) : desc?.value;
+            },
+            set(self, value) {
+                if (desc?.set) desc.set.call(self, value);
+                else if (!desc?.get) store.set(self, value);
+            },
+        };
+    },
+
+    define(owner, property, spec) {
+        const own = Object.getOwnPropertyDescriptor(owner, property);
+        if (own && !own.configurable) return false;
+
+        const orig = this.base(owner, property);
+        const { get, set } = spec;
+        const constant = "value" in spec;
+        const custom = constant || Boolean(get);
+
+        Object.defineProperty(owner, property, {
+            configurable: true,
+            enumerable: orig.desc?.enumerable ?? true,
+            get() {
+                if (!custom) return orig.get(this);
+                if (constant) return spec.value;
+
+                return get.call(this, () => orig.get(this), this);
+            },
+            set(v) {
+                if (!set) { orig.set(this, v); return; }
+
+                const setter = (...out) => orig.set(this, out.length > 0 ? out[0] : v);
+                set.call(this, v, setter, this);
+            },
+        });
+
+        return true;
+    },
+
+    getter(owner, property, fn) {
+        return this.define(owner, property, { get: (getter, self) => fn(getter, self) });
+    },
+
+    setter(owner, property, fn) {
+        return this.define(owner, property, { set: (value, setter, self) => fn(value, setter, self) });
+    },
+
+    constant(owner, property, value) {
+        return this.define(owner, property, { value });
+    },
+};
+
 const patch = {
     conceal(fake, original) {
         const ctx = ctxs.of("conceal");
@@ -930,7 +994,7 @@ const patch = {
         ctx.patched = true;
 
         const proto = win.Function.prototype;
-        const native = proto.toString;
+        const native = win.Function.prototype.toString;
 
         const toString = function () {
             return native.call(ctx.originals.get(this) ?? this);
@@ -942,9 +1006,7 @@ const patch = {
         });
 
         ctx.originals.set(toString, native);
-
-        const desc = Object.getOwnPropertyDescriptor(proto, "toString");
-        Object.defineProperty(proto, "toString", { ...desc, value: toString });
+        accessor.constant(proto, "toString", toString);
     },
 
     hook(owner, property, handler) {
@@ -967,41 +1029,25 @@ const patch = {
         const desc = Object.getOwnPropertyDescriptor(owner, property);
         if (desc && "value" in desc) Object.defineProperty(owner, property, { ...desc, value: proxy });
         else owner[property] = proxy;
+
+        return true;
     },
 
-    apply(owner, property, applyFn) {
-        return this.hook(owner, property, { apply: applyFn });
+    apply(owner, property, fn) {
+        return this.hook(owner, property, {
+            apply: (target, self, args) => fn({
+                target, self, args,
+                call: (next = args) => Reflect.apply(target, self, next),
+            }),
+        });
     },
 
-    construct(owner, property, constructFn) {
-        return this.hook(owner, property, { construct: constructFn });
-    },
-
-    define(owner, property, { get, set }) {
-        const descriptor = Object.getOwnPropertyDescriptor(owner, property) || {};
-
-        let value;
-
-        const setter = (thisArg, v) => {
-            if (descriptor.set) descriptor.set.call(thisArg, v);
-            value = v;
-        };
-        const getter = (thisArg) => {
-            if (descriptor.get) return descriptor.get.call(thisArg);
-            return value;
-        };
-
-        Object.defineProperty(owner, property, {
-            configurable: true,
-            enumerable: true,
-            get() {
-                if (get) return get.call(this, () => getter(this));
-                return getter(this);
-            },
-            set(v) {
-                if (set) { set.call(this, v, (outV) => setter(this, outV)); return; }
-                setter(this, v);
-            },
+    construct(owner, property, fn) {
+        return this.hook(owner, property, {
+            construct: (target, args, self) => fn({
+                target, args, self,
+                call: (next = args) => Reflect.construct(target, next, self),
+            }),
         });
     },
 
@@ -1051,9 +1097,9 @@ const patch = {
             (ms === undefined || ms === delay) &&
             matcher.text(String(fn), text);
 
-        const scale = (target, thisArg, args) => {
+        const scale = ({ args, call }) => {
             if (shouldScale(args[0], args[1]) && isFast()) args[1] *= factor;
-            return Reflect.apply(target, thisArg, args);
+            return call();
         };
 
         patch.apply(win, "setTimeout", scale);
@@ -1070,15 +1116,13 @@ const patch = {
     },
 
     fetch(options = {}) {
-        const { url, returnValue = Object.create(null) } = options;
+        const { url = "", returnValue = Object.create(null) } = options;
 
         const isMatch = (input) => matcher.text(String(input?.url ?? input), url);
 
-        patch.apply(win, "fetch", (target, thisArg, argArray) => {
-            const [urlArg] = argArray;
-            if (isMatch(urlArg)) return returnValue;
-
-            return Reflect.apply(target, thisArg, argArray);
+        patch.apply(win, "fetch", ({ args, call }) => {
+            const [u] = args;
+            return isMatch(u) ? Promise.resolve(new Response(returnValue)) : call();
         });
     },
 
@@ -1086,28 +1130,25 @@ const patch = {
         const { type, target, text } = options;
         const sourceOf = fn => typeof fn === "function" ? fn.toString() : "";
 
-        patch.apply(win.EventTarget.prototype, "addEventListener", (fn, thisArg, argArray) => {
-            const [name, listener] = argArray;
-            const original = () => Reflect.apply(fn, thisArg, argArray);
+        patch.apply(win.EventTarget.prototype, "addEventListener", ({ self, args, call }) => {
+            const [name, listener] = args;
 
-            if (!matcher.isNil(type) && !matcher.value(name, type, { exact: true })) return original();
-            if (!matcher.node(thisArg, target)) return original();
-            if (!matcher.isNil(text) && !matcher.text(sourceOf(listener), text)) return original();
+            if (!matcher.isNil(type) && !matcher.value(name, type, { exact: true })) return call();
+            if (!matcher.node(self, target)) return call();
+            if (!matcher.isNil(text) && !matcher.text(sourceOf(listener), text)) return call();
         });
     },
 
     mask(selector, { extra = {}, options = {} } = {}) {
-        const ctx = ctxs.of("mask");
-
-        ctx.map ??= new Map();
+        const ctx = ctxs.of("mask", { map: new Map() });
         ctx.map.set(selector, { styles: extra.styles, options });
 
         if (ctx.patched) return;
         ctx.patched = true;
 
-        patch.apply(win, "getComputedStyle", (target, thisArg, argArray) => {
-            const result = Reflect.apply(target, thisArg, argArray);
-            const [node] = argArray;
+        patch.apply(win, "getComputedStyle", ({ args, call }) => {
+            const result = call();
+            const [node] = args;
 
             if (!node?.matches) return result;
 
@@ -1118,7 +1159,7 @@ const patch = {
 
             return new Proxy(result, {
                 get(t, prop) {
-                    if (Object.hasOwn(match.styles, prop)) return match.styles[prop];
+                    if (Object.hasOwn(match.styles ?? {}, prop)) return match.styles[prop];
                     const value = Reflect.get(t, prop, t);
                     return typeof value === "function" ? value.bind(t) : value;
                 },
@@ -1309,19 +1350,17 @@ const generics = {
         patcher() {
             dom.query("link[href*='120x600-']").then(n => { n.href = "data:text/css,/120x600-x"; });
 
-            patch.apply(win.EventTarget.prototype, "dispatchEvent", (target, thisArg, argArray) => {
-                if (argArray[0].type === "DOMContentLoaded") return;
-                return Reflect.apply(target, thisArg, argArray);
+            patch.apply(win.EventTarget.prototype, "dispatchEvent", ({ args: [type], call }) => {
+                if (type === "DOMContentLoaded") return;
+                return call();
             });
 
-            patch.apply(win.performance, "getEntriesByName", (target, thisArg, argArray) => {
-                const name = argArray[0];
-
+            patch.apply(win.performance, "getEntriesByName", ({ args: [name], call }) => {
                 if (typeof name === "string" && /gpt(?:%2E|[.])js/i.test(name)) {
                     return [{ name, entryType: "resource", encodedBodySize: 1, decodedBodySize: 32_768 }];
                 }
 
-                return Reflect.apply(target, thisArg, argArray);
+                return call();
             });
 
             const mirror = (url, dest) => {
@@ -1345,8 +1384,8 @@ const generics = {
                 }
             }, { capture: true });
 
-            patch.construct(win, "Image", (target, argArray, newTarget) => {
-                const img = Reflect.construct(target, argArray, newTarget);
+            patch.construct(win, "Image", ({ call }) => {
+                const img = call();
                 img.addEventListener("error", event => {
                     if (img.src.includes("antiadblockcore.com")) {
                         event.stopImmediatePropagation();
@@ -1361,9 +1400,9 @@ const generics = {
                 return img;
             });
 
-            patch.construct(win, "Promise", (Target, argArray, newTarget) => {
-                const [executor, ...rest] = argArray;
-                if (typeof executor !== "function") return Reflect.construct(Target, argArray, newTarget);
+            patch.construct(win, "Promise", ({ args, call }) => {
+                const [executor, ...rest] = args;
+                if (typeof executor !== "function") return call();
 
                 const wrapper = (resolve, reject) => {
                     const resolveMod = (value) => {
@@ -1374,7 +1413,7 @@ const generics = {
                     };
                     return executor(resolveMod, reject);
                 };
-                return Reflect.construct(Target, [wrapper, ...rest], newTarget);
+                return call([wrapper, ...rest]);
             });
         },
     },
@@ -1382,29 +1421,19 @@ const generics = {
         patcher() {
             const AD_REGEX = /pagead2.googlesyndication.com|securepubads.g.doubleclick.net|googletagservices.com|s.amazon-adsystem.com|googleadservices.com/;
 
-            patch.apply(win, "fetch", (target, thisArg, argArray) => {
-                const [url] = argArray;
-
-                if (!(typeof url === "string" && AD_REGEX.test(url))) return Reflect.apply(target, thisArg, argArray);
-
+            patch.apply(win, "fetch", ({ target, args: [url], call }) => {
+                if (!(typeof url === "string" && AD_REGEX.test(url))) return call();
                 return target("https://jsonplaceholder.typicode.com/users", { mode: "no-cors" });
             });
 
-            patch.apply(win.Node.prototype, "appendChild", (target, thisArg, argArray) => {
-                const [node] = argArray;
-                const result = Reflect.apply(target, thisArg, argArray);
+            patch.apply(win.Node.prototype, "appendChild", ({ args: [node], call }) => {
+                const result = call();
 
                 const hasHifen = node.tagName?.includes("-");
-                if (hasHifen) {
-                    node.remove();
-                    return;
-                }
+                if (hasHifen) { node.remove(); return; }
 
                 const isModal = node.getHTML?.().includes("adblock");
-                if (isModal) {
-                    node.remove();
-                    return;
-                }
+                if (isModal) { node.remove(); return; }
 
                 if (node.nodeName === "SLOT") {
                     act.hide(":not(slot)", { extra: { root: node.getRootNode() } });
@@ -1421,13 +1450,9 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.antiAdbCore
     shortlink: bypass.SLUG_PATTERN,
     patcher() {
         node.removeAttr(":is(html, body)[style]", { extra: { names: "style" }, match: { limit: 20 } });
-        patch.apply(win.Object, "getOwnPropertyDescriptor", (target, thisArg, argArray) => {
-            const [obj, prop] = argArray;
-            const desc = Reflect.apply(target, thisArg, argArray);
-            if (prop === "isTrusted" && obj instanceof Event) {
-                return { ...desc, get: () => true };
-            }
-            return desc;
+        patch.apply(win.Object, "getOwnPropertyDescriptor", ({ args: [obj, prop], call }) => {
+            const desc = call();
+            return prop === "isTrusted" && obj instanceof Event ? { ...desc, get: () => true } : desc;
         });
     },
     continue() {
@@ -1481,30 +1506,24 @@ domains.add(["boost.ink", "bst.gg"], {
 
 domains.add(["invest.datapendidikan.com", "crm.urlwebsite.com", "go.fakta.id"], {
     patcher() {
-        const adsSelectors = ".adsbox, .pub_300x250, .ad-banner, .ad-unit, .text-ad, .adsbygoogle, .ad-placement, .textads, .banner-ads, #adsense";
+        const AD_SELECTORS = ".adsbox, .pub_300x250, .ad-banner, .ad-unit, .text-ad, .adsbygoogle, .ad-placement, .textads, .banner-ads, #adsense";
+        const isAd = (el) => el.matches(AD_SELECTORS);
 
         act.hide(".crumb, .post-title, .post-meta, .share, figure, .toc, .site-footer, .side, .section-title, h1");
-        patch.mask(adsSelectors, { display: "block", visibility: "visible" });
-        patch.define(win.HTMLElement.prototype, "offsetParent", {
-            get(getter) {
-                return this.matches(adsSelectors) ? document.body : getter();
-            },
+        patch.mask(AD_SELECTORS, { display: "block", visibility: "visible" });
+
+        accessor.getter(win.HTMLElement.prototype, "offsetParent", (getter, self) => {
+            return isAd(self) ? document.body : getter();
         });
-        patch.define(win.HTMLElement.prototype, "offsetHeight", {
-            get(getter) {
-                return this.matches(adsSelectors) ? 1 : getter();
-            },
+        accessor.getter(win.HTMLElement.prototype, "offsetHeight", (getter, self) => {
+            return isAd(self) ? 1 : getter();
         });
-        patch.define(win.HTMLElement.prototype, "offsetWidth", {
-            get(getter) {
-                return this.matches(adsSelectors) ? 1 : getter();
-            },
+        accessor.getter(win.HTMLElement.prototype, "offsetWidth", (getter, self) => {
+            return isAd(self) ? 1 : getter();
         });
-        patch.define(win.HTMLImageElement.prototype, "src", {
-            set() {
-                this.onerror = () => { };
-                this.onload();
-            },
+        accessor.setter(win.HTMLImageElement.prototype, "src", (value, setter, self) => {
+            self.onerror = undefined;
+            self.onload();
         });
     },
     continue() {
@@ -1522,7 +1541,7 @@ domains.add(["xut.io", "textfrog.com", "eduify.app", "gamescrate.app"], generics
 
 domains.add(["fc-lc.xyz", "oii.io"], {
     patcher() {
-        patch.define(win, "AdscoreInit", { get: () => () => { } });
+        accessor.constant(win, "AdscoreInit", () => { });
     },
     async continue() {
         act.click(captcha.hcaptcha("button#hCaptchaShortlink"));
@@ -1574,8 +1593,8 @@ domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
     patcher() {
         patch.listener({ type: "click", target: { not: ".myButton" } });
         patch.apply(win, "open", () => { });
-        patch.define(win, "LLct", { get: () => "1" });
-        patch.define(win, "LLpd", { get: () => Date.now() - 284 });
+        accessor.constant(win, "LLct", "1");
+        accessor.getter(win, "LLpd", () => Date.now() - 284);
         frame.scope(w => patch.apply(w.Element.prototype, "attachShadow", () => { }));
 
         act.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
@@ -1805,7 +1824,7 @@ domains.add("coinclix.co", {
 
 domains.add("geekgrove.net", {
     patcher() {
-        patch.define(win.document, "activeElement", { get: () => ({ tagName: "IFRAME" }) });
+        accessor.getter(win.document, "activeElement", { tagName: "IFRAME" });
         patch.apply(win.Document.prototype, "hasFocus", () => false);
         patch.listener({ type: "click", target: { not: "button" } });
 
@@ -1883,14 +1902,13 @@ domains.add("adfoc.us", {
 domains.add("speedy-links.com", {
     shortlink: /^\/s\?[A-Za-z0-9_-]{3,}$/,
     patcher() {
-        patch.apply(win, "fetch", async (target, thisArg, argArray) => {
-            const [, init] = argArray;
+        patch.apply(win, "fetch", async ({ args: [, init], call }) => {
             if (init?.method === "POST" && typeof init.body === "string") {
                 const body = init.body.replaceAll(/(?<="num_of_tasks":|"max_tasks":)\d+/g, "1");
                 init.body = body;
             }
 
-            const response = await Reflect.apply(target, thisArg, argArray);
+            const response = await call();
             const clone = response.clone();
             const isJson = response.headers.get("content-type")?.includes("application/json");
 
@@ -1946,9 +1964,9 @@ domains.add("linkvertise.com", {
     patcher() {
         patch.haste({ factor: 0.05 });
 
-        patch.apply(win.HTMLElement.prototype, "click", (target, thisArg, argArray) => {
-            if (thisArg.nodeName === "A" && thisArg.href) location.assign(thisArg.href);
-            return Reflect.apply(target, thisArg, argArray);
+        patch.apply(win.HTMLElement.prototype, "click", ({ self, call }) => {
+            if (self.nodeName === "A" && self.href) location.assign(self.href);
+            return call();
         });
     },
     continue() {
@@ -1994,9 +2012,9 @@ domains.add("skrresults.com", generics.haste({ factor: 0.01 }), {
 
 domains.add("rekonise.com", {
     patcher() {
-        patch.apply(win, "open", (target, thisArg, argArray) => {
+        patch.apply(win, "open", ({ args: [url] }) => {
             if (!document.querySelector(".all-done-row")) return;
-            location.assign(argArray[0]);
+            location.assign(url);
         });
     },
     continue() {
