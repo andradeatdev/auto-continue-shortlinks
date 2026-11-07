@@ -264,12 +264,12 @@ const commands = {
             reportUrl: {
                 name: "Report URL issue",
                 action() {
-                    const { script, scriptHandler, platform, userAgentData } = GM_info;
+                    const { script, scriptHandler, platform = {}, userAgentData } = GM_info;
 
-                    const browser = platform?.browserName && platform.browserVersion
+                    const browser = platform.browserName && platform.browserVersion
                         ? `${platform.browserName} ${platform.browserVersion}`
-                        : userAgentData?.brands
-                            ?.filter(({ brand }) => !/Not.?A.?Brand/i.test(brand))
+                        : userAgentData.brands.
+                            filter(({ brand }) => !/Not.?A.?Brand/i.test(brand))
                             .map(({ brand, version }) => `${brand} ${version}`)
                             .join(", ") || "Unknown browser";
 
