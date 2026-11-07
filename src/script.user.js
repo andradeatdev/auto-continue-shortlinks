@@ -584,7 +584,7 @@ const dom = {
     },
 
     target(input, handler, options = {}) {
-        if (typeof input === "string") return dom.target(input, handler, options);
+        if (typeof input === "string") return dom.stalk(input, handler, options);
 
         const nodes = input instanceof Node ? [input] : [...input ?? []].filter(Boolean);
         if (nodes.length === 0) return () => { };
