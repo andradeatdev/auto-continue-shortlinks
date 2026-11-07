@@ -549,6 +549,7 @@ const frame = {
 
         const realm = frameWin.Function;
         if (this.seen.has(realm)) return;
+        this.seen.add(realm);
 
         for (const install of this.installers) safe.run(() => install(frameWin));
     },
