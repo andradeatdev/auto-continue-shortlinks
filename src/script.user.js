@@ -1263,6 +1263,7 @@ const bypass = {
         "uploadhaven.com",
         "flycutlink.com",
         "drive.google.com",
+        "driveseed.org",
     ],
 
     run(href, pathname, search, pattern) {
