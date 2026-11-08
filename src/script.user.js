@@ -135,6 +135,8 @@
 // @match              https://eduify.app/*
 // @match              https://gamescrate.app/*
 // 
+// @match              https://www.filecrypt.cc/*
+// 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
 // 
@@ -2397,38 +2399,78 @@ domains.add("app.lovemodz.space", generics.haste(), {
 
 domains.add("alpharede.com", {
     continue() {
-        el.click("button", { match: { text: "IR PARA O LINK" }, wait: 1000, limit: 10 })
+        el.click("button", { match: { text: "IR PARA O LINK" }, wait: 1000, limit: 10 });
     },
 });
 
 domains.add(["forumdinheiro.com", "guis2.com", "horoscopeonday.com"], generics.haste(), {
     patcher() {
         const page = (delay = 1000) => {
-            const undoHidden = hook.constant(document, "hidden", true)
-            const undoVisibility = hook.constant(document, "visibilityState", "hidden")
+            const undoHidden = hook.constant(document, "hidden", true);
+            const undoVisibility = hook.constant(document, "visibilityState", "hidden");
 
-            window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+            win.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
             document.dispatchEvent(new Event("visibilitychange"));
 
             setTimeout(() => {
-                undoHidden.stop()
-                undoVisibility.stop()
+                undoHidden.stop();
+                undoVisibility.stop();
 
-                window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+                win.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
                 document.dispatchEvent(new Event("visibilitychange"));
 
             }, delay);
-        }
+        };
 
         setInterval(page, 500);
-        setTimeout(() => location.reload(), 6000)
+        setTimeout(() => location.reload(), 6000);
 
-        el.hide("body > div:not([class])", { match: { text: "bloqueador" } })
-        el.hide("h1, h2, p, div:has(> img), ul, aside, footer, header, input, a, svg, span")
+        el.hide("body > div:not([class])", { match: { text: "bloqueador" } });
+        el.hide("h1, h2, p, div:has(> img), ul, aside, footer, header, input, a, svg, span");
     },
     continue() {
-        el.scroll("#init", { limit: 10 })
-        el.click("#count", { scroll: true, limit: 10 })
-        el.click("article button:not([disabled])", { limit: 10 })
+        el.scroll("#init", { limit: 10 });
+        el.click("#count", { scroll: true, limit: 10 });
+        el.click("article button:not([disabled])", { limit: 10 });
+    },
+});
+
+domains.add("www.filecrypt.cc", {
+    async patcher() {
+        hook.apply(win, "open", ({ args: [url], call }) => url.includes("www.filecrypt.") && call());
+        el.hide("body > :not(#page)");
+
+        dom.find("form[onsubmit*='CNLPOP']").then(async form => {
+            const match = /'([^']{32})'.+?'([^']{35,})'/.exec(form.getAttribute("onsubmit"));
+            if (!match) return;
+
+            const [, hex, b64] = match;
+            const key = new Uint8Array(hex.match(/.{1,2}/g).map(b => Number.parseInt(b, 16)));
+            const cipher = Uint8Array.from(atob(b64), c => c.codePointAt(0));
+
+            const cryptoKey = await crypto.subtle.importKey(
+                "raw", key, { name: "AES-CBC" }, false, ["decrypt"],
+            );
+            const decryptedBuffer = await crypto.subtle.decrypt(
+                { name: "AES-CBC", iv: key }, cryptoKey, cipher,
+            );
+
+            const plain = new TextDecoder().decode(decryptedBuffer);
+            const clean = plain.split(/[\r\n]+/).map(url => url.replaceAll("\u{0}", "").trim());
+
+            const trs = document.querySelectorAll("tr:has(a.download[href])");
+            for (const tr of trs) {
+                const hostname = tr.querySelector(".external_link[href]")?.hostname;
+                const anchor = tr.querySelector("a.download[href]");
+                if (!hostname || !anchor) continue;
+
+                const idx = clean.findIndex((u) => u.startsWith(`https://${hostname}`));
+                const target = clean[idx];
+                if (!target) continue;
+
+                clean.splice(idx, 1);
+                anchor.href = target;
+            }
+        });
     },
 });
