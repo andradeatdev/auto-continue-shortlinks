@@ -29,6 +29,10 @@ export default defineConfig([
     },
   },
   {
+    files: ["**/*.js", "**/*.user.js"],
+    plugins: {
+      "@stylistic": stylistic,
+    },
     languageOptions: { globals: globals.greasemonkey },
     rules: {
       "unicorn/empty-brace-spaces": "off",
@@ -46,8 +50,6 @@ export default defineConfig([
 
       "sonarjs/pseudo-random": "off",
       "sonarjs/super-linear-regex": "off",
-
-      "local/duplicate-domain": "warn",
 
       "@stylistic/semi": ["warn", "always"],
       "@stylistic/comma-dangle": ["warn", "always-multiline"],
