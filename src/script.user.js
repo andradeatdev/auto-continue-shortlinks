@@ -649,7 +649,7 @@ const hook = {
         }));
 
         if (!undo) {
-            console.warn(`[hook.define] \`${String(property)}\` não é configurável`);
+            console.warn(`[hook.define] '${property}' não é configurável`);
             return handle.make({ applied: false });
         }
 
