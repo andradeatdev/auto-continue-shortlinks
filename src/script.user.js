@@ -1104,7 +1104,7 @@ const prop = {
 const el = {
     click(target, spec = {}) {
         const { wait = 0, scroll = false, times = 1, event, limit = 1, match } = spec;
-        const { behavior = "smooth", block = "center", inline = "center" } = scroll || {};
+        const { behavior = "smooth", block = "center", inline = "center" } = scroll === true ? {} : scroll;
         const init = { bubbles: true, cancelable: true, composed: true, view: win, ...event };
         let remaining = limit;
 
