@@ -86,6 +86,7 @@
 // @match              https://get-to.link/*
 // @match              https://no-bots-allowed.org/*
 // @match              https://fileroy.com/*
+// @match              https://en.thenaukriadda.in/*
 // 
 // @match              https://alpharede.com/*
 // @match              https://forumdinheiro.com/*
@@ -2385,9 +2386,25 @@ domains.add("fileroy.com", {
     },
 });
 
+domains.add("en.thenaukriadda.in", {
+    shortlink: /^\/\?sid=.+$/,
+    continue() {
+        el.click(".wp-block-button__link", { wait: 500, limit: 10 });
+    },
+    cache() {
+        if (this.shortlink.test(location.pathname + location.search)) {
+            bypass.cache(location.href);
+            sessionStorage.setItem("acs-shortlink", location.href);
+        }
+
+        const init = sessionStorage.getItem("acs-shortlink");
+        if (init) bypass.listener(init);
+    },
+});
+
 domains.add("astrorede.com", {
     continue() {
-        el.click("#bt");
+        el.click("#bt", { wait: 500, limit: 10 });
         el.click("#bt", { match: { text: "CONTINUAR" } });
     },
 });
