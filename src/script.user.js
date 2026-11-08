@@ -87,6 +87,11 @@
 // @match              https://no-bots-allowed.org/*
 // @match              https://fileroy.com/*
 // 
+// @match              https://alpharede.com/*
+// @match              https://forumdinheiro.com/*
+// @match              https://guis2.com/*
+// @match              https://horoscopeonday.com/*
+// 
 // @match              https://en.mrproblogger.com/*
 // @match              https://horrorpay.online/*
 // @match              https://icutlink.com/*
@@ -2387,5 +2392,43 @@ domains.add("app.lovemodz.space", generics.haste(), {
         el.click("#sl-g1");
         el.click("#sl-g3", { match: { visible: true } });
         el.click("#sl-g5", { match: { visible: true } });
+    },
+});
+
+domains.add("alpharede.com", {
+    continue() {
+        el.click("button", { match: { text: "IR PARA O LINK" }, wait: 1000, limit: 10 })
+    },
+});
+
+domains.add(["forumdinheiro.com", "guis2.com", "horoscopeonday.com"], generics.haste(), {
+    patcher() {
+        const page = (delay = 1000) => {
+            const undoHidden = hook.constant(document, "hidden", true)
+            const undoVisibility = hook.constant(document, "visibilityState", "hidden")
+
+            window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+            document.dispatchEvent(new Event("visibilitychange"));
+
+            setTimeout(() => {
+                undoHidden.stop()
+                undoVisibility.stop()
+
+                window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+                document.dispatchEvent(new Event("visibilitychange"));
+
+            }, delay);
+        }
+
+        setInterval(page, 500);
+        setTimeout(() => location.reload(), 6000)
+
+        el.hide("body > div:not([class])", { match: { text: "bloqueador" } })
+        el.hide("h1, h2, p, div:has(> img), ul, aside, footer, header, input, a, svg, span")
+    },
+    continue() {
+        el.scroll("#init", { limit: 10 })
+        el.click("#count", { scroll: true, limit: 10 })
+        el.click("article button:not([disabled])", { limit: 10 })
     },
 });
