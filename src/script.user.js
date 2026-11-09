@@ -699,8 +699,7 @@ const hook = {
     },
 
     fetch(input = {}) {
-        const { url = "", value = Object.create(null) } = input;
-
+        const { url = "", value = {} } = input;
         const isMatch = (target) => matcher.text(String(target?.url ?? target), url);
 
         return proxy.wrap(win, "fetch", {
