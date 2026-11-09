@@ -1330,11 +1330,9 @@ const bypass = {
         const result = await net.get(destination, {
             headers: {
                 Referer: location.href,
-                Cookie: document.cookie,
                 "Sec-Fetch-Dest": "document",
                 "Sec-Fetch-Mode": "navigate",
                 "Sec-Fetch-Site": "same-origin",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
             },
         });
 
