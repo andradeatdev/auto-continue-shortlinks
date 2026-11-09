@@ -1296,6 +1296,7 @@ const bypass = {
         if (typeof navigation === "undefined") return;
         navigation.addEventListener("navigate", (event) => {
             if (event.info === "bypass_link") return;
+            if (!event.cancelable || event.downloadRequest || event.hashChange) return;
 
             const dest = new URL(event.destination.url);
             if (dest.href === href) return;
