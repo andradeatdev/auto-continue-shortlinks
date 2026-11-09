@@ -848,7 +848,6 @@ const shadow = {
     },
 
     *select(selector, root = document) {
-        // Interno: desce pelos hosts de shadow DOM de um seletor "a >>> b".
         const pierce = function* (nodes, parts) {
             if (parts.length === 0) {
                 yield* nodes;
@@ -953,7 +952,6 @@ const dom = {
         }
 
         if (nodes?.length === 0) {
-            console.warn("[dom.watch] lista de alvos vazia");
             return handle.make({ applied: false });
         }
 
@@ -1341,7 +1339,6 @@ const bypass = {
 
     async save(href, destination) {
         if (typeof href !== "string" || typeof destination !== "string" || href === destination) {
-            console.error("Can't save shortlink, 'href' and 'destination' args need be a string and diferent");
             return;
         }
 
@@ -1359,7 +1356,7 @@ const bypass = {
         const { data } = await worker.titles.find(titles);
 
         if (data?.status !== "ok") console.error(data);
-        if (!data?.results) console.error("Titles undefined");
+        if (!data?.results) return;
 
         return data?.results || [];
     },
