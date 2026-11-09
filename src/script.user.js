@@ -1239,8 +1239,11 @@ const worker = {
 const bypass = {
     SLUG_PATTERN: /^\/[A-Za-z0-9_-]{3,}$/,
     gatePatterns: {
-        "clksz.com": /^\/r\/[^/]+\/.+$/,
+        "tpi.li": /^\/r\/[^/]+\/.+$/,
+        "oii.la": /^\/r\/[^/]+\/.+$/,
         "srnky.com": /^\/r\/[^/]+\/.+$/,
+        "clksz.com": /^\/r\/[^/]+\/.+$/,
+        "aii.sh": /^\/r\/[^/]+\/.+$/,
     },
     finalDomains: [
         "send.now",
