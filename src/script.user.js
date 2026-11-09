@@ -1422,6 +1422,9 @@ const commands = {
     },
 
     run() {
+        if (this.rendered) return;
+        this.rendered = true;
+
         for (const [name, cmd] of Object.entries(this.cmds)) {
             if (cmd.when && !cmd.when()) continue;
             this.register(name, cmd);
