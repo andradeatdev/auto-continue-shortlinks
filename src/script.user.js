@@ -1075,10 +1075,12 @@ const attr = {
     remove(target, names, spec = {}) {
         const list = [names].flat();
         const { limit = 1, match } = spec;
+        let remaining = limit;
 
         return dom.watch(target, node => {
             for (const name of list) node.removeAttribute(name);
-        }, { limit, match });
+            return --remaining <= 0 ? { stop: true } : { continue: true };
+        }, { match });
     },
 };
 
