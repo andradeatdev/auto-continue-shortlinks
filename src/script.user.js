@@ -10,6 +10,7 @@
 // @match              https://oii.la/*
 // @match              https://srnky.com/*
 // @match              https://clksz.com/*
+// @match              https://aii.sh/*
 //
 // @match              https://financeehelp.com/*
 // @match              https://cloudhostt.com/*
@@ -48,7 +49,6 @@
 // @match              https://cloud.unblockedgames.world/*
 // @match              https://fc-lc.xyz/*
 // @match              https://jobzhub.store/*
-// @match              https://aii.sh/*
 // @match              https://oii.io/*
 // @match              https://aknewz.xyz/*
 // @match              https://toolskitpro.net/*
@@ -1615,18 +1615,18 @@ const generics = {
     },
 };
 
-domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.antiAdbCore, generics.pahe, {
+domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com", "aii.sh"], generics.antiAdbCore, generics.pahe, {
     shortlink: bypass.SLUG_PATTERN,
     patcher() {
-        attr.remove(":is(html, body)[style]", "style", { limit: 20 });
+        el.hide("img");
+        attr.remove(":is(html, body)[style]", "style", { limit: 10 });
         hook.apply(win.Object, "getOwnPropertyDescriptor", ({ args: [obj, prop], call }) => {
             const desc = call();
             return prop === "isTrusted" && obj instanceof Event ? { ...desc, get: () => true } : desc;
         });
     },
     continue() {
-        el.click("form button.btn-primary:not([disabled])");
-        el.click("button.btn-success:not(.disabled)");
+        el.click("button:where(.btn-primary, .btn-success):not([disabled], .disabled)");
     },
 });
 
@@ -1901,13 +1901,6 @@ domains.add("jobzhub.store", {
         el.click("#scroll", { match: { visible: true } });
         el.click("#glink", { match: { visible: true } });
         el.click(captcha.turnstile("#surl:not(.disabled)"));
-    },
-});
-
-domains.add("aii.sh", {
-    continue() {
-        el.click(captcha.turnstile("button#continue"));
-        el.click(".btn-primary[href]:not(.disabled)");
     },
 });
 
