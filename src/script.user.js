@@ -1628,11 +1628,6 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com"], generics.antiAdbCore
 });
 
 domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], generics.haste(), {
-    patcher() {
-        el.hide("#masthead, aside, #content > :not(center, form), footer");
-        el.remove("div", { match: { css: { position: "fixed" }, text: "detected" } });
-        hook.listener({ type: "click", target: { not: "#startButton, #getnewlink" } });
-    },
     continue() {
         el.click("#startButton:not([style])", { wait: 500 });
         el.click("#getnewlink", { wait: 2500, match: { visible: true } });
