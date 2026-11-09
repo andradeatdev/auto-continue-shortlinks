@@ -214,6 +214,7 @@ const handle = {
 
     join(handles) {
         return handle.make({
+            done: Promise.all(handles.map(h => h.done)),
             applied: handles.every(item => item.applied),
             stop: () => { for (const item of handles) item.stop(); },
         });
