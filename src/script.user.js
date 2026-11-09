@@ -1631,7 +1631,6 @@ const generics = {
 domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com", "aii.sh"], generics.antiAdbCore, generics.pahe, {
     shortlink: bypass.SLUG_PATTERN,
     patcher() {
-        el.hide("img");
         attr.remove(":is(html, body)[style]", "style", { limit: 10 });
         hook.apply(win.Object, "getOwnPropertyDescriptor", ({ args: [obj, prop], call }) => {
             const desc = call();
