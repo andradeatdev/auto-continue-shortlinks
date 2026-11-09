@@ -144,6 +144,7 @@
 // @grant              GM_xmlhttpRequest
 // @grant              GM_getValue
 // @grant              GM_setValue
+// @grant              GM_deleteValue
 // @grant              GM_addValueChangeListener
 // @grant              GM_removeValueChangeListener
 // @grant              GM_registerMenuCommand
@@ -332,28 +333,20 @@ const storage = {
     },
 
     scope(ns, bucket) {
-        const read = () => {
-            const root = storage.get(ns, {});
-            return bucket === undefined ? root : root[bucket] || {};
-        };
+        const full = key => bucket === undefined ? `${ns}|${key}` : `${ns}|${bucket}|${key}`;
 
         const scope = {
             get(key, defaultValue) {
-                const value = read()[key];
-                return value === undefined ? defaultValue : value;
+                const value = storage.get(full(key));
+                return value ?? defaultValue;
             },
 
             set(key, value) {
-                const root = storage.get(ns, {});
+                storage.set(full(key), value);
+            },
 
-                if (bucket === undefined) {
-                    root[key] = value;
-                } else {
-                    root[bucket] ||= {};
-                    root[bucket][key] = value;
-                }
-
-                storage.set(ns, root);
+            remove(key) {
+                GM_deleteValue(full(key));
             },
 
             merge(key, value) {
@@ -361,14 +354,8 @@ const storage = {
             },
 
             watch(key, callback) {
-                const readKey = (root) => (bucket === undefined ? root : root?.[bucket])?.[key];
-
-                const id = GM_addValueChangeListener(ns, (_name, oldRoot, newRoot, remote) => {
-                    const before = readKey(oldRoot);
-                    const after = readKey(newRoot);
-
+                const id = GM_addValueChangeListener(full(key), (_name, before, after, remote) => {
                     if (JSON.stringify(before) === JSON.stringify(after)) return;
-
                     callback(after, before, remote);
                 });
 
@@ -381,6 +368,26 @@ const storage = {
         };
 
         return scope;
+    },
+
+    migrate() {
+        for (const ns of ["@local", "@global"]) {
+            const root = this.get(ns);
+            if (!root) continue;
+
+            const copy = (prefix, values = {}) => {
+                const entries = Object.entries(values);
+                for (const [key, value] of entries) {
+                    const name = `${prefix}|${key}`;
+                    if (!this.get(name)) this.set(name, value);
+                }
+            };
+
+            if (ns === "@global") copy(ns, root);
+            else for (const [host, values] of Object.entries(root)) copy(`${ns}|${host}`, values);
+
+            GM_deleteValue(ns);
+        }
     },
 };
 
@@ -1510,6 +1517,9 @@ const domains = {
 };
 
 // ===== sites: generics + domains.add =====
+
+// Drop the migration call after a few releases.
+storage.migrate();
 
 const generics = {
     haste: (options) => ({ patcher() { hook.haste(options); } }),
