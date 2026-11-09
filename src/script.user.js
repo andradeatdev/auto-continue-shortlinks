@@ -542,7 +542,7 @@ const proxy = {
         const target = owner[property];
 
         if (typeof target !== "function") {
-            console.warn(`[hook.${label}] \`${String(property)}\` não é uma função`);
+            console.warn(`[hook.${label}] '${property}' is not a function`);
             return handle.make({ applied: false });
         }
 
@@ -568,7 +568,7 @@ const proxy = {
         });
 
         if (!undo) {
-            console.warn(`[hook.${label}] \`${String(property)}\` não é configurável`);
+            console.warn(`[hook.${label}] '${property}' is not configurable`);
             return handle.make({ applied: false });
         }
 
@@ -658,7 +658,7 @@ const hook = {
         }));
 
         if (!undo) {
-            console.warn(`[hook.define] '${property}' não é configurável`);
+            console.warn(`[hook.define] '${property}' is not configurable`);
             return handle.make({ applied: false });
         }
 
