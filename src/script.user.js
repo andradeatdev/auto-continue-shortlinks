@@ -1369,6 +1369,8 @@ const bypass = {
 // ===== L3 — app: commands, domains =====
 
 const commands = {
+    rendered: false,
+
     get cmds() {
         const toggle = (key) => ({
             name: `Use ${key.slice(3).toLowerCase()} - all domains`,
