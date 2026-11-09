@@ -154,8 +154,11 @@
 // 
 // @connect            shortlinks.zencore.fun
 // @connect            intercelestial.com
-// @connect            clksz.com
+// @connect            tpi.li
+// @connect            oii.la
 // @connect            srnky.com
+// @connect            clksz.com
+// @connect            aii.sh
 //
 // @copyright          2024-2026 hdyzen (andradeatdev) — https://github.com/andradeatdev/auto-continue-shortlinks/
 // @license            GPL-3.0
