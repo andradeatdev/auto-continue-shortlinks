@@ -968,7 +968,7 @@ const dom = {
         const visit = async (node) => {
             if (seen.has(node)) return;
 
-            const result = await handler(node);
+            const result = await safe.run(() => handler(node));
             if (result?.stop === true) return watcher.stop();
             if (result?.continue === true) return;
 
