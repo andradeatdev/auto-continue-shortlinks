@@ -1886,14 +1886,13 @@ domains.add("apkadmin.com", {
 });
 
 domains.add("www.up-4ever.net", {
-    continue() {
+    patcher() {
         el.remove("#u4ab_modal");
+    },
+    continue() {
         el.click(`button[name="method_free"]`);
-
-        el.click("#downloadbtn");
-
-        el.click(captcha.turnstile("[type='submit']:not([disabled])"));
-        el.click("#dl2btn");
+        el.click("#downloadbtn.is-ready");
+        el.follow("a#dl2btn[href]");
     },
 });
 
