@@ -1796,7 +1796,6 @@ domains.add("linegee.net", generics.antiAdbCore, generics.pahe, {
 domains.add("pahe.plus", generics.antiAdbCore, generics.pahe, {
     shortlink: bypass.SLUG_PATTERN,
     patcher() {
-        hook.listener({ type: "click", target: { not: "#invisibleCaptchaShortlink" } });
         el.hide(".banner, body > [style*='fixed'], html > div");
     },
     continue() {
@@ -1808,7 +1807,6 @@ domains.add("pahe.plus", generics.antiAdbCore, generics.pahe, {
 domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
     shortlink: /^\/\?ht=[a-zA-Z0-9%]+$/,
     patcher() {
-        hook.listener({ type: "click", target: { not: ".myButton" } });
         hook.apply(win, "open", () => { });
         hook.constant(win, "LLct", "1");
         hook.getter(win, "LLpd", () => Date.now() - 284);
