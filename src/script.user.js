@@ -294,6 +294,7 @@ const matcher = {
 
     node(node, options) {
         if (this.nil(options)) return true;
+        if (typeof options === "string") return this.is(node, options);
         const { is, not, attrs, props, text, visible, css, when } = options;
 
         const checks = [
@@ -308,6 +309,17 @@ const matcher = {
         ];
 
         return checks.every(([enabled, test]) => !enabled || !test());
+    },
+
+    source(fn) {
+        return typeof fn === "function" ? fn.toString() : "";
+    },
+
+    listener({ type, target, text } = {}) {
+        return (self, name, handler) =>
+            (matcher.nil(type) || matcher.value(name, type, { exact: true }))
+            && matcher.node(self, target)
+            && (matcher.nil(text) || matcher.text(matcher.source(handler), text));
     },
 
     nil(value) {
@@ -463,7 +475,7 @@ const net = {
     },
 };
 
-// ===== L1 — engine: observer, proxy, hook, shadow, frame =====
+// ===== L1 — engine: observer, proxy, events, hook, shadow, frame =====
 
 const observer = {
     OPTIONS: { childList: true, subtree: true, attributes: true, characterData: true },
@@ -625,6 +637,23 @@ const proxy = {
     },
 };
 
+const events = {
+    MOUSE: new Set(["click", "dblclick", "auxclick", "contextmenu"]),
+
+    classOf(name) {
+        if (name.startsWith("pointer")) return win.PointerEvent;
+        if (name === "beforeinput") return win.InputEvent;
+        if (name.startsWith("key")) return win.KeyboardEvent;
+        if (name.startsWith("mouse") || this.MOUSE.has(name)) return win.MouseEvent;
+        return win.Event;
+    },
+
+    make(name, init) {
+        const EventClass = this.classOf(name);
+        return new EventClass(name, init);
+    },
+};
+
 const hook = {
     apply(owner, property, fn) {
         return proxy.wrap(owner, property, {
@@ -721,15 +750,27 @@ const hook = {
     },
 
     listener(input = {}) {
-        const { type, target, text } = input;
-        const sourceOf = fn => typeof fn === "function" ? fn.toString() : "";
+        const matches = matcher.listener(input);
 
         return hook.apply(win.EventTarget.prototype, "addEventListener", ({ self, args, call }) => {
-            const [name, listener] = args;
+            const [name, handler] = args;
+            if (!matches(self, name, handler)) return call();
+        });
+    },
 
-            if (!matcher.nil(type) && !matcher.value(name, type, { exact: true })) return call();
-            if (!matcher.node(self, target)) return call();
-            if (!matcher.nil(text) && !matcher.text(sourceOf(listener), text)) return call();
+    fire(input = {}) {
+        const matches = matcher.listener(input);
+        const init = { bubbles: true, cancelable: true, composed: true, view: win, ...input.event };
+
+        return hook.apply(win.EventTarget.prototype, "addEventListener", ({ self, args, call }) => {
+            const [name, handler] = args;
+            const result = call();
+
+            if (matches(self, name, handler)) {
+                queueMicrotask(() => safe.run(() => self.dispatchEvent(events.make(name, init))));
+            }
+
+            return result;
         });
     },
 
