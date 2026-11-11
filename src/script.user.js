@@ -87,6 +87,9 @@
 // @match              https://no-bots-allowed.org/*
 // @match              https://fileroy.com/*
 // @match              https://en.thenaukriadda.in/*
+// @match              https://filesyard.com/*
+// @match              https://www.keeplinks.org/*
+// @match              https://rapidgator.net/*
 // 
 // @match              https://alpharede.com/*
 // @match              https://forumdinheiro.com/*
@@ -2443,6 +2446,26 @@ domains.add("en.thenaukriadda.in", {
 
         const init = sessionStorage.getItem("acs-shortlink");
         if (init) bypass.listener(init);
+    },
+});
+
+domains.add("filesyard.com", generics.haste(), {
+    continue() {
+        el.click(".download-button");
+    },
+});
+
+domains.add("www.keeplinks.org", {
+    continue() {
+        el.click("#btnproceedsubmit");
+    },
+});
+
+domains.add("rapidgator.net", {
+    continue() {
+        hook.fire({ type: "click", target: ".free .btn-free, .btn-download" });
+        el.click(captcha.turnstile("#submit-button"));
+        el.click(".btn-download");
     },
 });
 
