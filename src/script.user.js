@@ -140,6 +140,7 @@
 // @match              https://gamescrate.app/*
 // 
 // @match              https://www.filecrypt.cc/*
+// @match              https://filecrypt.cc/*
 // 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
@@ -2522,7 +2523,7 @@ domains.add(["forumdinheiro.com", "guis2.com", "horoscopeonday.com"], generics.h
     },
 });
 
-domains.add("www.filecrypt.cc", {
+domains.add(["www.filecrypt.cc", "filecrypt.cc"], {
     async patcher() {
         hook.apply(win, "open", ({ args: [url], call }) => url.includes("www.filecrypt.") && call());
         el.hide("body > :not(#page)");
