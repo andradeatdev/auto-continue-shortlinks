@@ -1703,8 +1703,9 @@ domains.add(["ouo.io", "ouo.press"], generics.haste(), {
 
 domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion.com"], {
     continue() {
-        el.click("#submit-button:not([disabled])", { limit: 2 });
+        el.click("#free-submit-form #submit-button:not([disabled])");
         el.click(captcha.turnstile("#submit-button:not([disabled])"));
+        el.click(":has(#countdown[data-state='done']) #submit-button:not([disabled])");
     },
 });
 
