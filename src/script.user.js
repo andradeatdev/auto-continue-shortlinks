@@ -1814,6 +1814,16 @@ domains.add(["premium.hairmova.com", "product.hairmova.com", "business.hairmova.
 domains.add("pahe.ink", generics.antiAdbCore, generics.pahe);
 
 domains.add("linegee.net", generics.antiAdbCore, generics.pahe, {
+    shortlink: bypass.SLUG_PATTERN,
+    cache() {
+        if (this.shortlink.test(location.pathname + location.search)) {
+            bypass.cache(location.href);
+            sessionStorage.setItem("acs-shortlink", location.href);
+        }
+
+        const shortlink = sessionStorage.getItem("acs-shortlink");
+        if (shortlink) bypass.listener(shortlink);
+    },
     continue() {
         el.click(".btn-primary", { wait: 4000 });
     },
