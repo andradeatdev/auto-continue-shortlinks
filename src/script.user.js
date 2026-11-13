@@ -1330,6 +1330,18 @@ const bypass = {
         "flycutlink.com",
         "drive.google.com",
         "driveseed.org",
+        "www.mediafire.com",
+        "hexload.com",
+        "fileserve.com",
+        "katfile.com",
+        "clicknupload.click",
+        "ddownload.com",
+        "down.fast-down.com",
+        "down.mdiaload.com",
+        "usersdrive.com",
+        "megaup.net",
+        "nitroflare.com",
+        "modsfire.com",
     ],
 
     run(href, pathname, search, pattern) {
