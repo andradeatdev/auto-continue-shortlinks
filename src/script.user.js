@@ -108,6 +108,7 @@
 // 
 // @match              https://premium.hairmova.com/*
 // @match              https://product.hairmova.com/*
+// @match              https://business.hairmova.com/*
 // 
 // @match              https://gplinks.co/*
 // @match              https://skrresults.com/*
@@ -1779,14 +1780,16 @@ domains.add(["fc-lc.xyz", "oii.io"], {
     },
 });
 
-domains.add(["premium.hairmova.com", "product.hairmova.com"], {
+domains.add(["premium.hairmova.com", "product.hairmova.com", "business.hairmova.com"], {
     patcher() {
         el.hide(".single-content > :not(div), #masthead, .post-navigation, .entry-related, #comments, footer");
     },
     continue() {
-        el.scroll("#safegate-wait1");
+        el.scroll("#safegate-wait1").done.then(async () => {
+            await safe.sleep(1000);
+            el.scroll("#safegate-wait1");
+        });
         el.click("#safegate-proceed-btn", { match: { visible: true } });
-        el.scroll("#safegate-wait2", { match: { visible: true } });
         el.click("#safegate-go", { match: { visible: true } });
 
         dom.watch("#safegate-reveal-overlay > div > div > span", node => {
