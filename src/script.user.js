@@ -1842,17 +1842,6 @@ domains.add("pahe.plus", generics.antiAdbCore, generics.pahe, {
 
 domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
     shortlink: /^\/\?ht=[a-zA-Z0-9%]+$/,
-    patcher() {
-        hook.apply(win, "open", () => { });
-        hook.constant(win, "LLct", "1");
-        hook.getter(win, "LLpd", () => Date.now() - 284);
-        frame.scope(w => hook.apply(w.Element.prototype, "attachShadow", () => { }));
-
-        el.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
-    },
-    continue() {
-        el.click(".myButton", { limit: 3, event: { bubbles: false } });
-    },
     async cache() {
         if (this.shortlink.test(location.pathname + location.search)) {
             bypass.cache(location.href);
@@ -1865,6 +1854,17 @@ domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
             window.stop();
             bypass.save(shortlink, xxc.href);
         }
+    },
+    continue() {
+        el.click(".myButton", { limit: 3, event: { bubbles: false } });
+    },
+    patcher() {
+        hook.apply(win, "open", () => { });
+        hook.constant(win, "LLct", "1");
+        hook.getter(win, "LLpd", () => Date.now() - 284);
+        frame.scope(w => hook.apply(w.Element.prototype, "attachShadow", () => { }));
+
+        el.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
     },
 });
 
@@ -1921,14 +1921,14 @@ domains.add("shrinkme.click", generics.getLink, {
 });
 
 domains.add("themezon.net", {
-    patcher() {
-        el.hide("nav, header, .entry > :not(#smg-spot-end), .feat, aside, .author-box, .related, footer, .share-in");
-        el.remove("#j-adblock");
-    },
     continue() {
         el.click("#smg-spot-header #j-start", { wait: 1000 });
         el.click("#j-next:not([disabled])");
         el.click("#smg-spot-end #j-start", { wait: 1000 });
+    },
+    patcher() {
+        el.hide("nav, header, .entry > :not(#smg-spot-end), .feat, aside, .author-box, .related, footer, .share-in");
+        el.remove("#j-adblock");
     },
 });
 
@@ -1937,13 +1937,13 @@ domains.add("en.mrproblogger.com", generics.getLink, { shortlink: bypass.SLUG_PA
 domains.add(["horrorpay.online", "icutlink.com"], generics.getLink);
 
 domains.add("aradmag.online", generics.haste(), {
-    patcher() {
-        hook.apply(win, "open", () => { });
-    },
     continue() {
         el.click("[id^='ow_step']:last-of-type button");
         el.click("#offerContinueBtn");
         el.click("#continueBtn:not([disabled])");
+    },
+    patcher() {
+        hook.apply(win, "open", () => { });
     },
 });
 
@@ -1961,13 +1961,13 @@ domains.add("apkadmin.com", {
 });
 
 domains.add("www.up-4ever.net", {
-    patcher() {
-        el.remove("#u4ab_modal");
-    },
     continue() {
         el.click(`button[name="method_free"]`);
         el.click("#downloadbtn.is-ready");
         el.follow("a#dl2btn[href]");
+    },
+    patcher() {
+        el.remove("#u4ab_modal");
     },
 });
 
@@ -2068,13 +2068,6 @@ domains.add("coinclix.co", {
 });
 
 domains.add("geekgrove.net", {
-    patcher() {
-        hook.getter(win.document, "activeElement", { tagName: "IFRAME" });
-        hook.apply(win.Document.prototype, "hasFocus", () => false);
-        hook.listener({ type: "click", target: { not: "button" } });
-
-        el.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭, body > div:has(#accept-btn), div[style*='z-index']");
-    },
     async continue() {
         const key = new URLSearchParams(location.search).get("key");
         if (key) {
@@ -2101,6 +2094,13 @@ domains.add("geekgrove.net", {
         const returnKey = await dom.find("#linkResHeader kbd");
         storage.global().set("geekgrove-return-key", returnKey.textContent);
         window.close();
+    },
+    patcher() {
+        hook.getter(win.document, "activeElement", { tagName: "IFRAME" });
+        hook.apply(win.Document.prototype, "hasFocus", () => false);
+        hook.listener({ type: "click", target: { not: "button" } });
+
+        el.remove(".container-fluid:has(h2), body > .row, nav ~ .row, body .▶, .revbid-bottom-container, html > iframe, .▭, body > div:has(#accept-btn), div[style*='z-index']");
     },
 });
 
@@ -2146,6 +2146,10 @@ domains.add("adfoc.us", {
 
 domains.add("speedy-links.com", {
     shortlink: /^\/s\?[A-Za-z0-9_-]{3,}$/,
+    continue() {
+        el.click("[class*='task-list'] > *");
+        el.click("[class*='unlock-btn'].enabled");
+    },
     patcher() {
         hook.apply(win, "fetch", async ({ args: [, init], call }) => {
             if (init?.method === "POST" && typeof init.body === "string") {
@@ -2172,10 +2176,6 @@ domains.add("speedy-links.com", {
 
             return response;
         });
-    },
-    continue() {
-        el.click("[class*='task-list'] > *");
-        el.click("[class*='unlock-btn'].enabled");
     },
 });
 
@@ -2206,6 +2206,13 @@ domains.add("filekeeper.net", {
 });
 
 domains.add("linkvertise.com", {
+    continue() {
+        el.follow("a[href]:has(> button)", { match: { text: "Get access" } });
+        el.click("ui-divider + lv-membership-plan-option");
+        el.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
+        el.click(".skip-button > *", { limit: 4 });
+        el.click(".success-card button");
+    },
     patcher() {
         hook.haste({ factor: 0.05 });
 
@@ -2213,13 +2220,6 @@ domains.add("linkvertise.com", {
             if (self.nodeName === "A" && self.href) location.assign(self.href);
             return call();
         });
-    },
-    continue() {
-        el.follow("a[href]:has(> button)", { match: { text: "Get access" } });
-        el.click("ui-divider + lv-membership-plan-option");
-        el.click(":has(ui-divider + lv-membership-plan-option > div.active) .membership-plan-selection__button button");
-        el.click(".skip-button > *", { limit: 4 });
-        el.click(".success-card button");
     },
 });
 
@@ -2256,15 +2256,15 @@ domains.add("skrresults.com", generics.haste({ factor: 0.01 }), {
 });
 
 domains.add("rekonise.com", {
+    continue() {
+        el.click(".action-button:not([disabled])", { limit: 10 });
+        el.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
+    },
     patcher() {
         hook.apply(win, "open", ({ args: [url] }) => {
             if (!document.querySelector(".all-done-row")) return;
             location.assign(url);
         });
-    },
-    continue() {
-        el.click(".action-button:not([disabled])", { limit: 10 });
-        el.click(":has(.all-done-row) .cta-button:not([disabled])", { wait: 2000 });
     },
 });
 
@@ -2316,9 +2316,6 @@ domains.add("anon.to", {
 });
 
 domains.add("devuploads.com", {
-    patcher() {
-        el.hide(".dl-promo, .dl-promo-mini, section.card-pad, .signup-band");
-    },
     continue() {
         el.click("[type='submit'][name='method_free']:not([disabled], [value*='Please wait'])", { wait: 1000, limit: 2 });
         el.click(".dl-actions button[type='submit']", { wait: 1000 });
@@ -2326,16 +2323,19 @@ domains.add("devuploads.com", {
         el.click(".dl-actions a[href]", { wait: 1000, match: { text: "Download File" } });
         el.click(".dl-actions a[href].is-ready", { wait: 1000, match: { text: "Download File" } });
     },
+    patcher() {
+        el.hide(".dl-promo, .dl-promo-mini, section.card-pad, .signup-band");
+    },
 });
 
 domains.add("katfile.co", {
-    patcher() {
-        el.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
-    },
     continue() {
         el.click(".kfd-slow", { wait: 1000, limit: 2 });
         el.click(captcha.turnstile(".downloadbtn"));
         el.follow("a#dlink[href]");
+    },
+    patcher() {
+        el.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
     },
 });
 
@@ -2360,11 +2360,11 @@ domains.add("fdsite.lat", {
 });
 
 domains.add("topshare.in", {
-    patcher() {
-        el.hide(".post-content-container, #normal");
-    },
     continue() {
         el.click("#btn-download", { match: { visible: true } });
+    },
+    patcher() {
+        el.hide(".post-content-container, #normal");
     },
 });
 
@@ -2468,17 +2468,17 @@ domains.add("fileroy.com", {
 
 domains.add("en.thenaukriadda.in", {
     shortlink: /^\/\?sid=.+$/,
-    continue() {
-        el.click(".wp-block-button__link", { wait: 500, limit: 10 });
-    },
     cache() {
         if (this.shortlink.test(location.pathname + location.search)) {
             bypass.cache(location.href);
             sessionStorage.setItem("acs-shortlink", location.href);
         }
 
-        const init = sessionStorage.getItem("acs-shortlink");
-        if (init) bypass.listener(init);
+        const shortlink = sessionStorage.getItem("acs-shortlink");
+        if (shortlink) bypass.listener(shortlink);
+    },
+    continue() {
+        el.click(".wp-block-button__link", { wait: 500, limit: 10 });
     },
 });
 
@@ -2511,6 +2511,22 @@ domains.add("flycutlink.com", {
 });
 
 domains.add(["pixq.online", "xdue.online"], {
+    continue() {
+        el.scroll("#wait-cta", { wait: 1000 });
+        el.click(".btn-primary:not([disabled])");
+
+        dom.find("#wait-cta p.font-bold").then(async node => {
+            const match = /\d+\s*(?:[+\-*])\s*\d+/.exec(node.textContent);
+            if (!match) return;
+
+            // eslint-disable-next-line sonarjs/code-eval
+            const result = new Function(`return (${match[0]})`)();
+            const input = await dom.find("form input.field");
+            input.value = result;
+
+            el.click("form button[type='submit']");
+        });
+    },
     patcher() {
         el.hide("section");
 
@@ -2526,22 +2542,6 @@ domains.add(["pixq.online", "xdue.online"], {
                 return executor(resolveMod, reject);
             };
             return call([wrapper, ...rest]);
-        });
-    },
-    continue() {
-        el.scroll("#wait-cta", { wait: 1000 });
-        el.click(".btn-primary:not([disabled])");
-
-        dom.find("#wait-cta p.font-bold").then(async node => {
-            const match = /\d+\s*(?:[+\-*])\s*\d+/.exec(node.textContent);
-            if (!match) return;
-
-            // eslint-disable-next-line sonarjs/code-eval
-            const result = new Function(`return (${match[0]})`)();
-            const input = await dom.find("form input.field");
-            input.value = result;
-
-            el.click("form button[type='submit']");
         });
     },
 });
@@ -2568,6 +2568,11 @@ domains.add("alpharede.com", {
 });
 
 domains.add(["forumdinheiro.com", "guis2.com", "horoscopeonday.com"], generics.haste(), {
+    continue() {
+        el.scroll("#init", { limit: 10 });
+        el.click("#count", { scroll: true, limit: 10 });
+        el.click("article button:not([disabled])", { limit: 10 });
+    },
     patcher() {
         const page = (delay = 1000) => {
             const undoHidden = hook.constant(document, "hidden", true);
@@ -2591,11 +2596,6 @@ domains.add(["forumdinheiro.com", "guis2.com", "horoscopeonday.com"], generics.h
 
         el.hide("body > div:not([class])", { match: { text: "bloqueador" } });
         el.hide("h1, h2, p, div:has(> img), ul, aside, footer, header, input, a, svg, span");
-    },
-    continue() {
-        el.scroll("#init", { limit: 10 });
-        el.click("#count", { scroll: true, limit: 10 });
-        el.click("article button:not([disabled])", { limit: 10 });
     },
 });
 
