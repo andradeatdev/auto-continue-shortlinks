@@ -2378,8 +2378,8 @@ domains.add("psarips.is", {
             const y = rect.top + rect.height / 2;
 
             fire(thumb, "mousedown", rect.left + rect.width / 2, y);
-            fire(document, "mousemove", x, y);
-            fire(document, "mouseup", x, y);
+            fire(thumb, "mousemove", x, y);
+            fire(thumb, "mouseup", x, y);
         };
 
         const rail = await dom.find("#sg-track");
