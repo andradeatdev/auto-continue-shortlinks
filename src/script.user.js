@@ -1894,7 +1894,7 @@ domains.add("uploadrar.com", {
 
 domains.add("shrinkme.click", generics.getLink, {
     continue() {
-        el.click(captcha.turnstile(".btn-primary:not([disabled])"));
+        el.click(captcha.turnstile(":is(#invisibleCaptchaShortlink, .btn-captcha):not([disabled])"));
     },
 });
 
