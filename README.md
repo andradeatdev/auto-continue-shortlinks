@@ -24,6 +24,7 @@
 - [Troubleshooting](#troubleshooting)
 - [Report an Issue / Request a New Host](#report-an-issue--request-a-new-host)
 - [License](#license)
+
 ---
  
 This userscript automates shortlinks on pahe.ink and other sites that use the same hosts. It works with [Violentmonkey](https://violentmonkey.github.io/) and Tampermonkey, and more hosts will be added over time.
@@ -38,6 +39,7 @@ The script uses a Cloudflare Worker (`https://shortlinks.zencore.fun`) as a shar
  
 - **Reading:** when you open a supported shortlink (`tpi.li`, `oii.la`, `intercelestial.com`, `pahe.plus`), the script asks the Worker whether the final destination is already known. If it is, the script navigates straight there and skips the timer.
 - **Writing:** when your navigation reaches a final file host (`send.now`, `mega.nz`, ...), the script sends the shortlink you visited and the destination you reached to the Worker, so later visits to the same shortlink go directly to the destination.
+
 ## Timer Acceleration
  
 Where possible, the script speeds up the wait timer on shortlink pages.
