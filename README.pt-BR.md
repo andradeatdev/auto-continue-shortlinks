@@ -9,7 +9,7 @@
 [![Licença](https://img.shields.io/github/license/andradeatdev/auto-continue-shortlinks?style=flat-square&logo=gnu)](LICENSE)
 [![Hosts suportados](https://img.shields.io/badge/hosts-78%20suportados-2EA44F?style=flat-square)](HOSTS.md)
 
-> **Quer suporte para um novo site?** Comente na [Thread Site requests](https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10).
+> **Quer suporte para um novo site?** Comente na [Thread Site requests](https://github.com/andradeatdev/auto-continue-shortlinks/discussions/10).   
 > Algo parou de funcionar? Use **Report URL issue** no menu do script.
 
 ## Índice
