@@ -446,27 +446,29 @@ const net = {
             error: new Error(`[net.request] ${reason}: ${url}`),
         });
 
-        return new Promise((resolve) => {
-            GM_xmlhttpRequest({
-                method,
-                url,
-                headers,
-                responseType,
-                data,
-                timeout,
-                overrideMimeType,
-                anonymous,
-                onload: (response) => resolve({
-                    ok: response.status >= 200 && response.status < 300,
-                    status: response.status,
-                    url: response.finalUrl ?? url,
-                    data: response.response,
-                }),
-                onerror: (failure) => resolve(fail(failure?.error || "falha de rede")),
-                ontimeout: () => resolve(fail("timeout")),
-                onabort: () => resolve(fail("abortado")),
-            });
+        const { promise, resolve } = Promise.withResolvers();
+
+        GM_xmlhttpRequest({
+            method,
+            url,
+            headers,
+            responseType,
+            data,
+            timeout,
+            overrideMimeType,
+            anonymous,
+            onload: (response) => resolve({
+                ok: response.status >= 200 && response.status < 300,
+                status: response.status,
+                url: response.finalUrl ?? url,
+                data: response.response,
+            }),
+            onerror: (failure) => resolve(fail(failure?.error || "falha de rede")),
+            ontimeout: () => resolve(fail("timeout")),
+            onabort: () => resolve(fail("abortado")),
         });
+
+        return promise;
     },
 
     json(method, url, body) {
