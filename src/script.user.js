@@ -2365,6 +2365,20 @@ domains.add("psarips.is", {
             }, { match: { text: link.title } });
         }
     },
+});
+
+domains.add("get-to.link", {
+    async cache() {
+        const { titleNode, pNode } = await dom.finds({
+            titleNode: "#content-box center h2",
+            pNode: "#content-box p:has(a[href][target='_blank'])",
+        });
+
+        const title = titleNode.textContent.trim();
+        const links = [...pNode.querySelectorAll("a[href][target='_blank']")].map(l => l.href);
+
+        bypass.title(title, links);
+    },
     async continue() {
         if (!location.pathname.startsWith("/safegate/")) return;
 
@@ -2401,20 +2415,6 @@ domains.add("psarips.is", {
 
             return { stop: true };
         });
-    },
-});
-
-domains.add("get-to.link", {
-    async cache() {
-        const { titleNode, pNode } = await dom.finds({
-            titleNode: "#content-box center h2",
-            pNode: "#content-box p:has(a[href][target='_blank'])",
-        });
-
-        const title = titleNode.textContent.trim();
-        const links = [...pNode.querySelectorAll("a[href][target='_blank']")].map(l => l.href);
-
-        bypass.title(title, links);
     },
 });
 
