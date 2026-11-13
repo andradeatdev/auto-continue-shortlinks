@@ -90,6 +90,9 @@
 // @match              https://filesyard.com/*
 // @match              https://www.keeplinks.org/*
 // @match              https://rapidgator.net/*
+// @match              https://flycutlink.com/*
+// @match              https://pixq.online/*
+// @match              https://xdue.online/*
 // 
 // @match              https://alpharede.com/*
 // @match              https://forumdinheiro.com/*
@@ -2471,6 +2474,50 @@ domains.add("rapidgator.net", {
         hook.fire({ type: "click", target: ".free .btn-free, .btn-download" });
         el.click(captcha.turnstile("#submit-button"));
         el.click(".btn-download");
+    },
+});
+
+domains.add("flycutlink.com", {
+    continue() {
+        el.click("#form-continue button.btn-primary:not([disabled])");
+        el.click(captcha.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"));
+        el.click(".get-link:not(.disabled)");
+    },
+});
+
+domains.add(["pixq.online", "xdue.online"], {
+    patcher() {
+        el.hide("section");
+
+        hook.construct(win, "Promise", ({ args, call }) => {
+            const [executor, ...rest] = args;
+            if (typeof executor !== "function") return call();
+
+            const wrapper = (resolve, reject) => {
+                const resolveMod = (value) => {
+                    if (value === false) return resolve(true);
+                    return resolve(value);
+                };
+                return executor(resolveMod, reject);
+            };
+            return call([wrapper, ...rest]);
+        });
+    },
+    continue() {
+        el.scroll("#wait-cta", { wait: 1000 });
+        el.click(".btn-primary:not([disabled])");
+
+        dom.find("#wait-cta p.font-bold").then(async node => {
+            const match = /\d+\s*(?:[+\-*])\s*\d+/.exec(node.textContent);
+            if (!match) return;
+
+            // eslint-disable-next-line sonarjs/code-eval
+            const result = new Function(`return (${match[0]})`)();
+            const input = await dom.find("form input.field");
+            input.value = result;
+
+            el.click("form button[type='submit']");
+        });
     },
 });
 
