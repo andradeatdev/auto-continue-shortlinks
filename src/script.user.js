@@ -1070,26 +1070,27 @@ const dom = {
 
     find(target, spec = {}) {
         const { match, timeout = 0, root } = spec;
+        const { promise, resolve, reject } = Promise.withResolvers();
 
-        return new Promise((resolve, reject) => {
-            let timer;
-            let stop = () => { };
+        let timer;
+        let stop = () => { };
 
-            if (timeout > 0) {
-                timer = setTimeout(() => {
-                    stop();
-                    reject(new Error(`Timeout of ${timeout}ms reached waiting for: ${typeof target === "string" ? target : "<element>"}`));
-                }, timeout);
-            }
+        if (timeout > 0) {
+            timer = setTimeout(() => {
+                stop();
+                reject(new Error(`Timeout of ${timeout}ms reached waiting for: ${typeof target === "string" ? target : "<element>"}`));
+            }, timeout);
+        }
 
-            const watcher = this.watch(target, node => {
-                clearTimeout(timer);
-                resolve(node);
-                return { stop: true };
-            }, { match, root });
+        const watcher = this.watch(target, node => {
+            clearTimeout(timer);
+            resolve(node);
+            return { stop: true };
+        }, { match, root });
 
-            stop = () => watcher.stop();
-        });
+        stop = () => watcher.stop();
+
+        return promise;
     },
 
     async finds(selectors, spec = {}) {
