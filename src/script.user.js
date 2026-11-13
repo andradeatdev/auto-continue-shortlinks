@@ -82,7 +82,7 @@
 // @match              https://fdsite.lat/*
 // @match              https://topshare.in/*
 // @match              https://dailyuploads.net/*
-// @match              https://psa.wf/*
+// @match              https://psarips.is/*
 // @match              https://get-to.link/*
 // @match              https://no-bots-allowed.org/*
 // @match              https://fileroy.com/*
@@ -2347,7 +2347,7 @@ domains.add("dailyuploads.net", generics.haste(), {
     },
 });
 
-domains.add("psa.wf", {
+domains.add("psarips.is", {
     async cache() {
         const entry = await dom.find(".entry-inner:has(> .sp-wrap)");
         const headsNode = entry.querySelectorAll(".sp-head");
