@@ -14,6 +14,7 @@
 //
 // @match              https://financeehelp.com/*
 // @match              https://cloudhostt.com/*
+// @match              https://mortgageln.com/*
 // @match              https://linegee.net/*
 // @match              https://financeguidz.com/*
 // @match              https://techbixby.com/*
@@ -1706,7 +1707,10 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com", "aii.sh"], generics.a
     },
 });
 
-domains.add(["financeehelp.com", "cloudhostt.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], generics.haste(), {
+domains.add(["financeehelp.com", "cloudhostt.com", "mortgageln.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], generics.haste(), {
+    patcher() {
+        el.hide("div", { match: { text: "Blocker" } });
+    },
     continue() {
         el.click("#startButton:not([style])", { wait: 500 });
         el.click("#getnewlink", { wait: 2500, match: { visible: true } });
