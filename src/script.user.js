@@ -2616,7 +2616,6 @@ domains.add(["forumdinheiro.com", "guis2.com", "horoscopeonday.com"], generics.h
 
 domains.add(["www.filecrypt.cc", "filecrypt.cc"], {
     async patcher() {
-        hook.apply(win, "open", ({ args: [url], call }) => url.includes("www.filecrypt.") && call());
         el.hide("html > :not(body), body > :is(iframe, div, img):not(#page)");
 
         dom.find("form[onsubmit*='CNLPOP']").then(async form => {
