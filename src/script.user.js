@@ -1587,7 +1587,25 @@ const domains = {
 storage.migrate();
 
 const generics = {
-    haste: (options) => ({ patcher() { hook.haste(options); } }),
+    haste: (options) => ({
+        patcher() {
+            hook.haste(options);
+        },
+    }),
+    visible: {
+        patcher() {
+            const visibleEvents = new Set(["blur", "focus", "focusout", "afterblur", "pageshow", "pagehide", "visibilitychange"]);
+
+            hook.constant(document, "visibilityState", "visible");
+            hook.constant(document, "hidden", false);
+            hook.constant(document, "hasFocus", () => true);
+
+            hook.apply(win.EventTarget.prototype, "addEventListener", ({ args: [type], call }) => {
+                if (typeof type === "string" && visibleEvents.has(type)) return;
+                return call();
+            });
+        },
+    },
     getLink: {
         continue() {
             el.click(".get-link:not(.disabled)");
