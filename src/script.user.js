@@ -77,7 +77,6 @@
 // @match              https://online-fix.me/*
 // @match              https://anon.to/*
 // @match              https://devuploads.com/*
-// @match              https://katfile.co/*
 // @match              https://datavaults.co/*
 // @match              https://link.snipcash.com/*
 // @match              https://fdsite.lat/*
@@ -144,8 +143,16 @@
 // @match              https://eduify.app/*
 // @match              https://gamescrate.app/*
 // 
+// From: Hosts
 // @match              https://www.filecrypt.cc/*
 // @match              https://filecrypt.cc/*
+// @match              https://usersdrive.com/*
+// @match              https://nitroflare.com/*
+// @match              https://megaup.net/*
+// @match              https://download.megaup.net/*
+// @match              https://ddownload.com/*
+// @match              https://fileserve.com/*
+// @match              https://katfile.co/*
 // 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
@@ -2351,17 +2358,6 @@ domains.add("devuploads.com", {
     },
 });
 
-domains.add("katfile.co", {
-    continue() {
-        el.click(".kfd-slow", { wait: 1000, limit: 2 });
-        el.click(captcha.turnstile(".downloadbtn"));
-        el.follow("a#dlink[href]");
-    },
-    patcher() {
-        el.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
-    },
-});
-
 domains.add("datavaults.co", {
     continue() {
         el.click("#original");
@@ -2660,5 +2656,65 @@ domains.add(["www.filecrypt.cc", "filecrypt.cc"], {
                 anchor.href = target;
             }
         });
+    },
+});
+
+domains.add("usersdrive.com", {
+    continue() {
+        el.click(captcha.turnstile("#downloadbtn:not(.disabled)"));
+        el.follow(".btn-download[href]");
+    },
+});
+
+domains.add("nitroflare.com", {
+    patcher() {
+        el.hide("#superbox-overlay, #superbox-wrapper");
+    },
+    continue() {
+        el.click("#slow-download");
+        el.click("#beforeStartTimerBtn", { wait: 1000 });
+    },
+});
+
+domains.add(["megaup.net", "download.megaup.net"], {
+    patcher() {
+        hook.haste();
+    },
+    continue() {
+        el.click(".download-timer .btn--primary");
+        el.click("#btndownload", { wait: 500 });
+    },
+});
+
+domains.add("ddownload.com", generics.visible, {
+    patcher() {
+        el.hide(".dk-pricing, .modern-footer, #dl-promo-card");
+    },
+    continue() {
+        el.click("#downloadbtn:not(.disbled, [disabled])");
+    },
+});
+
+domains.add("fileserve.com", generics.visible, {
+    patcher() {
+        el.hide("#desktop-upsell-container, .comparison-wrapper, .premium-banner");
+        el.hide(".dl-half-left");
+    },
+    continue() {
+        el.click("[name='method_free']");
+        el.click("#btn-start-timer", { wait: 500 });
+        el.click(captcha.hcaptcha("#downloadbtn"));
+        el.follow("a#direct_download_btn[href]");
+    },
+});
+
+domains.add("katfile.co", {
+    continue() {
+        el.click(".kfd-slow", { wait: 1000, limit: 2 });
+        el.click(captcha.turnstile(".downloadbtn"));
+        el.follow("a#dlink[href]");
+    },
+    patcher() {
+        el.hide("#kfPrem, .kf-shorts-promo, .kf-dl2-side");
     },
 });
