@@ -2514,6 +2514,7 @@ domains.add(["pixq.online", "xdue.online"], {
     continue() {
         el.scroll("#wait-cta", { wait: 1000 });
         el.click(".btn-primary:not([disabled])");
+        el.click("#wait-cta button[type='button']", { wait: 1000 });
 
         dom.find("#wait-cta p.font-bold").then(async node => {
             const match = /\d+\s*(?:[+\-*])\s*\d+/.exec(node.textContent);
