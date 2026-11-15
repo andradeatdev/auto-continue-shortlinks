@@ -5,7 +5,7 @@
 // @description        Auto-continues shortlinks (pahe and similar hosts): clicks continue/download buttons, speeds up timers, and stores reached destinations on Cloudflare Worker for instant next-time access.
 // @author             hdyzen
 //
-// From: Pahe
+// From: Shortlinks
 // @match              https://tpi.li/*
 // @match              https://oii.la/*
 // @match              https://srnky.com/*
@@ -26,8 +26,7 @@
 //
 // @match              https://ouo.io/*
 // @match              https://ouo.press/*
-//
-// From: PlatinMods
+// 
 // @match              https://vexfile.com/*
 // @match              https://filespayouts.com/*
 // @match              https://modsfire.com/*
@@ -40,13 +39,9 @@
 // @match              https://www.up-4ever.net/*
 // @match              https://zdrive.to/*
 // @match              https://cloudfam.io/*
-// 
-// From: OvaGames
 // @match              https://shrinkme.click/*
 // @match              https://themezon.net/*
 // @match              https://aradmag.online/*
-//
-// From: Others
 // @match              https://cloud.unblockedgames.world/*
 // @match              https://fc-lc.xyz/*
 // @match              https://jobzhub.store/*
