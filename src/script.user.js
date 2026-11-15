@@ -1729,6 +1729,7 @@ domains.add(["exeygo.com", "exe-links.com", "exe-urls.com", "exego.app", "exnion
 });
 
 domains.add(["cuttty.com", "cety.app", "cutlink.net", "cutnet.net", "cuttlinks.com"], {
+    shortlink: bypass.SLUG_PATTERN,
     continue() {
         el.click("#submit-button:not([disabled])");
     },
