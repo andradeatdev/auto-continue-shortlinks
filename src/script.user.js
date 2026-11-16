@@ -1713,7 +1713,7 @@ const generics = {
     },
 };
 
-domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com", "aii.sh"], generics.antiAdbCore, generics.pahe, {
+domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com", "aii.sh"], generics.antiAdbCore, generics.pahe, generics.visible, {
     shortlink: bypass.SLUG_PATTERN,
     patcher() {
         attr.remove(":is(html, body)[style]", "style", { limit: 10 });
@@ -1729,6 +1729,8 @@ domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com", "aii.sh"], generics.a
 
 domains.add(["financeehelp.com", "cloudhostt.com", "mortgageln.com", "financeguidz.com", "techbixby.com", "loanbixby.com"], generics.haste(), {
     patcher() {
+        hook.constant(win, "open", () => { });
+        el.hide("h1, h2, h3, h6, p, img, aside, ul, li, ol");
         el.hide("div", { match: { text: "Blocker" } });
     },
     continue() {
