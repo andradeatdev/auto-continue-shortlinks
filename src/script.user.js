@@ -1423,7 +1423,7 @@ const bypass = {
             return;
         }
 
-        const result = await Promise.race([worker.links.save(href, destination), safe.sleep(1500)]);
+        const result = await Promise.race([worker.links.save(href, destination), safe.sleep(5000)]);
         if (result && result.data?.status !== "ok") console.error(result.data ?? result.error);
         this.navigate(destination);
     },
