@@ -2325,7 +2325,7 @@ domains.add("f95zone.to", {
         bypass.listener(url);
     },
     continue() {
-        el.click(":has([name='w'][value]) .f95dl-go button");
+        el.click(":has([name='w'][value]) .f95dl-go button", { match: { when: () => document.readyState === "complete" } });
     },
 });
 
