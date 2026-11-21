@@ -88,6 +88,7 @@
 // @match              https://flycutlink.com/*
 // @match              https://pixq.online/*
 // @match              https://xdue.online/*
+// @match              https://down.mdiaload.com/*
 // 
 // @match              https://alpharede.com/*
 // @match              https://forumdinheiro.com/*
@@ -2560,6 +2561,12 @@ domains.add(["pixq.online", "xdue.online"], {
             };
             return call([wrapper, ...rest]);
         });
+    },
+});
+
+domains.add("down.mdiaload.com", generics.antiAdbCore, {
+    continue() {
+        el.click("#download a[href][title='Free Download']");
     },
 });
 
