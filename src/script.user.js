@@ -2567,6 +2567,11 @@ domains.add(["pixq.online", "xdue.online"], {
 domains.add("down.mdiaload.com", generics.antiAdbCore, {
     continue() {
         el.click("#download a[href][title='Free Download']");
+        el.click("input[name='method_free']");
+
+        dom.find("#countdown", { match: { text: /[\t\n]0[\t\n]+/ } }).then(() => [
+            el.click(captcha.turnstile(".create[title='Download']")),
+        ]);
     },
 });
 
