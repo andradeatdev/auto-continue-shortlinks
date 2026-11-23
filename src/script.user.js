@@ -1714,6 +1714,67 @@ const generics = {
             });
         },
     },
+    antiDevtool: {
+        patcher() {
+            hook.apply(win.Object, "defineProperty", ({ args: [target, name, desc], call }) => {
+                if (name === "id" && target instanceof win.Element && typeof desc?.get === "function") {
+                    return call([target, name, {
+                        value: "",
+                        writable: true,
+                        enumerable: desc.enumerable ?? true,
+                        configurable: true,
+                    }]);
+                }
+
+                return call();
+            });
+
+            hook.apply(win.Object.prototype, "__defineGetter__", ({ self, args: [name], call }) => {
+                if (name === "id" && self instanceof win.Element) {
+                    return win.Object.defineProperty(self, name, {
+                        value: "",
+                        writable: true,
+                        configurable: true,
+                    });
+                }
+
+                return call();
+            });
+
+            hook.getter(win, "outerWidth", (get, self) => {
+                return self.innerWidth * self.devicePixelRatio;
+            });
+            hook.getter(win, "outerHeight", (get, self) => {
+                return self.innerHeight * self.devicePixelRatio;
+            });
+
+            hook.define(win.Date.prototype, "toString", { set: () => { } });
+            hook.define(win.RegExp.prototype, "toString", { set: () => { } });
+            hook.define(win.Function.prototype, "toString", { set: () => { } });
+
+            let last;
+            hook.apply(win.Date.prototype, "getTime", ({ call }) => {
+                const now = call();
+                if (last !== undefined && now - last > 100) {
+                    last += 1;
+                    win.queueMicrotask(() => { last = undefined; });
+                    return last;
+                }
+                last = now;
+                win.queueMicrotask(() => { last = undefined; });
+                return now;
+            });
+
+            hook.apply(win.console, "table", ({ args }) => win.console.log(...args));
+
+            hook.constant(win, "eruda");
+            hook.constant(win, "_vcOrigConsole");
+            hook.apply(win.document, "querySelector", ({ args: [selector], call }) => {
+                if (selector === "#__vconsole.vc-toggle") return;
+                return call();
+            });
+        },
+    },
 };
 
 domains.add(["tpi.li", "oii.la", "srnky.com", "clksz.com", "aii.sh"], generics.antiAdbCore, generics.pahe, generics.visible, {
