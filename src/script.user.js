@@ -1959,6 +1959,10 @@ domains.add(["themezon.net", "themepluginblog.com"], {
     patcher() {
         el.hide("nav, header, .entry > :not(#smg-spot-end), .feat, aside, .author-box, .related, footer, .share-in");
         el.remove("#j-adblock");
+
+        hook.apply(win.Element.prototype, "getAttribute", ({ args: [name], call }) => {
+            return name === "data-adblock" ? undefined : call();
+        });
     },
 });
 
