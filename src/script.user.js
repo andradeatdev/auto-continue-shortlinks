@@ -2216,8 +2216,7 @@ domains.add("nerventualken.com", {
 domains.add("datanodes.to", {
     continue() {
         el.click("#method_free:not([disabled])");
-        el.click("button.py-3", { match: { text: "Free Download" } });
-        el.click("button.py-3", { match: { text: "Start Download" } });
+        el.click("[data-dl-free]");
     },
 });
 
