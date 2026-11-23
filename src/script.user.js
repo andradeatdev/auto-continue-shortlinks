@@ -2649,13 +2649,14 @@ domains.add(["www.filecrypt.cc", "filecrypt.cc"], {
             const plain = new TextDecoder().decode(decryptedBuffer);
             const clean = plain.split(/[\r\n]+/).map(url => url.replaceAll("\u{0}", "").trim());
 
-            const trs = document.querySelectorAll("tr:has(a.download[href])");
+            const table = await dom.find("table:has(tr a.download[href])");
+            const trs = table.querySelectorAll("tr:has(a.download[href])");
             for (const tr of trs) {
                 const hostname = tr.querySelector(".external_link[href]")?.hostname;
                 const anchor = tr.querySelector("a.download[href]");
                 if (!hostname || !anchor) continue;
 
-                const idx = clean.findIndex((u) => u.startsWith(`https://${hostname}`));
+                const idx = clean.findIndex((u) => u.startsWith(`https://${hostname}`) || u.startsWith(`http://${hostname}`));
                 const target = clean[idx];
                 if (!target) continue;
 
