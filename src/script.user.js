@@ -39,8 +39,6 @@
 // @match              https://www.up-4ever.net/*
 // @match              https://zdrive.to/*
 // @match              https://cloudfam.io/*
-// @match              https://shrinkme.click/*
-// @match              https://themezon.net/*
 // @match              https://aradmag.online/*
 // @match              https://cloud.unblockedgames.world/*
 // @match              https://fc-lc.xyz/*
@@ -89,6 +87,10 @@
 // @match              https://pixq.online/*
 // @match              https://xdue.online/*
 // @match              https://down.mdiaload.com/*
+// 
+// @match              https://shrinkme.click/*
+// @match              https://themezon.net/*
+// @match              https://themepluginblog.com/*
 // 
 // @match              https://alpharede.com/*
 // @match              https://forumdinheiro.com/*
@@ -1948,7 +1950,7 @@ domains.add("shrinkme.click", generics.getLink, {
     },
 });
 
-domains.add("themezon.net", {
+domains.add(["themezon.net", "themepluginblog.com"], {
     continue() {
         el.click("#smg-spot-header #j-start", { wait: 1000 });
         el.click("#j-next:not([disabled])");
