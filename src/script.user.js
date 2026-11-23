@@ -88,6 +88,9 @@
 // @match              https://xdue.online/*
 // @match              https://down.mdiaload.com/*
 // 
+// @match              https://blog.linksflys.com/*
+// @match              https://jobs.jobsady.com/*
+// 
 // @match              https://shrinkme.click/*
 // @match              https://themezon.net/*
 // @match              https://themepluginblog.com/*
@@ -2638,6 +2641,22 @@ domains.add("down.mdiaload.com", generics.antiAdbCore, {
         dom.find("#countdown", { match: { text: /[\t\n]0[\t\n]+/ } }).then(() => [
             el.click(captcha.turnstile(".create[title='Download']")),
         ]);
+    },
+});
+
+domains.add("blog.linksflys.com", generics.visible, {
+    patcher() {
+        el.hide("img, iframe, .link-page-video");
+    },
+    continue() {
+        el.click(".get-link[href]:not([href*='javascript'])");
+    },
+});
+
+domains.add("jobs.jobsady.com", generics.haste({ text: "countdownButton" }), {
+    continue() {
+        el.click(captcha.recaptcha("#initialButton"));
+        el.click("#yuidea-snp a.yu-btn.yu-blue[href]", { wait: 1000 });
     },
 });
 
