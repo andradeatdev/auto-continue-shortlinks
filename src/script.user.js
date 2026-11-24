@@ -1623,8 +1623,8 @@ const generics = {
         patcher() {
             dom.find("link[href*='120x600-']").then(n => { n.href = "data:text/css,/120x600-x"; });
 
-            hook.apply(win.EventTarget.prototype, "dispatchEvent", ({ args: [type], call }) => {
-                if (type === "DOMContentLoaded") return;
+            hook.apply(win.EventTarget.prototype, "dispatchEvent", ({ args: [event], call }) => {
+                if (event.type === "DOMContentLoaded") return;
                 return call();
             });
 
@@ -1700,20 +1700,17 @@ const generics = {
             });
 
             hook.apply(win.Node.prototype, "appendChild", ({ args: [node], call }) => {
-                const result = call();
-
-                const hasHifen = node.tagName?.includes("-");
-                if (hasHifen) { node.remove(); return; }
-
-                const isModal = node.getHTML?.().includes("adblock");
-                if (isModal) { node.remove(); return; }
+                if (node.tagName?.includes("-") || node.getHTML?.().includes("adblock")) {
+                    node.remove();
+                    return;
+                }
 
                 if (node.nodeName === "SLOT") {
                     el.hide(":not(slot)", { root: node.getRootNode() });
                     return;
                 }
 
-                return result;
+                return call();
             });
         },
     },
@@ -1758,14 +1755,9 @@ const generics = {
             let last;
             hook.apply(win.Date.prototype, "getTime", ({ call }) => {
                 const now = call();
-                if (last !== undefined && now - last > 100) {
-                    last += 1;
-                    win.queueMicrotask(() => { last = undefined; });
-                    return last;
-                }
-                last = now;
+                last = last !== undefined && now - last > 100 ? last + 1 : now;
                 win.queueMicrotask(() => { last = undefined; });
-                return now;
+                return last;
             });
 
             hook.apply(win.console, "table", ({ args }) => win.console.log(...args));
