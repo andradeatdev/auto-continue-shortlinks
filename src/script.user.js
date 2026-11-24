@@ -1443,7 +1443,7 @@ const bypass = {
         const { data } = await worker.titles.find(titles);
 
         if (data?.status !== "ok") console.error(data);
-        if (!data?.results) return;
+        if (!data?.results) return [];
 
         return data?.results || [];
     },
