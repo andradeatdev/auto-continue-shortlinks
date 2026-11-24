@@ -1827,7 +1827,7 @@ domains.add(["boost.ink", "bst.gg"], {
         if (!match) return;
 
         const target = safe.url(atob(match[1]));
-        location.assign(target);
+        if (target) location.assign(target);
     },
 });
 
@@ -2186,7 +2186,7 @@ domains.add("geekgrove.net", {
         window.close();
     },
     patcher() {
-        hook.getter(win.document, "activeElement", { tagName: "IFRAME" });
+        hook.constant(win.document, "activeElement", { tagName: "IFRAME" });
         hook.apply(win.Document.prototype, "hasFocus", () => false);
         hook.listener({ type: "click", target: { not: "button" } });
 
@@ -2590,7 +2590,7 @@ domains.add("flycutlink.com", {
 
 domains.add(["pixq.online", "xdue.online"], {
     continue() {
-        el.scroll("#wait-cta", { wait: 1000 });
+        el.scroll("#wait-cta");
         el.click(".btn-primary:not([disabled])");
         el.click("#wait-cta button[type='button']", { wait: 1000 });
 
