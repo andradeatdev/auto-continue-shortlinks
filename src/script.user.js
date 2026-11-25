@@ -2666,10 +2666,11 @@ domains.add("primepropertynow.com", {
         });
     },
     continue() {
-        el.click("button", { match: { text: "Continue without an ad" } });
-        el.click("#next-timer-btn .btn-success", { match: { visible: true } });
-        el.click("[id*='mid-nextbutton']", { match: { visible: true } });
-        el.click("[id*='final-nextbutton']", { match: { visible: true } });
+        // el.click("button", { match: { text: "Continue without an ad" } });
+        // el.click("#next-timer-btn .btn-success", { match: { visible: true } });
+        // el.click("[id*='mid-nextbutton']", { match: { visible: true } });
+        // el.click("[id*='final-nextbutton']", { match: { visible: true } });
+        el.follow("[id*='final-link-wrapper'][href]");
     },
     patcher() {
         el.hide("#custom-reward-modal, header, aside, p, h1, h2, h3, h4, img, ul, li, ol, .post-nav, .author-box, .bidmatic-container, .entry-footer, footer, .entry-meta, .post-category");
