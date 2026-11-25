@@ -1716,7 +1716,7 @@ const generics = {
                 return call();
             });
 
-            frame.scope(w => hook.apply(w.Element.prototype, "attachShadow", () => { }));
+            frame.scope(w => hook.apply(w.Element.prototype, "attachShadow", ({ call }) => call()));
         },
     },
     antiDevtool: {
