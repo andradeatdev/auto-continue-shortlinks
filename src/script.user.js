@@ -88,6 +88,9 @@
 // @match              https://xdue.online/*
 // @match              https://down.mdiaload.com/*
 // 
+// @match              https://linkjust.com/*
+// @match              https://primepropertynow.com/*
+// 
 // @match              https://blog.linksflys.com/*
 // @match              https://jobs.jobsady.com/*
 // 
@@ -2637,12 +2640,48 @@ domains.add("down.mdiaload.com", generics.antiAdbCore, {
     },
 });
 
-domains.add("blog.linksflys.com", generics.visible, {
-    patcher() {
-        el.hide("img, iframe, .link-page-video");
+domains.add("linkjust.com", {
+    shortlink: bypass.SLUG_PATTERN,
+    cache() {
+        if (!this.shortlink.test(location.pathname)) return;
+
+        const { origin, pathname } = location;
+        bypass.cache(origin + pathname);
+        bypass.listener(origin + pathname);
     },
     continue() {
+        el.follow("#click.btn-success[href]");
+    },
+});
+
+domains.add("primepropertynow.com", {
+    cache() {
+        dom.watch("[id*='final-link-wrapper'][href]", node => {
+            const search = new URLSearchParams(node.search);
+            const article = search.get("GetArticle");
+            if (!article) return;
+
+            const [id] = article.split("~", 1);
+            if (id) bypass.cache(`https://linkjust.com/${id}`);
+        });
+    },
+    continue() {
+        el.click("button", { match: { text: "Continue without an ad" } });
+        el.click("#next-timer-btn .btn-success", { match: { visible: true } });
+        el.click("[id*='mid-nextbutton']", { match: { visible: true } });
+        el.click("[id*='final-nextbutton']", { match: { visible: true } });
+    },
+    patcher() {
+        el.hide("#custom-reward-modal, header, aside, p, h1, h2, h3, h4, img, ul, li, ol, .post-nav, .author-box, .bidmatic-container, .entry-footer, footer, .entry-meta, .post-category");
+    },
+});
+
+domains.add("blog.linksflys.com", generics.visible, {
+    continue() {
         el.click(".get-link[href]:not([href*='javascript'])");
+    },
+    patcher() {
+        el.hide("img, iframe, .link-page-video");
     },
 });
 
