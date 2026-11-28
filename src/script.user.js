@@ -1923,7 +1923,7 @@ domains.add("linegee.net", generics.antiAdbCore, generics.pahe, {
 domains.add("pahe.plus", generics.antiAdbCore, generics.pahe, {
     shortlink: bypass.SLUG_PATTERN,
     patcher() {
-        el.hide(".banner, body > [style*='fixed'], html > div");
+        el.hide(".banner, body > [style*='fixed'], html > div, a[href]:not([href*='pahe.plus'])");
     },
     continue() {
         el.click(captcha.hcaptcha("#invisibleCaptchaShortlink:not([disabled])"), { event: { bubbles: false } });
@@ -1954,7 +1954,7 @@ domains.add("intercelestial.com", generics.antiAdbCore, generics.pahe, {
         hook.constant(win, "LLct", "1");
         hook.getter(win, "LLpd", () => Date.now() - 284);
 
-        el.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div`);
+        el.hide(`.right-sidebar.penci_sidebar.container, .penci-home-popular-posts.container, p, ul, li, [href*="s0-greate"], #sidebar, .post-pagination, .single-breadcrumb.penci-breadcrumb.container, .penci-move-title-above.post-image, #footer-section, .post-related, #comments, .post-share.tags-share-box, .alignleft.wp-caption, #target.pk-page-ready > #sales-banner, html > div, a[href]:not([href*='intercelestial.com'])`);
     },
 });
 
