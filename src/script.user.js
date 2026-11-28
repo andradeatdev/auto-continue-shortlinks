@@ -2005,12 +2005,13 @@ domains.add("uploadrar.com", {
 });
 
 domains.add("shrinkme.click", generics.getLink, {
+    shortlink: bypass.SLUG_PATTERN,
     continue() {
         el.click(captcha.turnstile(":is(#invisibleCaptchaShortlink, .btn-captcha):not([disabled])"));
     },
 });
 
-domains.add(["themezon.net", "themepluginblog.com"], {
+domains.add(["themezon.net", "themepluginblog.com"], generics.visible, {
     continue() {
         el.click("#smg-spot-header #j-start", { wait: 1000 });
         el.click("#j-next:not([disabled])");
