@@ -26,19 +26,7 @@
 //
 // @match              https://ouo.io/*
 // @match              https://ouo.press/*
-// 
-// @match              https://vexfile.com/*
-// @match              https://filespayouts.com/*
-// @match              https://modsfire.com/*
-// @match              https://www.file-upload.org/*
-// @match              https://upfilesgo.com/*
-// @match              https://safefileku.com/*
-// @match              https://uploadrar.com/*
-// @match              https://uploady.io/*
-// @match              https://apkadmin.com/*
-// @match              https://www.up-4ever.net/*
-// @match              https://zdrive.to/*
-// @match              https://cloudfam.io/*
+//
 // @match              https://aradmag.online/*
 // @match              https://cloud.unblockedgames.world/*
 // @match              https://fc-lc.xyz/*
@@ -59,18 +47,13 @@
 // @match              https://speedy-links.com/*
 // @match              https://nerventualken.com/captcha?urid=*
 // @match              https://datanodes.to/*
-// @match              https://fuckingfast.co/*
 // @match              https://filekeeper.net/*
 // @match              https://linkvertise.com/*
 // @match              https://app.khaddavi.net/*
 // @match              https://sfl.gl/*
 // @match              https://link4m.net/*
-// @match              https://www.nexusmods.com/*
 // @match              https://f95zone.to/*
 // @match              https://online-fix.me/*
-// @match              https://anon.to/*
-// @match              https://devuploads.com/*
-// @match              https://datavaults.co/*
 // @match              https://link.snipcash.com/*
 // @match              https://fdsite.lat/*
 // @match              https://topshare.in/*
@@ -82,11 +65,9 @@
 // @match              https://en.thenaukriadda.in/*
 // @match              https://filesyard.com/*
 // @match              https://www.keeplinks.org/*
-// @match              https://rapidgator.net/*
 // @match              https://flycutlink.com/*
 // @match              https://pixq.online/*
 // @match              https://xdue.online/*
-// @match              https://down.mdiaload.com/*
 // 
 // @match              https://linkjust.com/*
 // @match              https://primepropertynow.com/*
@@ -157,6 +138,25 @@
 // @match              https://ddownload.com/*
 // @match              https://fileserve.com/*
 // @match              https://katfile.co/*
+// @match              https://vexfile.com/*
+// @match              https://filespayouts.com/*
+// @match              https://modsfire.com/*
+// @match              https://www.file-upload.org/*
+// @match              https://upfilesgo.com/*
+// @match              https://safefileku.com/*
+// @match              https://uploadrar.com/*
+// @match              https://uploady.io/*
+// @match              https://apkadmin.com/*
+// @match              https://www.up-4ever.net/*
+// @match              https://zdrive.to/*
+// @match              https://cloudfam.io/*
+// @match              https://www.nexusmods.com/*
+// @match              https://rapidgator.net/*
+// @match              https://down.mdiaload.com/*
+// @match              https://fuckingfast.co/*
+// @match              https://anon.to/*
+// @match              https://devuploads.com/*
+// @match              https://datavaults.co/*
 // 
 // @run-at             document-start
 // @icon               https://www.google.com/s2/favicons?domain=pahe.ink
